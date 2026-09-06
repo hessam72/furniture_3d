@@ -18,6 +18,7 @@ import {
   type PresentationConfig,
   type ResolvedSimpleViewer,
 } from '@/lib/product/presentation'
+import ViewerPlinth, { type PlinthSpec } from './ViewerPlinth'
 
 // Must run before any preload in this chunk — drei otherwise reaches for its
 // CDN decoder. Same reason CarPageClient and ProductPageClient set it.
@@ -30,6 +31,10 @@ const MAX_PANEL_COVERAGE = 0.5
 /** The opening three-quarter view: slightly off-axis and slightly above, which
  *  is how furniture is photographed. Normalised on use. */
 const OPENING_DIR = new THREE.Vector3(0.55, 0.3, 1)
+
+/** The polar angle of that opening view — the elevation a `lockPolar` viewer is
+ *  pinned to, so a drag turns the piece and never tips it. */
+const OPENING_POLAR = Math.acos(OPENING_DIR.y / OPENING_DIR.length())
 
 /**
  * The finished piece, centred on the origin.
@@ -50,6 +55,7 @@ function Piece({
   envIntensity,
   onRadius,
   sourceRef,
+  plinth,
 }: {
   path: string
   envIntensity: number
@@ -59,11 +65,13 @@ function Piece({
   /** Publishes the raw cached GLTF scene — not the painted clone below — for an
    *  AR export built outside the Canvas. @see exportSinglePieceGLB */
   sourceRef?: React.MutableRefObject<THREE.Object3D | null>
+  /** Stands the piece on a plinth. @see ViewerPlinth */
+  plinth?: PlinthSpec
 }) {
   const gltf = useGLTF(path)
   const { settings } = useQuality()
 
-  const { scene, targets, radius } = useMemo(() => {
+  const { scene, targets, radius, bottom, footprint } = useMemo(() => {
     const clone = gltf.scene.clone(true)
     preparePresentationObject(clone, {
       envMapIntensity: envIntensity,
@@ -84,7 +92,16 @@ function Piece({
     clone.position.sub(box.getCenter(new THREE.Vector3()))
 
     const sphere = box.getBoundingSphere(new THREE.Sphere())
-    return { scene: clone, targets: collected, radius: sphere.radius }
+    const size = box.getSize(new THREE.Vector3())
+    return {
+      scene: clone,
+      targets: collected,
+      radius: sphere.radius,
+      // Measured *after* the centring above, so both are in the space the
+      // plinth is placed in: the underside, and half the footprint.
+      bottom: -size.y / 2,
+      footprint: Math.max(size.x, size.z) / 2,
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gltf.scene, path, envIntensity, settings.anisotropyLevel])
 
@@ -98,9 +115,16 @@ function Piece({
       sourceRef.current = null
     }
   }, [sourceRef, gltf.scene])
-  useEffect(() => onRadius(radius), [radius, onRadius])
+  // A plinth reaches past the piece on every side, so the fit has to be solved
+  // against the pair or the stage clips out of frame at some angles.
+  useEffect(() => onRadius(plinth ? radius * 1.2 : radius), [radius, plinth, onRadius])
 
-  return <primitive object={scene} />
+  return (
+    <>
+      <primitive object={scene} />
+      {plinth && <ViewerPlinth spec={plinth} bottom={bottom} radius={footprint} />}
+    </>
+  )
 }
 
 /**
@@ -184,6 +208,26 @@ function Frame({
   return null
 }
 
+/**
+ * Hands the page back the gestures it needs.
+ *
+ * OrbitControls sets `touch-action: none` on the canvas when it connects, which
+ * on a phone means a swipe up over the piece rotates it instead of scrolling
+ * the page — the viewer becomes a hole the reader falls into. `pan-y` gives
+ * vertical drags back to the browser and keeps horizontal ones for the turn.
+ * The wheel goes the same way: with zoom off, OrbitControls stops consuming it
+ * and the page scrolls under the pointer.
+ *
+ * Mounted after OrbitControls so its effect runs last and wins.
+ */
+function EmbeddedGestures() {
+  const gl = useThree((s) => s.gl)
+  useEffect(() => {
+    gl.domElement.style.touchAction = 'pan-y'
+  }, [gl])
+  return null
+}
+
 interface Props {
   config: PresentationConfig
   /** Fraction of the viewport height the control panel covers, measured by the
@@ -195,6 +239,14 @@ interface Props {
   /** Optional: receives the loaded GLB so the host page can export it for AR
    *  with the live colours applied. Left out, nothing is published. */
   sourceRef?: React.MutableRefObject<THREE.Object3D | null>
+  /** Pins the camera's elevation so a drag only spins the piece. Off by
+   *  default — /product/[id]/simple keeps its free orbit. */
+  lockPolar?: boolean
+  /** Stands the piece on a plinth instead of on nothing. @see ViewerPlinth */
+  plinth?: PlinthSpec
+  /** The viewer sits inside a page that scrolls: gives vertical drags and the
+   *  wheel back to the document. @see EmbeddedGestures */
+  embedded?: boolean
 }
 
 /**
@@ -218,7 +270,16 @@ interface Props {
  * Everything it draws comes from the manifest's `simple` block, defaults filled
  * in. @see SimpleViewerMeta
  */
-export default function SimpleViewer({ config, coverage, onReady, onError, sourceRef }: Props) {
+export default function SimpleViewer({
+  config,
+  coverage,
+  onReady,
+  onError,
+  sourceRef,
+  lockPolar,
+  plinth,
+  embedded,
+}: Props) {
   const { settings } = useQuality()
   const [perfScale, setPerfScale] = useState(1)
   const [radius, setRadius] = useState(0)
@@ -255,7 +316,7 @@ export default function SimpleViewer({ config, coverage, onReady, onError, sourc
       shadows={false}
       frameloop="demand"
       dpr={dpr}
-      style={{ touchAction: 'none', background: view.background }}
+      style={{ touchAction: embedded ? 'pan-y' : 'none', background: view.background }}
       gl={{
         // Live, unlike every other scene in the app: those route their output
         // through an EffectComposer, which renders past the canvas's own
@@ -297,7 +358,13 @@ export default function SimpleViewer({ config, coverage, onReady, onError, sourc
 
       <Suspense fallback={null}>
         <PartErrorBoundary category="piece" onError={onError}>
-          <Piece path={view.model} envIntensity={envIntensity} onRadius={handleRadius} sourceRef={sourceRef} />
+          <Piece
+            path={view.model}
+            envIntensity={envIntensity}
+            onRadius={handleRadius}
+            sourceRef={sourceRef}
+            plinth={plinth}
+          />
         </PartErrorBoundary>
       </Suspense>
 
@@ -310,15 +377,22 @@ export default function SimpleViewer({ config, coverage, onReady, onError, sourc
         ref={controls}
         makeDefault
         enablePan={false}
+        // Off when embedded, so the wheel scrolls the page instead of dollying
+        // a viewer the reader is only passing.
+        enableZoom={!embedded}
         enableDamping
         dampingFactor={0.08}
         rotateSpeed={0.85}
         zoomSpeed={0.8}
-        // Stops short of the poles: at the exact top the azimuth is undefined
-        // and the piece spins on the spot as you drag past it.
-        minPolarAngle={0.15}
-        maxPolarAngle={Math.PI - 0.35}
+        // Locked, both limits on the opening elevation, when the host asked for
+        // a turntable: the piece spins and never tips. Otherwise stop short of
+        // the poles — at the exact top the azimuth is undefined and the piece
+        // spins on the spot as you drag past it.
+        minPolarAngle={lockPolar ? OPENING_POLAR : 0.15}
+        maxPolarAngle={lockPolar ? OPENING_POLAR : Math.PI - 0.35}
       />
+
+      {embedded && <EmbeddedGestures />}
     </Canvas>
   )
 }

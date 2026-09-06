@@ -1,22 +1,21 @@
 {
   "showrooms": [
     {
-      "slug": "royal-home",
+      "slug": "nilper",
       "brand": {
-        "monogram": "RH",
-        "name": "ROYAL HOME",
-        "nameFa": "رویال هوم",
-        "latinTagline": "FURNITURE & INTERIOR",
+        "monogram": "N",
+        "name": "NILPER",
+        "nameFa": "نیلپر",
+        "latinTagline": "HOME & OFFICE FURNITURE",
         "logo": null
       },
       "seo": {
-        "title": "رویال هوم | شوروم مجازی مبلمان",
-        "description": "شوروم مجازی رویال هوم؛ مبلمان را سه‌بعدی ببینید، رنگ و رویه را تغییر دهید و پیش از خرید در خانه‌تان بچینید."
+        "title": "نیلپر | شوروم مجازی مبلمان",
+        "description": "شوروم مجازی نیلپر؛ مبل راحتی، ست ناهارخوری و مبلمان اداری را سه‌بعدی ببینید، رنگ و رویه را تغییر دهید و پیش از خرید در خانه‌تان بچینید."
       },
       "nav": {
         "links": [
           { "label": "محصولات", "href": "#collection" },
-          { "label": "درباره ما", "href": "#about" },
           { "label": "شوروم مجازی", "href": "/store" },
           { "label": "تماس با ما", "href": "#footer" }
         ],
@@ -24,39 +23,39 @@
         "cta": { "label": "ثبت در شهر امید", "href": "/about" }
       },
       "hero": {
-        "eyebrow": "خانه، روایت سلیقه شماست",
-        "title": "رویال هوم",
-        "subtitle": "مبلمان، فراتر از تصور",
-        "description": "ترکیبی از طراحی مدرن، کیفیت ماندگار و حسِ واقعی؛ با رویال هوم، فضای زندگی‌تان را زیباتر کنید.",
+        "eyebrow": "نیلپر، حس خوب همنشینی",
+        "title": "نیلپر",
+        "subtitle": "مبلمان خانگی و اداری، از سال ۱۳۷۳",
+        "description": "طراحی بر پایه اصول ارگونومی و استانداردهای جهانی؛ از مبل راحتی و ست ناهارخوری تا صندلی اداری و مبلمان کنفرانس.",
         "image": "/images/homepage/show-room-2.webp",
-        "imageAlt": "نمای ورودی شوروم رویال هوم",
+        "imageAlt": "نمای شوروم مبلمان نیلپر",
         "contact": [
-          { "icon": "pin", "text": "تهران، خیابان ولیعصر، پلاک ۱۳۳" },
-          { "icon": "phone", "text": "۰۲۱-۸۸۷۷۶۵۴۳" },
-          { "icon": "clock", "text": "همه روزه ۹ تا ۲۱" }
+          { "icon": "pin", "text": "تهران، شهرک غرب، خیابان سپهر، گلبرگ سوم، پلاک ۱۱۱" },
+          { "icon": "phone", "text": "۰۲۱-۸۲۷۵۰" },
+          { "icon": "clock", "text": "خدمات پس از فروش: ۰۲۱-۸۲۷۵۱" }
         ],
         "ctas": [
           { "label": "ورود به شوروم مجازی", "href": "/store", "variant": "solid", "icon": "vr" },
           { "label": "مشاهده محصولات", "href": "#collection", "variant": "outline" }
         ],
-        "video": { "label": "معرفی فروشگاه", "note": "۱:۳۰ دقیقه", "href": "" },
+        "video": { "label": "معرفی شوروم نیلپر", "note": "۱:۳۰ دقیقه", "href": "" },
         "sideText": ["More", "Than", "Furniture", "A Better", "Way of Living"],
         "scrollLabel": "اسکرول"
       },
       "stats": [
-        { "icon": "sofa", "value": "۱۵۰+", "label": "مدل مبل", "note": "برای هر سلیقه‌ای" },
-        { "icon": "tag", "value": "۱۲", "label": "برند معتبر", "note": "بهترین‌های دنیا" },
-        { "icon": "truck", "value": "ارسال سراسر کشور", "label": "", "note": "سریع و مطمئن" },
-        { "icon": "cube", "value": "بازدید سه بعدی", "label": "", "note": "تجربه خرید متفاوت" },
-        { "icon": "headset", "value": "پشتیبانی ۲۴/۷", "label": "", "note": "همیشه کنار شما" }
+        { "icon": "sofa", "value": "از ۱۳۷۳", "label": "سابقه تولید", "note": "بیش از سه دهه" },
+        { "icon": "tag", "value": "خانگی و اداری", "label": "", "note": "دو خط تولید نیلپر" },
+        { "icon": "truck", "value": "شبکه نمایندگی‌ها", "label": "", "note": "ارسال سراسر کشور" },
+        { "icon": "cube", "value": "بازدید سه‌بعدی", "label": "", "note": "تجربه خرید متفاوت" },
+        { "icon": "headset", "value": "خدمات پس از فروش", "label": "", "note": "۰۲۱-۸۲۷۵۱" }
       ],
       "featured": {
         "index": "01",
         "total": "04",
         "eyebrow": "Featured\nProduct",
         "category": "مبل راحتی",
-        "title": "مدل آریا",
-        "description": "ترکیبی بی‌نقصی از راحتی، زیبایی و دوام برای خانه‌های امروزی",
+        "title": "مدل لاین",
+        "description": "پایه چوب راش، تشک قابل جداسازی از فوم سرد و کوسن‌های الیاف ویسکوز؛ ست هفت‌نفره با نشیمن راحت برای پذیرایی خانواده.",
         "presentationKey": "test",
         "chips": [
           { "icon": "rotate", "label": "چرخش ۳۶۰ درجه" },
@@ -72,80 +71,96 @@
         "cta": { "label": "مشاهده و شخصی‌سازی", "href": "/product/test" },
         "specsLabel": "مشخصات کوتاه",
         "specs": [
-          { "label": "ابعاد", "value": "۲۴۰ × ۹۵ × ۸۰ سانتی‌متر" },
-          { "label": "جنس", "value": "پارچه و چوب جامد" },
-          { "label": "ظرفیت", "value": "۴-۵ نفر" },
-          { "label": "گارانتی", "value": "۵ سال" }
-        ]
+          { "label": "سازه", "value": "چوب راش" },
+          { "label": "تشک", "value": "فوم سرد، قابل جداسازی" },
+          { "label": "کوسن", "value": "الیاف ویسکوز" },
+          { "label": "ظرفیت", "value": "ست ۷ نفره" }
+        ],
+        "stage": {
+          "path": null,
+          "color": "#f2f3f6",
+          "glow": "#5b8def",
+          "radiusScale": 1.22,
+          "height": 0.12
+        }
       },
       "virtual": {
-        "eyebrow": "شوروم مجازی رویال هوم",
+        "eyebrow": "شوروم مجازی نیلپر",
         "title": "قبل از خرید، تجربه کنید.",
-        "description": "با ورود به شوروم مجازی، تمام مدل‌ها را در فضایی واقعی و تعاملی ببینید، بچرخید، مقایسه کنید و خریدی مطمئن‌تر داشته باشید.",
+        "description": "به‌جای ورق‌زدن کاتالوگ، در شوروم قدم بزنید: مدل‌ها را از هر زاویه ببینید، رنگ و رویه را عوض کنید و اندازه واقعی را در خانه بسنجید.",
         "cta": { "label": "ورود به شوروم مجازی", "href": "/store", "icon": "vr" },
         "image": "/images/about/service-showroom.webp",
-        "imageAlt": "نمای داخلی فروشگاه رویال هوم",
-        "imageCaption": "داخل فروشگاه قدم بزنید",
+        "imageAlt": "نمای داخلی شوروم نیلپر",
+        "imageCaption": "داخل شوروم قدم بزنید",
         "imageNote": "تصویر قابل تغییر",
         "imageBadge": ["VIRTUAL", "SHOWROOM", "REAL EXPERIENCE"],
         "map": { "image": null, "label": "Explore\nthe space" }
       },
       "collection": {
         "eyebrow": "مجموعه محصولات",
-        "title": "محبوب‌ترین مدل‌ها",
-        "description": "طراحی بهتر برای زندگی بهتر",
-        "addLabel": "افزودن",
+        "title": "مبل‌های راحتی نیلپر",
+        "description": "حس خوب همنشینی، در هر مدل",
+        "addLabel": "مشاهده",
         "items": [
           {
-            "id": "lima",
-            "category": "مبل سه نفره",
-            "name": "مدل لیما",
+            "id": "line",
+            "category": "مبل راحتی",
+            "name": "مدل لاین",
+            "image": null,
+            "href": "/product/test",
+            "badge": "پرفروش",
+            "colors": ["#36454f", "#c2b099", "#1b2f5c"]
+          },
+          {
+            "id": "delan",
+            "category": "مبل راحتی",
+            "name": "مدل دلان",
+            "image": null,
+            "href": "/product/test",
+            "badge": null,
+            "colors": ["#5c4033", "#8b8b8b", "#e8e0d2"]
+          },
+          {
+            "id": "brent",
+            "category": "مبل راحتی",
+            "name": "مدل برنت",
             "image": null,
             "href": "/product/test",
             "badge": null,
             "colors": ["#2b2320", "#8b6f4e", "#c2b099"]
           },
           {
-            "id": "tiba",
+            "id": "alvares",
             "category": "مبل راحتی",
-            "name": "مدل تیبا",
+            "name": "مدل آلوارس",
             "image": null,
             "href": "/product/test",
             "badge": null,
             "colors": ["#1a1a1a", "#5e2129", "#c8a06a"]
           },
           {
-            "id": "baran",
-            "category": "مبل ال",
-            "name": "مدل باران",
-            "image": null,
-            "href": "/product/test",
-            "badge": "پرفروش",
-            "colors": ["#5c4033", "#8b8b8b", "#e8e0d2"]
-          },
-          {
-            "id": "nima",
-            "category": "مبل تک‌نفره",
-            "name": "مدل نیما",
+            "id": "nivan",
+            "category": "مبل راحتی",
+            "name": "مدل نیوان",
             "image": null,
             "href": "/product/test",
             "badge": null,
             "colors": ["#5a5f43", "#36454f", "#c8a06a"]
           },
           {
-            "id": "arya",
+            "id": "sirom",
             "category": "مبل راحتی",
-            "name": "مدل آریا",
+            "name": "مدل سیرم",
             "image": null,
             "href": "/product/test",
             "badge": null,
-            "colors": ["#36454f", "#1b2f5c", "#c2b099"]
+            "colors": ["#c2b099", "#5c4033", "#1b2f5c"]
           }
         ]
       },
       "closing": {
         "platform": { "name": "OmidCity", "tagline": "Virtual Lives Better", "logo": null },
-        "eyebrow": "رویال هوم، در شهر امید",
+        "eyebrow": "نیلپر، در شهر امید",
         "title": "آینده خرید مبلمان، همین جاست.",
         "description": "تجربه‌ای متفاوت در بزرگ‌ترین پلتفرم نمایشگاه‌های مجازی ایران",
         "cta": { "label": "همین حالا وارد شوید", "href": "/store" },
@@ -153,7 +168,7 @@
         "sideText": ["REAL", "SPACES", "REAL", "PEOPLE", "A BRIGHTER", "TOMORROW"]
       },
       "footer": {
-        "about": "رویال هوم، تولیدکننده و عرضه‌کننده مبلمان مدرن با بیش از دو دهه تجربه در طراحی و ساخت فضای زندگی ایرانی.",
+        "about": "نیلپر از سال ۱۳۷۳ تولیدکننده مبلمان خانگی و اداری است؛ مبل راحتی، ست ناهارخوری، میز جلومبلی و عسلی در کنار صندلی اداری، مدیریتی، ارگونومیک و کنفرانسی.",
         "columns": [
           {
             "title": "دسترسی سریع",
@@ -161,33 +176,33 @@
               { "label": "محصولات", "href": "#collection" },
               { "label": "شوروم مجازی", "href": "/store" },
               { "label": "نمایش در واقعیت افزوده", "href": "/ar" },
-              { "label": "درباره ما", "href": "/about" }
+              { "label": "محصول ویژه", "href": "#featured" }
             ]
           },
           {
             "title": "دسته‌بندی‌ها",
             "links": [
-              { "label": "مبلمان", "href": "#collection" },
-              { "label": "صندلی", "href": "#collection" },
-              { "label": "میز", "href": "#collection" },
-              { "label": "دکوراسیون", "href": "#collection" }
+              { "label": "مبل راحتی", "href": "#collection" },
+              { "label": "ست ناهارخوری", "href": "#collection" },
+              { "label": "میز جلومبلی و عسلی", "href": "#collection" },
+              { "label": "مبلمان اداری", "href": "#collection" }
             ]
           }
         ],
         "contact": {
           "title": "تماس با ما",
           "items": [
-            { "icon": "pin", "text": "تهران، خیابان ولیعصر، پلاک ۱۳۳" },
-            { "icon": "phone", "text": "۰۲۱-۸۸۷۷۶۵۴۳" },
-            { "icon": "mail", "text": "info@royalhome.ir" }
+            { "icon": "pin", "text": "تهران، شهرک غرب، خیابان سپهر، گلبرگ سوم، پلاک ۱۱۱" },
+            { "icon": "phone", "text": "۰۲۱-۸۲۷۵۰" },
+            { "icon": "mail", "text": "پیامک: ۲۰۰۰۰۸۲۷۵۰" }
           ]
         },
         "social": [
-          { "label": "اینستاگرام", "href": "#" },
-          { "label": "تلگرام", "href": "#" },
-          { "label": "واتساپ", "href": "#" }
+          { "label": "نیلپر هوم", "href": "https://nilperhome.com" },
+          { "label": "نیلپر آفیس", "href": "https://nilperoffice.com" },
+          { "label": "فروشگاه نیلپر", "href": "https://store.nilper.ir" }
         ],
-        "copyright": "© تمامی حقوق برای رویال هوم محفوظ است. ساخته شده در شهر امید."
+        "copyright": "© تمامی حقوق برای نیلپر محفوظ است. شوروم مجازی در شهر امید."
       }
     }
   ]

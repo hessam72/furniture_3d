@@ -278,6 +278,7 @@ export default function ShowroomFeatured({
                   config={config}
                   modelPath={modelPath}
                   sourceRef={source}
+                  plinth={featured.stage}
                   onReady={handleReady}
                   onError={handleError}
                 />
@@ -292,7 +293,6 @@ export default function ShowroomFeatured({
                   )}
                 </div>
               )}
-              <div className="sr-podium" />
             </div>
 
             {featured.rotateHint && (

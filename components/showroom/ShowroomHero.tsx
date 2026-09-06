@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import SmoothLink from './SmoothLink'
 import type { ShowroomConfig } from '@/lib/showroom/config'
 import Reveal from './Reveal'
 import { ArrowIcon, Icon, PlayIcon, VrIcon } from './icons'
@@ -37,7 +38,7 @@ export default function ShowroomHero({ config }: { config: ShowroomConfig }) {
           {hero.ctas && hero.ctas.length > 0 && (
             <div className="sr-cta-row">
               {hero.ctas.map((cta) => (
-                <Link
+                <SmoothLink
                   key={cta.label}
                   href={cta.href}
                   className={`sr-btn ${cta.variant === 'outline' ? 'sr-btn-outline' : 'sr-btn-solid'}`}
@@ -45,7 +46,7 @@ export default function ShowroomHero({ config }: { config: ShowroomConfig }) {
                   {cta.icon === 'vr' && <VrIcon size={19} />}
                   {cta.label}
                   <ArrowIcon className="sr-arrow" size={17} />
-                </Link>
+                </SmoothLink>
               ))}
             </div>
           )}

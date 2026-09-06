@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import SmoothLink from './SmoothLink'
 import type { ShowroomConfig } from '@/lib/showroom/config'
 import { ArrowIcon, CloseIcon, MenuIcon, SearchIcon } from './icons'
 
@@ -41,9 +42,9 @@ export default function ShowroomHeader({ config }: { config: ShowroomConfig }) {
 
         <nav className="sr-nav" aria-label={brand.nameFa}>
           {nav.links.map((link) => (
-            <Link key={link.label} className="sr-nav-link" href={link.href}>
+            <SmoothLink key={link.label} className="sr-nav-link" href={link.href}>
               {link.label}
-            </Link>
+            </SmoothLink>
           ))}
         </nav>
 
@@ -79,9 +80,9 @@ export default function ShowroomHeader({ config }: { config: ShowroomConfig }) {
       <div className="sr-shell">
         <div className="sr-mobile" id="sr-mobile-menu" data-open={open}>
           {nav.links.map((link) => (
-            <Link key={link.label} href={link.href} onClick={() => setOpen(false)}>
+            <SmoothLink key={link.label} href={link.href} onNavigate={() => setOpen(false)}>
               {link.label}
-            </Link>
+            </SmoothLink>
           ))}
           {nav.cta && (
             <Link href={nav.cta.href} onClick={() => setOpen(false)}>

@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import SmoothLink from './SmoothLink'
 import type { ShowroomConfig } from '@/lib/showroom/config'
 import { BrandMark } from './ShowroomHeader'
 import { Icon } from './icons'
@@ -36,7 +36,7 @@ export default function ShowroomFooter({
             <ul>
               {column.links.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href}>{link.label}</Link>
+                  <SmoothLink href={link.href}>{link.label}</SmoothLink>
                 </li>
               ))}
             </ul>

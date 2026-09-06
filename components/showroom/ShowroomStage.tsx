@@ -12,6 +12,7 @@ import {
   type PresentationConfig,
 } from '@/lib/product/presentation'
 import SimpleViewer from '@/components/product/SimpleViewer'
+import type { PlinthSpec } from '@/components/product/ViewerPlinth'
 
 /**
  * The canvas half of the featured section: /product/[id]/simple's viewer,
@@ -34,6 +35,7 @@ export default function ShowroomStage({
   config,
   modelPath,
   sourceRef,
+  plinth,
   onReady,
   onError,
 }: {
@@ -41,6 +43,8 @@ export default function ShowroomStage({
   /** Which GLB to show — a cover variant, or the bare frame. */
   modelPath: string
   sourceRef: React.MutableRefObject<THREE.Object3D | null>
+  /** The stage the piece stands on. Omitted → it floats, as on the plain page. */
+  plinth?: PlinthSpec
   onReady: () => void
   onError: (category: string, error: Error) => void
 }) {
@@ -60,9 +64,15 @@ export default function ShowroomStage({
   const viewConfig = useMemo<PresentationConfig>(
     () => ({
       ...config,
-      simple: { ...config.simple, model: modelPath, background: STAGE_BG },
+      simple: {
+        ...config.simple,
+        model: modelPath,
+        background: STAGE_BG,
+        // Room for the plinth, which reaches past the piece on every side.
+        padding: plinth ? (config.simple?.padding ?? 1.1) * 1.12 : config.simple?.padding,
+      },
     }),
-    [config, modelPath]
+    [config, modelPath, plinth]
   )
 
   return (
@@ -73,6 +83,10 @@ export default function ShowroomStage({
         onReady={onReady}
         onError={onError}
         sourceRef={sourceRef}
+        plinth={plinth}
+        /* A showroom turntable: drag spins the piece, it never tips. */
+        lockPolar
+        embedded
       />
     </QualityProvider>
   )

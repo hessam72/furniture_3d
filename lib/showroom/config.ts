@@ -1,5 +1,6 @@
 import showroomsConfig from '@/public/config/showrooms-page.json'
 import { hasPresentation, resolvePresentation, type ResolvedPresentation } from '@/lib/product/presentation'
+import type { PlinthSpec } from '@/components/product/ViewerPlinth'
 
 /**
  * A brand's own homepage, served from JSON.
@@ -86,6 +87,9 @@ export interface ShowroomConfig {
     cta?: ShowroomLink
     specsLabel?: string
     specs?: { label: string; value: string }[]
+    /** The plinth under the piece. `path` points at your own stage GLB; with
+     *  none, a procedural one is drawn. Omit the block for no stage at all. */
+    stage?: PlinthSpec
   }
   virtual: {
     eyebrow?: string

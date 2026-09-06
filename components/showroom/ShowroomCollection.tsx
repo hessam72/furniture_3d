@@ -50,9 +50,11 @@ export default function ShowroomCollection({
     if (!node) return
     const card = node.firstElementChild as HTMLElement | null
     const step = card ? card.offsetWidth + 20 : node.clientWidth * 0.8
-    // Positive `left` is always "further along the reading direction" —
-    // scrollBy is direction-aware, unlike scrollLeft.
-    node.scrollBy({ left: step * direction, behavior: 'smooth' })
+    // `scrollBy` is physical: +x is right on both writing directions, while
+    // "next" runs leftwards in RTL. Without this the arrows push the rail into
+    // the edge it is already parked against and nothing moves.
+    const sign = getComputedStyle(node).direction === 'rtl' ? -1 : 1
+    node.scrollBy({ left: step * direction * sign, behavior: 'smooth' })
   }, [])
 
   return (

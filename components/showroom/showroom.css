@@ -60,7 +60,7 @@
 .sr-root *::before,
 .sr-root *::after { box-sizing: border-box; }
 
-.sr-root a { color: inherit; text-decoration: none; }
+:where(.sr-root) a { color: inherit; text-decoration: none; }
 .sr-root button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 .sr-root img { display: block; max-inline-size: 100%; }
 .sr-root p { margin: 0; }
@@ -282,9 +282,9 @@
 @media (min-width: 1000px) {
   .sr-hero-grid { grid-template-columns: 0.82fr 1.18fr; }
 }
-.sr-hero-grid { direction: ltr; }
-.sr-hero-copy { text-align: left; }
-.sr-hero-copy :is(h1, p, span, strong, li) { unicode-bidi: plaintext; }
+/* Copy leads on the reading side, media follows. */
+.sr-hero-copy { order: 1; }
+.sr-hero-media { order: 2; }
 
 .sr-eyebrow {
   font-size: 0.82rem;
@@ -324,14 +324,7 @@
 
 .sr-cta-row { margin-block-start: 2rem; display: flex; flex-wrap: wrap; gap: 0.85rem; }
 
-.sr-video-row {
-  margin-block-start: 2.4rem;
-  display: flex;
-  flex-direction: row-reverse;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 0.85rem;
-}
+.sr-video-row { margin-block-start: 2.4rem; display: flex; align-items: center; gap: 0.85rem; }
 .sr-play {
   display: grid;
   place-items: center;
@@ -397,20 +390,20 @@
   display: none;
   position: absolute;
   inset-inline: auto;
-  right: clamp(0.5rem, 1.4vw, 1.4rem);
+  left: clamp(0.5rem, 1.4vw, 1.4rem);
   inset-block-start: 18%;
   font-family: var(--sr-font-latin);
   font-size: 0.62rem;
   line-height: 2.1;
   letter-spacing: 0.14em;
   color: var(--sr-faint);
-  text-align: end;
+  text-align: start;
 }
 .sr-scroll-cue {
   display: none;
   position: absolute;
   inset-inline: auto;
-  right: clamp(0.9rem, 1.9vw, 2rem);
+  left: clamp(0.9rem, 1.9vw, 2rem);
   inset-block-end: 12%;
   flex-direction: column;
   align-items: center;
@@ -428,7 +421,9 @@
   block-size: 3.2rem;
   background: linear-gradient(180deg, var(--sr-line-2), transparent);
 }
-@media (min-width: 1200px) {
+/* Only where there is real gutter beside the shell — below this the column
+   crowds the hero plate instead of framing it. */
+@media (min-width: 1400px) {
   .sr-side-text, .sr-scroll-cue { display: flex; flex-direction: column; }
 }
 
@@ -466,6 +461,7 @@
    Section furniture
 ───────────────────────────────────────────── */
 .sr-section { padding-block: clamp(2.5rem, 6vw, 4.5rem); }
+.sr-root :is(section, footer)[id] { scroll-margin-block-start: calc(var(--sr-header-h) + 1rem); }
 .sr-section-eyebrow {
   font-size: 0.8rem;
   color: var(--sr-dim);
@@ -545,7 +541,9 @@
      gradient here would show a seam around the square canvas. @see STAGE_BG */
   background: #f6f7f9;
   overflow: hidden;
-  touch-action: none;
+  /* Vertical swipes scroll the page; horizontal ones turn the piece.
+     @see EmbeddedGestures */
+  touch-action: pan-y;
 }
 .sr-stage canvas { display: block; }
 /* The lit plinth the piece stands on */
@@ -1045,6 +1043,76 @@
    AR overlay host
 ───────────────────────────────────────────── */
 .sr-ar-host { position: fixed; inset: 0; z-index: 200; }
+
+/* ─────────────────────────────────────────────
+   Phones and small tablets
+   Each rule below fixes something that only works at desk width: a control
+   row that overflows, a decoration with no room, an absolute element with
+   nothing to hang off.
+───────────────────────────────────────────── */
+@media (max-width: 899px) {
+  .sr-root { --sr-header-h: 3.9rem; }
+
+  .sr-mono { inline-size: 2.1rem; block-size: 2.1rem; font-size: 0.8rem; }
+  .sr-brand-name { font-size: 0.82rem; letter-spacing: 0.1em; }
+  .sr-brand-tag { font-size: 0.45rem; letter-spacing: 0.24em; }
+
+  /* The arch needs more of the plate when the plate is only a phone wide. */
+  .sr-hero-media { aspect-ratio: 4 / 3.4; }
+  .sr-arch { inset-inline: 15%; inset-block: 7% 10%; }
+  .sr-lead { font-size: 0.88rem; line-height: 1.95; }
+
+  /* Full-width tap targets rather than two pills fighting over one row. */
+  .sr-cta-row { flex-direction: column; align-items: stretch; }
+  .sr-cta-row .sr-btn { justify-content: center; }
+
+  .sr-featured-top { flex-wrap: wrap; gap: 0.9rem; }
+  .sr-chips { gap: 0.4rem; }
+  .sr-chip { padding: 0.42rem 0.75rem; font-size: 0.7rem; }
+
+  .sr-stage { aspect-ratio: 1 / 1; }
+  /* The 360 hint sits over the piece on a narrow stage — park it in the
+     corner where the plinth leaves room. */
+  .sr-rotate-hint { inset-block-end: 6%; left: 0.5rem; }
+  .sr-rotate-hint b { font-size: 1.15rem; }
+
+  /* Label above its controls: a swatch row and a three-way switch do not fit
+     beside a label on one phone line. */
+  .sr-option-row { align-items: flex-start; flex-direction: column; gap: 0.55rem; }
+  .sr-seg { flex-wrap: wrap; }
+  .sr-seg button { padding: 0.4rem 0.75rem; font-size: 0.72rem; }
+  .sr-swatch { inline-size: 1.75rem; block-size: 1.75rem; }
+
+  .sr-featured-actions { flex-direction: column; align-items: stretch; }
+  .sr-featured-actions :is(a, button) { justify-content: center; }
+
+  /* Caption and badge share the bottom edge of a phone-width still: stack the
+     badge above the caption instead of overlapping it. */
+  .sr-virtual-media { aspect-ratio: 4 / 3; }
+  .sr-virtual-badge { inset-block-end: auto; inset-block-start: 1rem; right: 1rem; }
+  .sr-virtual-caption { left: 1rem; inset-block-end: 1rem; }
+  .sr-virtual-copy .sr-btn { justify-self: stretch; justify-content: center; }
+  .sr-map { aspect-ratio: 4 / 3; }
+
+  .sr-collection-head { flex-direction: column; align-items: stretch; gap: 1.2rem; }
+  .sr-slider-nav { justify-content: flex-start; }
+  .sr-card { flex-basis: min(76vw, 17rem); }
+
+  .sr-closing { border-radius: var(--sr-r-lg) var(--sr-r-lg) 0 0; }
+  .sr-closing-grid { justify-items: center; text-align: center; }
+  .sr-platform { justify-content: center; }
+  .sr-closing-media { justify-self: center; }
+
+  .sr-footer-grid { gap: 1.6rem; }
+}
+
+@media (max-width: 420px) {
+  .sr-brand-lockup { display: none; }
+  .sr-h1 { font-size: 2.1rem; }
+  .sr-card { flex-basis: 82vw; }
+  .sr-stat { padding-inline: 0.6rem; }
+  .sr-stat-value { font-size: 0.92rem; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .sr-root [data-sr-reveal],
