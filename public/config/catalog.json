@@ -1,0 +1,116 @@
+{
+  "categories": [
+    {
+      "id": "sofa",
+      "label": "مبلمان",
+      "subCategories": [
+        {
+          "id": "l-shape",
+          "label": "مبل ال"
+        },
+        {
+          "id": "sectional",
+          "label": "مبل سگمنتال"
+        },
+        {
+          "id": "single",
+          "label": "مبل تک‌نفره"
+        }
+      ]
+    },
+    {
+      "id": "chair",
+      "label": "صندلی",
+      "subCategories": [
+        {
+          "id": "dining",
+          "label": "صندلی غذاخوری"
+        },
+        {
+          "id": "office",
+          "label": "صندلی اداری"
+        },
+        {
+          "id": "accent",
+          "label": "صندلی راحتی"
+        }
+      ]
+    },
+    {
+      "id": "table",
+      "label": "میز",
+      "subCategories": [
+        {
+          "id": "coffee",
+          "label": "میز جلومبلی"
+        },
+        {
+          "id": "dining-table",
+          "label": "میز غذاخوری"
+        },
+        {
+          "id": "side",
+          "label": "میز عسلی"
+        }
+      ]
+    },
+    {
+      "id": "storage",
+      "label": "کمد و بوفه",
+      "subCategories": [
+        {
+          "id": "buffet",
+          "label": "بوفه"
+        },
+        {
+          "id": "wardrobe",
+          "label": "کمد دیواری"
+        },
+        {
+          "id": "bookshelf",
+          "label": "قفسه کتاب"
+        }
+      ]
+    }
+  ],
+  "items": [
+    {
+      "id": "l-velvettest",
+      "name": "مبل ال ",
+      "price": 62000000,
+      "mainCategory": "sofa",
+      "subCategory": "l-shape",
+      "sceneObject": "test",
+      "focus": {
+        "azimuthDeg": -45,
+        "elevationDeg": 15,
+        "distance": 4
+      }
+    },
+    {
+      "id": "seg-classic",
+      "name": "مبل سگمنتال کلاسیک",
+      "price": 71000000,
+      "mainCategory": "sofa",
+      "subCategory": "sectional",
+      "sceneObject": "dining-chair",
+      "focus": {
+        "azimuthDeg": 0,
+        "elevationDeg": 15,
+        "distance": 6
+      }
+    },
+   
+    {
+      "id": "accent-comfy",
+      "name": "صندلی راحتی آکسانت",
+      "price": 9800000,
+      "mainCategory": "chair",
+      "subCategory": "accent",
+      "sceneObject": "coffee-table"
+    
+    }
+   
+   
+  ]
+}

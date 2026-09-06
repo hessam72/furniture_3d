@@ -1,0 +1,84 @@
+{
+ 
+  "test": {
+    "id": "modern-sofa-01",
+    "category": "مبل",
+    "type": "راحتی",
+    "name": "مبل مدرن سگمنتال",
+    "glbPath": "/models/Furniture/arm_chair__furniture.glb",
+    "usdzPath": "/models/Furniture/arm_chair__furniture.usdz",
+    "dimensions": "240cm × 95cm × 80cm",
+    "material": "پارچه و چوب جامد",
+    "seatingCapacity": "۴-۵ نفر",
+    "weight": "85 kg",
+    "price": 48500000,
+    "colors": [
+      { "name": "خاکستری ذغالی", "hex": "#36454F" },
+      { "name": "یاسی", "hex": "#aaaaee" },
+      { "name": "آبی نفتی", "hex": "#1B2F5C" }
+    ],
+    "fabricType": "پارچه مخملی ضد لک",
+    "detailedDescription": "مبل راحتی مدرن با طراحی سگمنتال و امکان تغییر آرایش. فریم چوب جامد با رویه پارچه مخملی درجه یک، فوم با تراکم بالا برای راحتی بیشتر. مناسب برای فضاهای خانوادگی و پذیرایی.",
+    "fabricMaterials": [
+      "پارچه مخملی درجه یک",
+      "فوم سرد با تراکم ۳۵",
+      "چوب راش خشک شده",
+      "پایه‌های فلزی ضد زنگ"
+    ],
+    "billboardPosition": [2, 1, 0]
+  },
+
+  "dining-chair": {
+    "id": "modern-sofa-02",
+    "category": "مبل",
+    "type": "راحتی",
+    "name": "صندلی غذاخوری نوردیک",
+    "glbPath": "/models/Furniture/Sofa ar-optimized.glb",
+    "usdzPath": "/models/Furniture/Sofa ar.glb.usdz",
+    "dimensions": "52cm × 58cm × 82cm",
+    "material": "چوب بلوط و چرم",
+    "seatingCapacity": "۱ نفر",
+    "weight": "6.5 kg",
+    "price": 7200000,
+    "colors": [
+      { "name": "بلوط طبیعی", "hex": "#C19A6B" },
+      { "name": "گردوی تیره", "hex": "#5C4033" },
+      { "name": "قرمز", "hex": "#781e00" }
+    ],
+    "fabricType": "چرم طبیعی دست‌دوز",
+    "detailedDescription": "صندلی غذاخوری به سبک اسکاندیناوی با طراحی ارگونومیک. ساختار چوبی مقاوم از بلوط طبیعی و نشیمن چرمی دست‌دوز. مناسب برای میز غذاخوری و فضاهای کاری.",
+    "fabricMaterials": [
+      "چرم طبیعی گاو",
+      "چوب بلوط اروپایی",
+      "رنگ پایه آب",
+      "پیچ و مهره استیل"
+    ],
+    "billboardPosition": [-4, 0.8, 0]
+  },
+
+  "coffee-table": {
+    "id": "modern-sofa-03",
+    "category": "مبل",
+    "type": "راحتی",
+    "name":  "صندلی راحتی آکسانت",
+    "glbPath": "/models/Furniture/3DModel-optimized.glb",
+    "usdzPath": "/models/Furniture/3DModel-optimized.usdz",
+    "dimensions": "120cm × 60cm × 45cm",
+    "material": "شیشه نشکن و فلز",
+    "weight": "22 kg",
+    "price": 15900000,
+    "colors": [
+      { "name": "شیشه شفاف", "hex": "#E8F4F8" },
+      { "name": "دودی", "hex": "#595959" },
+      { "name": "برنز", "hex": "#CD7F32" }
+    ],
+    "fabricType": "شیشه سکوریت ۱۲ میل",
+    "detailedDescription": "میز جلو مبلی با صفحه شیشه سکوریت ضدضربه و پایه‌های فلزی. طراحی مینیمال و مدرن با قابلیت تمیز کردن آسان. ایده‌آل برای فضاهای کوچک و بزرگ.",
+    "fabricMaterials": [
+      "شیشه سکوریت ۱۲ میلیمتر",
+      "فلز استیل ضد زنگ",
+      "پوشش نانو ضد لک",
+      "پایه‌های تنظیم ارتفاع"
+    ],
+    "billboardPosition": [5, 1, -5.2]
+  }}

@@ -1,0 +1,211 @@
+{
+  "test": {
+    "room": {
+      "mode": "model",
+      "image": "/models/presentation/test/backdrop.jpeg",
+      "path": "/models/presentation/test/final-scene.glb",
+      "imageDistance": 2,
+      "imageOffsetY": 0,
+      "pieceOffsetY": 0 ,
+      "pieceLift": 0.08,
+      "offset": [
+        -0.12,
+        -1.4,
+        3.3
+      ],
+      "floorY": 0,
+      "lightingMode": "store",
+      "hdr": "/hdr/main_hdr.exr"
+    },
+    "layers": {
+      "frame": {
+        "path": "/models/presentation/test/frame.glb",
+        "label": "اسکلت چوبی",
+        "desc": "چوب راش خشک‌شده با اتصالات فاق و زبانه"
+      },
+      "cover": {
+        "label": "رویه",
+        "desc": "پارچه یا چرم نهایی روی بدنه",
+        "default": "leather",
+        "variants": [
+          {
+            "id": "leather",
+            "name": "چرم طبیعی",
+            "path": "/models/presentation/test/final curve-optimized.glb",
+            "thumbnail": "/images/covers/leather.png",
+            "priceDelta": 4500000,
+            "material": {
+              "roughness": 0.8,
+              "metalness": 0,
+              "clearcoat": 0
+            }
+          },
+          {
+            "id": "velvet",
+            "name": "مخمل",
+            "path": "/models/presentation/test/cover-velvet.glb",
+            "thumbnail": "/images/covers/velvet.jpeg",
+            "priceDelta": 0,
+            "material": {
+              "roughness": 0.95,
+              "metalness": 0,
+              "clearcoat": 0
+            }
+          }
+        ]
+      },
+      "stage": {
+        "path": "/models/presentation/test/stage.glb",
+        "liftPiece": true
+      }
+    },
+    "palettes": {
+      "wood": [
+        {
+          "id": "oak",
+          "name": "بلوط طبیعی",
+          "hex": "#c8a06a",
+          "roughness": 0.55
+        },
+        {
+          "id": "ash",
+          "name": "زبان‌گنجشک",
+          "hex": "#d9c7ad",
+          "roughness": 0.65
+        },
+        {
+          "id": "walnut",
+          "name": "گردویی",
+          "hex": "#5c4033",
+          "roughness": 0.45
+        },
+        {
+          "id": "ebony",
+          "name": "آبنوس",
+          "hex": "#2b2320",
+          "roughness": 0.35
+        }
+      ],
+      "cover": [
+        {
+          "id": "charcoal",
+          "name": "خاکستری ذغالی",
+          "hex": "#36454f"
+        },
+        {
+          "id": "sand",
+          "name": "شنی",
+          "hex": "#c2b099"
+        },
+        {
+          "id": "petrol",
+          "name": "آبی نفتی",
+          "hex": "#1b2f5c"
+        },
+        {
+          "id": "olive",
+          "name": "زیتونی",
+          "hex": "#5a5f43"
+        },
+        {
+          "id": "wine",
+          "name": "زرشکی",
+          "hex": "#5e2129"
+        }
+      ],
+      "cushion": [
+        {
+          "id": "ivory",
+          "name": "استخوانی",
+          "hex": "#e8e0d2"
+        },
+        {
+          "id": "grey",
+          "name": "دودی",
+          "hex": "#8b8b8b"
+        },
+        {
+          "id": "black",
+          "name": "مشکی",
+          "hex": "#1a1a1a"
+        }
+      ]
+    },
+    "camera": {
+      "azimuthDeg": 0,
+      "elevationDeg": 8,
+      "fov": 50,
+      "near": 0.1,
+      "far": 150,
+      "padding": 1.55,
+      "minZoom": 0.3,
+      "maxZoom": 2.3,
+      "startZoom": 0.9,
+      "tiltLimitDeg": 0,
+      "aimHeight": 0.8,
+      "screenLift": -0.05
+    },
+    "lighting": {
+      "key": 120,
+      "fill": 70,
+      "rim": 60,
+      "bounce": 6,
+      "ambient": 1.1,
+      "hemi": 0.8,
+      "gallery": {
+        "spots": 3,
+        "track": 1,
+        "wash": 1,
+        "angle": 0.6,
+        "color": "#fff2df"
+      }
+    },
+    "sun": {
+      "enabled": true,
+      "position": [
+        -1,
+        2,
+        1.5
+      ],
+      "target": [
+        0.007048580466527676,
+        1.496530166182611,
+        0.7229428589840117
+      ],
+      "intensity": 6,
+      "color": "#ffe3c2",
+      "soft": {
+        "size": 20,
+        "samples": 16,
+        "focus": 0
+      }
+    },
+    "quality": {
+      "preset": "high",
+      "mobile": "high"
+    },
+    "floor": {
+      "enabled": true,
+      "opacity": 0.35,
+      "blend": "normal",
+      "offsetY": 0.1,
+      "resolution": 512,
+      "mixStrength": 1,
+      "mixBlur": 1.4,
+      "mixContrast": 1,
+      "roughness": 0.6,
+      "metalness": 0.4,
+      "depthScale": 1.2,
+      "minDepthThreshold": 0.2,
+      "maxDepthThreshold": 1.4,
+      "color": "#ffffff"
+    },
+    "explode": {
+      "gap": 0.45,
+      "durationMs": 700
+    },
+    "wipe": {
+      "durationMs": 900
+    }
+  }
+}

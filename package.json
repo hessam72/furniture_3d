@@ -1,0 +1,50 @@
+{
+  "name": "vot-webar-nextjs",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "pm2-stop": "pm2 kill",
+    "pm2-start": "pm2 start ecosystem.config.cjs",
+    "deploy": "npm run build && npm run pm2-start"
+  },
+  "dependencies": {
+    "@google/model-viewer": "^4.3.1",
+    "@react-spring/three": "^10.1.2",
+    "@react-three/drei": "9.122.0",
+    "@react-three/fiber": "8.17.10",
+    "@react-three/postprocessing": "2.19.1",
+    "@react-three/rapier": "^1.5.0",
+    "clsx": "^2.1.1",
+    "framer-motion": "^11.15.0",
+    "gsap": "^3.12.5",
+    "lenis": "^1.1.14",
+    "lucide-react": "^1.23.0",
+    "next": "14.2.18",
+    "nipplejs": "^1.0.4",
+    "postprocessing": "6.37.8",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-icons": "^5.6.0",
+    "realism-effects": "^1.1.2",
+    "tailwind-merge": "^2.5.5",
+    "three": "0.170.0",
+    "three-gpu-pathtracer": "^0.0.23",
+    "three-mesh-bvh": "^0.8.3",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/three": "^0.170.0",
+    "eslint": "^9",
+    "eslint-config-next": "14.2.18",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

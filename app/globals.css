@@ -1,0 +1,706 @@
+@import "tailwindcss";
+
+/* Font families are self-hosted via next/font (app/layout.tsx), which owns
+   the --font-vazirmatn / --font-inter / --font-cinzel / --font-cormorant
+   variables on <html>. No render-blocking Google Fonts imports. */
+
+
+@theme inline {
+  /* Alias used by font-[family-name:var(--font-vazir)] across components —
+     was previously a circular self-reference that resolved to nothing */
+  --font-vazir: var(--font-vazirmatn);
+}
+
+/* ─────────────────────────────────────────────
+   Landing theme — navy (#172236) → black, gold, liquid glass.
+   Literal values, so a plain @theme block: these become real Tailwind
+   utilities (bg-ink-700, text-gold, border-gold-line, rounded-glass…).
+   The legacy gold and surface vars below are kept untouched because
+   /store and /car/[id] read them directly.
+───────────────────────────────────────────── */
+@theme {
+  --color-ink-950: #05080e;
+  --color-ink-900: #0a1120;
+  --color-ink-800: #101a2c;
+  --color-ink-700: #172236;
+  --color-ink-600: #1f2d45;
+
+  --color-gold:        #c29d68;
+  --color-gold-soft:   #d8bc93;
+  --color-gold-bright: #e8d2ae;
+  --color-gold-edge:   #f7ebd6;
+  --color-gold-deep:   #8a6a40;
+
+  --color-glass:        rgb(255 255 255 / 6%);
+  --color-hairline:     rgb(255 255 255 / 12%);
+  --color-gold-line:    rgb(194 157 104 / 30%);
+  --color-gold-line-hi: rgb(194 157 104 / 62%);
+
+  --radius-glass: 1.25rem;
+  --shadow-glass: inset 0 1px 0 0 rgb(255 255 255 / 10%),
+                  0 20px 45px -22px rgb(0 0 0 / 75%);
+  --ease-lux: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ─────────────────────────────────────────────
+   CSS Custom Properties — Design Tokens
+───────────────────────────────────────────── */
+
+:root {
+  /* Gold system */
+  --gold-primary:   #d4af37;
+  --gold-bright:    #ffd700;
+  --gold-warm:      #daa520;
+  --gold-deep:      #b8860b;
+  --gold-muted:     rgba(212, 175, 55, 0.6);
+  --gold-glow:      rgba(212, 175, 55, 0.15);
+
+  /* Surface system */
+  --surface-0:      #060608;
+  --surface-1:      #0d0d12;
+  --surface-2:      #141419;
+  --surface-3:      #1c1c24;
+  --surface-4:      #242430;
+
+  /* Type */
+  --text-primary:   #f5f0e8;
+  --text-secondary: rgba(245, 240, 232, 0.65);
+  --text-muted:     rgba(245, 240, 232, 0.35);
+
+  /* Borders */
+  --border-subtle:  rgba(212, 175, 55, 0.12);
+  --border-default: rgba(212, 175, 55, 0.25);
+  --border-bright:  rgba(212, 175, 55, 0.55);
+
+  /* Fonts: --font-cormorant / --font-inter / --font-cinzel / --font-vazirmatn
+     are defined on <html> by next/font (app/layout.tsx) */
+
+  /* Emerald accent */
+  --emerald-deep:   #0D3B32;
+  --emerald-mid:    #0f4a3d;
+  --emerald-glow:   rgba(13, 59, 50, 0.4);
+
+  /* Easing */
+  --ease-luxury:    cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-cinematic: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-reveal:    cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-bounce:    cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ─────────────────────────────────────────────
+   Base Reset & Root Styles
+───────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  /* margin: 0;
+  padding: 0; */
+}
+
+html {
+  background-color: var(--surface-0);
+  color: var(--text-primary);
+  font-family: var(--font-inter);
+  /* Lenis will handle scroll smoothness */
+  scroll-behavior: auto;
+}
+
+/* Hide native scrollbar — Lenis / custom takes over */
+html.lenis, html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* Minimal scrollbar when needed */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--surface-0); }
+::-webkit-scrollbar-thumb { background: var(--gold-deep); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold-primary); }
+
+body {
+  background-color: var(--surface-0);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: var(--font-vazirmatn), var(--font-inter), sans-serif;
+}
+
+/* Persian text utilities */
+.font-persian {
+  font-family: var(--font-vazirmatn), sans-serif;
+  font-feature-settings: "ss01", "ss02";
+}
+.persian-number {
+  font-feature-settings: "ss01";
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─────────────────────────────────────────────
+   Typography
+───────────────────────────────────────────── */
+.font-display {
+  font-family: var(--font-cinzel);
+  letter-spacing: 0.08em;
+}
+
+.font-serif {
+  font-family: var(--font-cormorant);
+}
+
+.text-gold-gradient {
+  background: linear-gradient(135deg, #c9a227 0%, #ffd700 45%, #daa520 75%, #b8860b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    #b8860b 0%,
+    #ffd700 30%,
+    #fff8dc 50%,
+    #ffd700 70%,
+    #b8860b 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s linear infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+/* ─────────────────────────────────────────────
+   Luxury Buttons
+───────────────────────────────────────────── */
+.btn-primary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 2.5rem;
+  background: linear-gradient(135deg, #b8860b, #d4af37, #ffd700, #d4af37, #b8860b);
+  background-size: 200% auto;
+  color: #060608;
+  font-family: var(--font-cinzel);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  overflow: hidden;
+  transition: background-position 0.6s var(--ease-luxury),
+              transform 0.3s var(--ease-luxury),
+              box-shadow 0.3s var(--ease-luxury);
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s var(--ease-luxury);
+}
+
+.btn-primary:hover {
+  background-position: right center;
+  transform: translateY(-2px);
+  box-shadow: 0 0 40px rgba(212,175,55,0.5), 0 8px 30px rgba(0,0,0,0.4);
+}
+
+.btn-primary:hover::before {
+  transform: translateX(100%);
+}
+
+.btn-secondary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 2.5rem;
+  background: transparent;
+  color: var(--gold-primary);
+  font-family: var(--font-cinzel);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  border: 1px solid var(--border-default);
+  cursor: pointer;
+  overflow: hidden;
+  transition: color 0.4s var(--ease-luxury),
+              border-color 0.4s var(--ease-luxury),
+              transform 0.3s var(--ease-luxury),
+              box-shadow 0.3s var(--ease-luxury);
+}
+
+.btn-secondary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(212, 175, 55, 0.08);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s var(--ease-luxury);
+}
+
+.btn-secondary:hover {
+  color: var(--gold-bright);
+  border-color: var(--border-bright);
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px rgba(212,175,55,0.2), 0 4px 20px rgba(0,0,0,0.4);
+}
+
+.btn-secondary:hover::before {
+  transform: scaleX(1);
+}
+
+/* ─────────────────────────────────────────────
+   Reveal Animations (JS triggers via data-*)
+───────────────────────────────────────────── */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s var(--ease-cinematic),
+              transform 0.8s var(--ease-cinematic);
+}
+
+[data-reveal="revealed"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Staggered children */
+[data-stagger] > * {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+/* ─────────────────────────────────────────────
+   Gold Divider
+───────────────────────────────────────────── */
+.gold-divider {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.gold-divider::before,
+.gold-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-deep), transparent);
+}
+
+/* ─────────────────────────────────────────────
+   Glow Ring
+───────────────────────────────────────────── */
+.glow-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  animation: expandRing 3s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes expandRing {
+  0%   { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* ─────────────────────────────────────────────
+   Museum Label (category tags)
+───────────────────────────────────────────── */
+.museum-label {
+  font-family: var(--font-cinzel);
+  font-size: 0.65rem;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--gold-primary);
+  opacity: 0.8;
+}
+
+/* ─────────────────────────────────────────────
+   Grain overlay (cinematic film grain)
+───────────────────────────────────────────── */
+.grain-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 128px 128px;
+}
+
+/* ─────────────────────────────────────────────
+   WebGL Canvas overrides
+───────────────────────────────────────────── */
+canvas {
+  display: block;
+}
+
+/* Three.js canvas — fill its container */
+.three-canvas canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ─────────────────────────────────────────────
+   Custom cursor
+   The configurator (.car-page) is excluded — precision pointing on its
+   small controls needs the native cursor (incl. grab/grabbing set inline
+   by the 3D controls), so the hide rule must not match there.
+───────────────────────────────────────────── */
+*:not(.car-page):not(.car-page *) {
+  cursor: none !important;
+}
+
+/* Restore cursor for car configurator page */
+.car-page,
+.car-page * {
+  cursor: auto !important;
+}
+
+@media (pointer: coarse) {
+  * { cursor: auto !important; }
+}
+
+/* ─────────────────────────────────────────────
+   Keyboard focus — visible ring on all pages
+───────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid rgba(212, 175, 55, 0.9);
+  outline-offset: 2px;
+}
+
+/* ─────────────────────────────────────────────
+   Utility classes
+───────────────────────────────────────────── */
+.section-padding {
+  padding: 10rem 2rem;
+}
+
+@media (max-width: 768px) {
+  .section-padding {
+    padding: 6rem 1.25rem;
+  }
+}
+
+.container-luxury {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 3rem;
+}
+
+@media (max-width: 768px) {
+  .container-luxury {
+    padding: 0 1.25rem;
+  }
+}
+
+.clip-gold-border {
+  --clip: 8px;
+  clip-path: polygon(
+    var(--clip) 0%, calc(100% - var(--clip)) 0%,
+    100% var(--clip), 100% calc(100% - var(--clip)),
+    calc(100% - var(--clip)) 100%, var(--clip) 100%,
+    0% calc(100% - var(--clip)), 0% var(--clip)
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Hero Section layout — moved from inline <style>
+   to prevent React hydration mismatch
+───────────────────────────────────────────── */
+
+/* Full-screen centered text column */
+.hero-text {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1.4rem;
+  padding-top: 10vh;
+  padding-bottom: 120px; /* clear stats bar + CTA */
+  text-align: center;
+  pointer-events: none;
+}
+.hero-text > * {
+  pointer-events: auto;
+}
+
+@media (min-width: 768px) {
+  .hero-text {
+    padding: 0 3rem;
+    padding-top: 6vh;
+    padding-bottom: 130px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hero-text {
+    padding: 0 4rem;
+    padding-top: 4vh;
+    padding-bottom: 140px;
+  }
+}
+
+/* Pill CTA pinned to bottom-center above stats bar */
+.hero-cta-anchor {
+  position: absolute;
+  z-index: 25;
+  bottom: 88px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@media (max-width: 767px) {
+  .hero-cta-anchor {
+    bottom: 80px;
+  }
+}
+
+/* Horizontal scroll snap for museum chambers */
+.snap-x-mandatory {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.snap-start {
+  scroll-snap-align: start;
+}
+
+/* Hide scrollbar for horizontal scroll containers */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* ─────────────────────────────────────────────
+   Landing page — liquid glass surfaces
+   `glass` is blurred and expensive; keep it for the header, the menu
+   overlay and a couple of hero-adjacent frames. `glass-flat` drops the
+   backdrop-filter (near-identical over a dark gradient) and is what the
+   repeated card grids use, so mid-range phones don't jank while scrolling.
+───────────────────────────────────────────── */
+@utility glass {
+  background: linear-gradient(158deg, rgb(255 255 255 / 8%), rgb(255 255 255 / 2.5%));
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  border: 1px solid var(--color-hairline);
+  box-shadow: var(--shadow-glass);
+}
+
+@utility glass-flat {
+  background: linear-gradient(158deg, rgb(255 255 255 / 7%), rgb(255 255 255 / 2%));
+  border: 1px solid var(--color-hairline);
+  box-shadow: var(--shadow-glass);
+}
+
+@utility glass-gold {
+  border-color: var(--color-gold-line);
+}
+
+/* Thin specular highlight along the top edge — the detail that sells the
+   iOS glass look. Applied to an element that already has a border-radius. */
+@utility specular {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgb(255 255 255 / 14%), transparent 38%);
+  }
+}
+
+/* Page backdrop: navy at the top melting into near-black. */
+@utility ink-gradient {
+  background:
+    radial-gradient(120% 70% at 50% -10%, rgb(31 45 69 / 85%), transparent 60%),
+    linear-gradient(180deg, #172236 0%, #0f1a2c 38%, #0a1120 68%, #05080e 100%);
+}
+
+/* Key words inside an otherwise white bold heading.
+   Bright edge on top → base gold → darker bottom → dark drop shadow is what
+   produces the raised, slightly 3D read. The gradient is strictly vertical:
+   a diagonal one across a single word inside a sentence renders unevenly on
+   mobile Safari. `paint-order` puts the bright stroke *behind* the fill so
+   it reads as an edge rather than an outline. */
+@utility text-gold-key {
+  background: linear-gradient(180deg, #f7ebd6 0%, #e0c393 34%, #c29d68 58%, #9b7746 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 0.6px rgb(247 235 214 / 45%);
+  paint-order: stroke fill;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 55%))
+          drop-shadow(0 0 16px rgb(194 157 104 / 26%));
+}
+
+@supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+  .text-gold-key {
+    -webkit-text-fill-color: #c29d68;
+    color: #c29d68;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   Section panels — each section is an inset glass slab with its own
+   dark-blue→black gradient and a thin gold border, so sections read as
+   separate without breaking the single elegant palette.
+───────────────────────────────────────────── */
+@utility section-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 1.75rem;
+  border: 1px solid var(--color-gold-line);
+  box-shadow:
+    inset 0 1px 0 rgb(247 235 214 / 12%),
+    0 24px 60px -30px rgb(0 0 0 / 85%);
+}
+
+/* Gold hairline along the top edge, brightest at the centre, fading to
+   nothing at the corners — the "smooth" part of the glassy gold border. */
+.section-panel::before {
+  content: "";
+  position: absolute;
+  inset-inline: 12%;
+  top: 0;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-gold-line-hi) 35%,
+    rgb(247 235 214 / 55%) 50%,
+    var(--color-gold-line-hi) 65%,
+    transparent
+  );
+}
+
+/* Soft gold bloom behind the heading area. */
+.section-panel::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 240px;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(60% 100% at 50% 0%, rgb(194 157 104 / 12%), transparent 70%);
+}
+
+.section-panel[data-tone="a"] {
+  background: linear-gradient(168deg, #0a1a37 0%, #111b2c 55%, #080d16 100%);
+}
+.section-panel[data-tone="b"] {
+  background: linear-gradient(168deg, #121c2e 0%, #111b2c 55%, #080d16 100%);
+}
+.section-panel[data-tone="c"] {
+  background: linear-gradient(168deg, #0a1a37 0%, #111b2c 55%, #080d16 100%);
+}
+.section-panel[data-tone="d"] {
+  background: linear-gradient(168deg, #121c2e 0%, #111b2c 55%, #080d16 100%);
+}
+
+/* Melts an image into the page on every edge instead of framing it.
+   Applied to the <img> itself, never the wrapper, so SmartImage's
+   missing-file placeholder stays unmasked and legible. */
+@utility image-blend {
+  -webkit-mask-image: radial-gradient(115% 95% at 50% 42%, #000 42%, rgb(0 0 0 / 0.55) 66%, transparent 84%);
+  mask-image: radial-gradient(115% 95% at 50% 42%, #000 42%, rgb(0 0 0 / 0.55) 66%, transparent 84%);
+}
+
+/* Dark, gold-bordered, glowing CTA. */
+@utility cta-glow {
+  background: linear-gradient(180deg, rgb(31 45 69 / 92%), rgb(8 12 20 / 96%));
+  border: 1px solid var(--color-gold-line-hi);
+  box-shadow:
+    inset 0 1px 0 rgb(247 235 214 / 18%),
+    0 0 28px -4px rgb(194 157 104 / 45%);
+  transition:
+    box-shadow 0.4s var(--ease-lux),
+    border-color 0.4s var(--ease-lux),
+    transform 0.3s var(--ease-lux);
+
+  &:hover {
+    border-color: rgb(232 210 174 / 80%);
+    box-shadow:
+      inset 0 1px 0 rgb(247 235 214 / 28%),
+      0 0 42px -4px rgb(194 157 104 / 70%);
+  }
+}
+
+/* Slow breathing glow — the phone CTA only. */
+@keyframes goldPulse {
+  0%, 100% { box-shadow: inset 0 1px 0 rgb(247 235 214 / 18%), 0 0 26px -6px rgb(194 157 104 / 40%); }
+  50%      { box-shadow: inset 0 1px 0 rgb(247 235 214 / 26%), 0 0 44px -4px rgb(194 157 104 / 68%); }
+}
+
+@utility cta-breathe {
+  animation: goldPulse 4.5s var(--ease-luxury) infinite;
+}
+
+/* ─────────────────────────────────────────────
+   Landing page — behavioural escape hatches
+───────────────────────────────────────────── */
+
+/* The global `cursor: none !important` above would erase the only affordance
+   telling desktop users the comparison divider is draggable. */
+[data-drag-handle] {
+  cursor: ew-resize !important;
+}
+
+/* [data-reveal] starts at opacity 0 and is revealed by IntersectionObserver.
+   With reduced motion we must never leave content stranded invisible. */
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal],
+  [data-reveal="revealed"] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .text-shimmer,
+  .cta-breathe {
+    animation: none;
+  }
+}
+
+/* iOS rubber-band overscroll would otherwise expose --surface-0 (#060608)
+   above the navy hero. */
+.landing-root {
+  overscroll-behavior-y: none;
+}

@@ -1,0 +1,89 @@
+{
+  "stores": [
+    {
+      "id": "mall",
+      "camera": {
+        "playerStart": [
+          0,
+          1,
+          10
+        ],
+        "cameraHeight": 0.7,
+        "transitionTarget": [
+          0,
+          3,
+          10
+        ],
+        "transitionStart": [
+          24,
+          9.8,
+          52
+        ],
+        "lookAtStart": [
+          20,
+          1,
+          -2
+        ],
+        "lookAtEnd": [
+          0,
+          1,
+          -5
+        ]
+      },
+      "sun": {
+        "enabled": true,
+        "position": [
+          0.5,
+          29.5,
+          -22
+        ],
+        "target": [
+          0.5,
+          0.5,
+          -7.5
+        ],
+        "intensity": 6,
+        "color": "#ffe3c2",
+        "soft": {
+          "size": 20,
+          "samples": 16,
+          "focus": 0
+        },
+        "shadow": {
+          "left": 41,
+          "right": -41,
+          "top": -41,
+          "bottom": 41,
+          "near": 0.5,
+          "far": 45,
+          "bias": -0.0001,
+          "normalBias": 0.03
+        }
+      },
+      "lamps": {
+        "enabled": true,
+        "color": "#ffd6aa",
+        "intensity": 2,
+        "distance": 5,
+        "decay": 1,
+        "offsetY": -0.15,
+        "emissiveIntensity": 0.5,
+        "shadowMapSize": 50,
+        "bias": -0.005,
+        "normalBias": 0.02
+      },
+      "files": [
+        {
+          "priority": 0,
+          "quality": "low",
+          "url": "/store-models/wireframe.glb"
+        },
+        {
+          "priority": 1,
+          "quality": "high",
+          "url": "/store-models/main.glb"
+        }
+      ]
+    }
+  ]
+}

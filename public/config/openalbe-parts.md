@@ -1,0 +1,6 @@
+car_door_left
+car_door_right
+car_door_back_left
+car_door_back_right
+car_caput (hood)
+car_trunk
