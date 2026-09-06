@@ -209,14 +209,14 @@ function Frame({
 }
 
 /**
- * Hands the page back the gestures it needs.
+ * Hands the page back the one gesture it cannot do without.
  *
  * OrbitControls sets `touch-action: none` on the canvas when it connects, which
  * on a phone means a swipe up over the piece rotates it instead of scrolling
  * the page — the viewer becomes a hole the reader falls into. `pan-y` gives
- * vertical drags back to the browser and keeps horizontal ones for the turn.
- * The wheel goes the same way: with zoom off, OrbitControls stops consuming it
- * and the page scrolls under the pointer.
+ * vertical drags back to the browser and keeps everything else for the viewer:
+ * a horizontal drag still turns the piece, and a two-finger pinch still dollies,
+ * because the browser has no `pan-y` meaning for it.
  *
  * Mounted after OrbitControls so its effect runs last and wins.
  */
@@ -244,8 +244,8 @@ interface Props {
   lockPolar?: boolean
   /** Stands the piece on a plinth instead of on nothing. @see ViewerPlinth */
   plinth?: PlinthSpec
-  /** The viewer sits inside a page that scrolls: gives vertical drags and the
-   *  wheel back to the document. @see EmbeddedGestures */
+  /** The viewer sits inside a page that scrolls: gives vertical touch drags
+   *  back to the document. Zoom is untouched. @see EmbeddedGestures */
   embedded?: boolean
 }
 
@@ -377,9 +377,6 @@ export default function SimpleViewer({
         ref={controls}
         makeDefault
         enablePan={false}
-        // Off when embedded, so the wheel scrolls the page instead of dollying
-        // a viewer the reader is only passing.
-        enableZoom={!embedded}
         enableDamping
         dampingFactor={0.08}
         rotateSpeed={0.85}

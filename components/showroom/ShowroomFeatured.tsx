@@ -64,6 +64,7 @@ export default function ShowroomFeatured({
   const [arOpen, setArOpen] = useState(false)
   const [arBusy, setArBusy] = useState(false)
   const [arUrl, setArUrl] = useState<string | null>(null)
+  const [arFailed, setArFailed] = useState(false)
 
   const setPaint = usePresentation((s) => s.setPaint)
   const initProduct = usePresentation((s) => s.initProduct)
@@ -107,6 +108,17 @@ export default function ShowroomFeatured({
     supportsBlobAR().then(setLiveAR)
   }, [])
 
+  // The overlay is fixed and full-screen; the page behind it must not scroll
+  // under the customer's drag while they are placing the piece.
+  useEffect(() => {
+    if (!arOpen) return
+    const { overflow } = document.body.style
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = overflow
+    }
+  }, [arOpen])
+
   useEffect(
     () => () => {
       if (arCache.current) URL.revokeObjectURL(arCache.current.url)
@@ -118,11 +130,19 @@ export default function ShowroomFeatured({
   const probe = useAssetProbe(useMemo(() => (modelPath ? [modelPath] : []), [modelPath]))
   const canRender = !!config && !!modelPath && probe.state === 'ready' && !failed
 
+  /** What AR falls back to when the live export cannot be used. Without either
+   *  this or a loaded piece there is nothing to show, and the button hides. */
+  const fallbackGlb = presentation?.product.glbPath ?? null
+
   const handleError = useCallback(() => setFailed(true), [])
   const handleReady = useCallback(() => setReady(true), [])
 
   const openAR = useCallback(async () => {
+    // No live model, or a device whose AR path refuses blob URLs (Android
+    // without WebXR): the product's published GLB stands in.
     if (!source.current || !liveAR) {
+      if (!fallbackGlb) return
+      setArUrl(null)
       setArOpen(true)
       return
     }
@@ -144,11 +164,16 @@ export default function ShowroomFeatured({
       setArUrl(url)
       setArOpen(true)
     } catch (error) {
+      // Never a dead end: fall back to the published GLB rather than leaving
+      // the button spinning on a piece the customer can already see.
       console.error('[showroom] AR export failed', error)
+      setArFailed(true)
+      setArUrl(null)
+      if (fallbackGlb) setArOpen(true)
     } finally {
       setArBusy(false)
     }
-  }, [layer, liveAR, variant])
+  }, [layer, liveAR, variant, fallbackGlb])
 
   const productName = presentation?.product.name ?? featured.title
 
@@ -237,13 +262,30 @@ export default function ShowroomFeatured({
                   <ArrowIcon className="sr-arrow" size={17} />
                 </Link>
               )}
-              {arSupported && canRender && (
-                <button type="button" className="sr-btn sr-btn-outline" onClick={openAR} disabled={arBusy}>
+              {(canRender || fallbackGlb) && (
+                <button
+                  type="button"
+                  className="sr-btn sr-btn-outline"
+                  onClick={openAR}
+                  disabled={arBusy}
+                >
                   <ArIcon size={18} />
-                  {arBusy ? 'در حال آماده‌سازی…' : featured.arLabel ?? 'نمایش در خانه (AR)'}
+                  {arBusy
+                    ? 'در حال آماده‌سازی…'
+                    : arSupported
+                      ? featured.arLabel ?? 'نمایش در خانه (AR)'
+                      : featured.arPreviewLabel ?? 'پیش‌نمایش سه‌بعدی'}
                 </button>
               )}
             </div>
+
+            {(arFailed || !arSupported) && (
+              <p className="sr-ar-note">
+                {arFailed
+                  ? 'ساخت مدل واقعیت افزوده ناموفق بود؛ مدل پیش‌فرض محصول نمایش داده می‌شود.'
+                  : 'برای قرار دادن مبل در فضای واقعی، این صفحه را روی گوشی یا تبلت باز کنید.'}
+              </p>
+            )}
 
             {featured.specs && featured.specs.length > 0 && (
               <div className="sr-specs">
@@ -272,7 +314,11 @@ export default function ShowroomFeatured({
           </Reveal>
 
           <Reveal className="sr-stage-col" delay={120}>
-            <div className="sr-stage">
+            {/* Lenis listens for the wheel on the window, so without this it
+                scrolls the page at the same time OrbitControls dollies the
+                piece. `-wheel` only: touch is left to the browser, which the
+                viewer's `touch-action: pan-y` already shares correctly. */}
+            <div className="sr-stage" data-lenis-prevent-wheel>
               {canRender && config && modelPath && (
                 <ShowroomStage
                   config={config}
@@ -309,11 +355,14 @@ export default function ShowroomFeatured({
       {arOpen && (
         <div className="sr-ar-host">
           <ARProductViewer
-            glbPath={arUrl ?? presentation?.product.glbPath ?? ''}
+            glbPath={arUrl ?? fallbackGlb ?? ''}
             usdzPath={arUrl ? undefined : presentation?.product.usdzPath}
             productName={productName}
             arScale="fixed"
-            onClose={() => setArOpen(false)}
+            onClose={() => {
+              setArOpen(false)
+              setArFailed(false)
+            }}
           />
         </div>
       )}

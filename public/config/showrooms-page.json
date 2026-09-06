@@ -15,12 +15,24 @@
       },
       "nav": {
         "links": [
-          { "label": "محصولات", "href": "#collection" },
-          { "label": "شوروم مجازی", "href": "/store" },
-          { "label": "تماس با ما", "href": "#footer" }
+          {
+            "label": "محصولات",
+            "href": "#collection"
+          },
+          {
+            "label": "شوروم مجازی",
+            "href": "/store"
+          },
+          {
+            "label": "تماس با ما",
+            "href": "#footer"
+          }
         ],
         "search": true,
-        "cta": { "label": "ثبت در شهر امید", "href": "/about" }
+        "cta": {
+          "label": "ثبت در شهر امید",
+          "href": "/about"
+        }
       },
       "hero": {
         "eyebrow": "نیلپر، حس خوب همنشینی",
@@ -30,24 +42,77 @@
         "image": "/images/homepage/show-room-2.webp",
         "imageAlt": "نمای شوروم مبلمان نیلپر",
         "contact": [
-          { "icon": "pin", "text": "تهران، شهرک غرب، خیابان سپهر، گلبرگ سوم، پلاک ۱۱۱" },
-          { "icon": "phone", "text": "۰۲۱-۸۲۷۵۰" },
-          { "icon": "clock", "text": "خدمات پس از فروش: ۰۲۱-۸۲۷۵۱" }
+          {
+            "icon": "pin",
+            "text": "تهران، شهرک غرب، خیابان سپهر، گلبرگ سوم، پلاک ۱۱۱"
+          },
+          {
+            "icon": "phone",
+            "text": "۰۲۱-۸۲۷۵۰"
+          },
+          {
+            "icon": "clock",
+            "text": "خدمات پس از فروش: ۰۲۱-۸۲۷۵۱"
+          }
         ],
         "ctas": [
-          { "label": "ورود به شوروم مجازی", "href": "/store", "variant": "solid", "icon": "vr" },
-          { "label": "مشاهده محصولات", "href": "#collection", "variant": "outline" }
+          {
+            "label": "ورود به شوروم مجازی",
+            "href": "/store",
+            "variant": "solid",
+            "icon": "vr"
+          },
+          {
+            "label": "مشاهده محصولات",
+            "href": "#collection",
+            "variant": "outline"
+          }
         ],
-        "video": { "label": "معرفی شوروم نیلپر", "note": "۱:۳۰ دقیقه", "href": "" },
-        "sideText": ["More", "Than", "Furniture", "A Better", "Way of Living"],
+        "video": {
+          "label": "معرفی شوروم نیلپر",
+          "note": "۱:۳۰ دقیقه",
+          "href": ""
+        },
+        "sideText": [
+          "More",
+          "Than",
+          "Furniture",
+          "A Better",
+          "Way of Living"
+        ],
         "scrollLabel": "اسکرول"
       },
       "stats": [
-        { "icon": "sofa", "value": "از ۱۳۷۳", "label": "سابقه تولید", "note": "بیش از سه دهه" },
-        { "icon": "tag", "value": "خانگی و اداری", "label": "", "note": "دو خط تولید نیلپر" },
-        { "icon": "truck", "value": "شبکه نمایندگی‌ها", "label": "", "note": "ارسال سراسر کشور" },
-        { "icon": "cube", "value": "بازدید سه‌بعدی", "label": "", "note": "تجربه خرید متفاوت" },
-        { "icon": "headset", "value": "خدمات پس از فروش", "label": "", "note": "۰۲۱-۸۲۷۵۱" }
+        {
+          "icon": "sofa",
+          "value": "از ۱۳۷۳",
+          "label": "سابقه تولید",
+          "note": "بیش از سه دهه"
+        },
+        {
+          "icon": "tag",
+          "value": "خانگی و اداری",
+          "label": "",
+          "note": "دو خط تولید نیلپر"
+        },
+        {
+          "icon": "truck",
+          "value": "شبکه نمایندگی‌ها",
+          "label": "",
+          "note": "ارسال سراسر کشور"
+        },
+        {
+          "icon": "cube",
+          "value": "بازدید سه‌بعدی",
+          "label": "",
+          "note": "تجربه خرید متفاوت"
+        },
+        {
+          "icon": "headset",
+          "value": "خدمات پس از فروش",
+          "label": "",
+          "note": "۰۲۱-۸۲۷۵۱"
+        }
       ],
       "featured": {
         "index": "01",
@@ -58,23 +123,54 @@
         "description": "پایه چوب راش، تشک قابل جداسازی از فوم سرد و کوسن‌های الیاف ویسکوز؛ ست هفت‌نفره با نشیمن راحت برای پذیرایی خانواده.",
         "presentationKey": "test",
         "chips": [
-          { "icon": "rotate", "label": "چرخش ۳۶۰ درجه" },
-          { "icon": "ar", "label": "AR موجود" },
-          { "icon": "layers", "label": "مشاهده سازه" },
-          { "icon": "palette", "label": "رنگ قابل تغییر" }
+          {
+            "icon": "rotate",
+            "label": "چرخش ۳۶۰ درجه"
+          },
+          {
+            "icon": "ar",
+            "label": "AR موجود"
+          },
+          {
+            "icon": "layers",
+            "label": "مشاهده سازه"
+          },
+          {
+            "icon": "palette",
+            "label": "رنگ قابل تغییر"
+          }
         ],
         "colorLabel": "رنگ",
         "coverLabel": "رویه",
         "frameLabel": "مشاهده سازه",
         "arLabel": "نمایش در خانه (AR)",
-        "rotateHint": { "value": "360°", "label": "بچرخانید" },
-        "cta": { "label": "مشاهده و شخصی‌سازی", "href": "/product/test" },
+        "arPreviewLabel": "پیش‌نمایش سه‌بعدی",
+        "rotateHint": {
+          "value": "360°",
+          "label": "بچرخانید"
+        },
+        "cta": {
+          "label": "مشاهده و شخصی‌سازی",
+          "href": "/product/test"
+        },
         "specsLabel": "مشخصات کوتاه",
         "specs": [
-          { "label": "سازه", "value": "چوب راش" },
-          { "label": "تشک", "value": "فوم سرد، قابل جداسازی" },
-          { "label": "کوسن", "value": "الیاف ویسکوز" },
-          { "label": "ظرفیت", "value": "ست ۷ نفره" }
+          {
+            "label": "سازه",
+            "value": "چوب راش"
+          },
+          {
+            "label": "تشک",
+            "value": "فوم سرد، قابل جداسازی"
+          },
+          {
+            "label": "کوسن",
+            "value": "الیاف ویسکوز"
+          },
+          {
+            "label": "ظرفیت",
+            "value": "ست ۷ نفره"
+          }
         ],
         "stage": {
           "path": null,
@@ -88,13 +184,24 @@
         "eyebrow": "شوروم مجازی نیلپر",
         "title": "قبل از خرید، تجربه کنید.",
         "description": "به‌جای ورق‌زدن کاتالوگ، در شوروم قدم بزنید: مدل‌ها را از هر زاویه ببینید، رنگ و رویه را عوض کنید و اندازه واقعی را در خانه بسنجید.",
-        "cta": { "label": "ورود به شوروم مجازی", "href": "/store", "icon": "vr" },
+        "cta": {
+          "label": "ورود به شوروم مجازی",
+          "href": "/store",
+          "icon": "vr"
+        },
         "image": "/images/about/service-showroom.webp",
         "imageAlt": "نمای داخلی شوروم نیلپر",
         "imageCaption": "داخل شوروم قدم بزنید",
         "imageNote": "تصویر قابل تغییر",
-        "imageBadge": ["VIRTUAL", "SHOWROOM", "REAL EXPERIENCE"],
-        "map": { "image": null, "label": "Explore\nthe space" }
+        "imageBadge": [
+          "VIRTUAL",
+          "SHOWROOM",
+          "REAL EXPERIENCE"
+        ],
+        "map": {
+          "image": null,
+          "label": "Explore\nthe space"
+        }
       },
       "collection": {
         "eyebrow": "مجموعه محصولات",
@@ -109,7 +216,11 @@
             "image": null,
             "href": "/product/test",
             "badge": "پرفروش",
-            "colors": ["#36454f", "#c2b099", "#1b2f5c"]
+            "colors": [
+              "#36454f",
+              "#c2b099",
+              "#1b2f5c"
+            ]
           },
           {
             "id": "delan",
@@ -118,7 +229,11 @@
             "image": null,
             "href": "/product/test",
             "badge": null,
-            "colors": ["#5c4033", "#8b8b8b", "#e8e0d2"]
+            "colors": [
+              "#5c4033",
+              "#8b8b8b",
+              "#e8e0d2"
+            ]
           },
           {
             "id": "brent",
@@ -127,7 +242,11 @@
             "image": null,
             "href": "/product/test",
             "badge": null,
-            "colors": ["#2b2320", "#8b6f4e", "#c2b099"]
+            "colors": [
+              "#2b2320",
+              "#8b6f4e",
+              "#c2b099"
+            ]
           },
           {
             "id": "alvares",
@@ -136,7 +255,11 @@
             "image": null,
             "href": "/product/test",
             "badge": null,
-            "colors": ["#1a1a1a", "#5e2129", "#c8a06a"]
+            "colors": [
+              "#1a1a1a",
+              "#5e2129",
+              "#c8a06a"
+            ]
           },
           {
             "id": "nivan",
@@ -145,7 +268,11 @@
             "image": null,
             "href": "/product/test",
             "badge": null,
-            "colors": ["#5a5f43", "#36454f", "#c8a06a"]
+            "colors": [
+              "#5a5f43",
+              "#36454f",
+              "#c8a06a"
+            ]
           },
           {
             "id": "sirom",
@@ -154,18 +281,36 @@
             "image": null,
             "href": "/product/test",
             "badge": null,
-            "colors": ["#c2b099", "#5c4033", "#1b2f5c"]
+            "colors": [
+              "#c2b099",
+              "#5c4033",
+              "#1b2f5c"
+            ]
           }
         ]
       },
       "closing": {
-        "platform": { "name": "OmidCity", "tagline": "Virtual Lives Better", "logo": null },
+        "platform": {
+          "name": "OmidCity",
+          "tagline": "Virtual Lives Better",
+          "logo": null
+        },
         "eyebrow": "نیلپر، در شهر امید",
         "title": "آینده خرید مبلمان، همین جاست.",
         "description": "تجربه‌ای متفاوت در بزرگ‌ترین پلتفرم نمایشگاه‌های مجازی ایران",
-        "cta": { "label": "همین حالا وارد شوید", "href": "/store" },
+        "cta": {
+          "label": "همین حالا وارد شوید",
+          "href": "/store"
+        },
         "image": null,
-        "sideText": ["REAL", "SPACES", "REAL", "PEOPLE", "A BRIGHTER", "TOMORROW"]
+        "sideText": [
+          "REAL",
+          "SPACES",
+          "REAL",
+          "PEOPLE",
+          "A BRIGHTER",
+          "TOMORROW"
+        ]
       },
       "footer": {
         "about": "نیلپر از سال ۱۳۷۳ تولیدکننده مبلمان خانگی و اداری است؛ مبل راحتی، ست ناهارخوری، میز جلومبلی و عسلی در کنار صندلی اداری، مدیریتی، ارگونومیک و کنفرانسی.",
@@ -173,34 +318,76 @@
           {
             "title": "دسترسی سریع",
             "links": [
-              { "label": "محصولات", "href": "#collection" },
-              { "label": "شوروم مجازی", "href": "/store" },
-              { "label": "نمایش در واقعیت افزوده", "href": "/ar" },
-              { "label": "محصول ویژه", "href": "#featured" }
+              {
+                "label": "محصولات",
+                "href": "#collection"
+              },
+              {
+                "label": "شوروم مجازی",
+                "href": "/store"
+              },
+              {
+                "label": "نمایش در واقعیت افزوده",
+                "href": "/ar"
+              },
+              {
+                "label": "محصول ویژه",
+                "href": "#featured"
+              }
             ]
           },
           {
             "title": "دسته‌بندی‌ها",
             "links": [
-              { "label": "مبل راحتی", "href": "#collection" },
-              { "label": "ست ناهارخوری", "href": "#collection" },
-              { "label": "میز جلومبلی و عسلی", "href": "#collection" },
-              { "label": "مبلمان اداری", "href": "#collection" }
+              {
+                "label": "مبل راحتی",
+                "href": "#collection"
+              },
+              {
+                "label": "ست ناهارخوری",
+                "href": "#collection"
+              },
+              {
+                "label": "میز جلومبلی و عسلی",
+                "href": "#collection"
+              },
+              {
+                "label": "مبلمان اداری",
+                "href": "#collection"
+              }
             ]
           }
         ],
         "contact": {
           "title": "تماس با ما",
           "items": [
-            { "icon": "pin", "text": "تهران، شهرک غرب، خیابان سپهر، گلبرگ سوم، پلاک ۱۱۱" },
-            { "icon": "phone", "text": "۰۲۱-۸۲۷۵۰" },
-            { "icon": "mail", "text": "پیامک: ۲۰۰۰۰۸۲۷۵۰" }
+            {
+              "icon": "pin",
+              "text": "تهران، شهرک غرب، خیابان سپهر، گلبرگ سوم، پلاک ۱۱۱"
+            },
+            {
+              "icon": "phone",
+              "text": "۰۲۱-۸۲۷۵۰"
+            },
+            {
+              "icon": "mail",
+              "text": "پیامک: ۲۰۰۰۰۸۲۷۵۰"
+            }
           ]
         },
         "social": [
-          { "label": "نیلپر هوم", "href": "https://nilperhome.com" },
-          { "label": "نیلپر آفیس", "href": "https://nilperoffice.com" },
-          { "label": "فروشگاه نیلپر", "href": "https://store.nilper.ir" }
+          {
+            "label": "نیلپر هوم",
+            "href": "https://nilperhome.com"
+          },
+          {
+            "label": "نیلپر آفیس",
+            "href": "https://nilperoffice.com"
+          },
+          {
+            "label": "فروشگاه نیلپر",
+            "href": "https://store.nilper.ir"
+          }
         ],
         "copyright": "© تمامی حقوق برای نیلپر محفوظ است. شوروم مجازی در شهر امید."
       }

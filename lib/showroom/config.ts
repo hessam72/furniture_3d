@@ -83,6 +83,9 @@ export interface ShowroomConfig {
     coverLabel?: string
     frameLabel?: string
     arLabel?: string
+    /** Wording where the device cannot enter AR — the same file, spun on
+     *  screen instead of placed in the room. */
+    arPreviewLabel?: string
     rotateHint?: { value: string; label: string }
     cta?: ShowroomLink
     specsLabel?: string
