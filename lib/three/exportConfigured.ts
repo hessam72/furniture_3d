@@ -126,3 +126,37 @@ export async function exportConfiguredGLB(
     built.forEach(({ targets }) => disposeTargets(targets))
   }
 }
+
+/**
+ * Serialise a single finished-piece GLB — the file /product/[id]/simple and the
+ * showroom's inline viewer draw — with the live colours baked in.
+ *
+ * The layered export above needs a frame, a soft layer and a cover because the
+ * presentation page mounts three files. A plain viewer mounts one, and paints
+ * all of it as the `cover` zone (`collectZoneTargets(clone, { zone: 'cover' })`),
+ * so the export has to do the same or AR would show a piece in a colour the
+ * page never displayed.
+ */
+export async function exportSinglePieceGLB(
+  source: THREE.Object3D,
+  paint: ZonePaintConfig,
+  variant: CoverVariant | null,
+  options: { matte?: boolean } = {}
+): Promise<Blob> {
+  const { GLTFExporter } = await import('three/examples/jsm/exporters/GLTFExporter.js')
+
+  const root = new THREE.Group()
+  root.name = 'configured-furniture'
+  // Matte defaults *off* here, unlike the layered export: the plain viewer is
+  // deliberately not matted — the environment reading off the material is the
+  // point of that page — so AR matches what it shows.
+  const built = buildLayer({ source, zone: 'cover', variant: variant ?? undefined }, paint, options.matte === true)
+  root.add(built.object)
+
+  try {
+    const result = await new GLTFExporter().parseAsync(root, { binary: true })
+    return new Blob([result as ArrayBuffer], { type: 'model/gltf-binary' })
+  } finally {
+    disposeTargets(built.targets)
+  }
+}

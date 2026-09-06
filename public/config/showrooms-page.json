@@ -1,0 +1,194 @@
+{
+  "showrooms": [
+    {
+      "slug": "royal-home",
+      "brand": {
+        "monogram": "RH",
+        "name": "ROYAL HOME",
+        "nameFa": "رویال هوم",
+        "latinTagline": "FURNITURE & INTERIOR",
+        "logo": null
+      },
+      "seo": {
+        "title": "رویال هوم | شوروم مجازی مبلمان",
+        "description": "شوروم مجازی رویال هوم؛ مبلمان را سه‌بعدی ببینید، رنگ و رویه را تغییر دهید و پیش از خرید در خانه‌تان بچینید."
+      },
+      "nav": {
+        "links": [
+          { "label": "محصولات", "href": "#collection" },
+          { "label": "درباره ما", "href": "#about" },
+          { "label": "شوروم مجازی", "href": "/store" },
+          { "label": "تماس با ما", "href": "#footer" }
+        ],
+        "search": true,
+        "cta": { "label": "ثبت در شهر امید", "href": "/about" }
+      },
+      "hero": {
+        "eyebrow": "خانه، روایت سلیقه شماست",
+        "title": "رویال هوم",
+        "subtitle": "مبلمان، فراتر از تصور",
+        "description": "ترکیبی از طراحی مدرن، کیفیت ماندگار و حسِ واقعی؛ با رویال هوم، فضای زندگی‌تان را زیباتر کنید.",
+        "image": "/images/homepage/show-room-2.webp",
+        "imageAlt": "نمای ورودی شوروم رویال هوم",
+        "contact": [
+          { "icon": "pin", "text": "تهران، خیابان ولیعصر، پلاک ۱۳۳" },
+          { "icon": "phone", "text": "۰۲۱-۸۸۷۷۶۵۴۳" },
+          { "icon": "clock", "text": "همه روزه ۹ تا ۲۱" }
+        ],
+        "ctas": [
+          { "label": "ورود به شوروم مجازی", "href": "/store", "variant": "solid", "icon": "vr" },
+          { "label": "مشاهده محصولات", "href": "#collection", "variant": "outline" }
+        ],
+        "video": { "label": "معرفی فروشگاه", "note": "۱:۳۰ دقیقه", "href": "" },
+        "sideText": ["More", "Than", "Furniture", "A Better", "Way of Living"],
+        "scrollLabel": "اسکرول"
+      },
+      "stats": [
+        { "icon": "sofa", "value": "۱۵۰+", "label": "مدل مبل", "note": "برای هر سلیقه‌ای" },
+        { "icon": "tag", "value": "۱۲", "label": "برند معتبر", "note": "بهترین‌های دنیا" },
+        { "icon": "truck", "value": "ارسال سراسر کشور", "label": "", "note": "سریع و مطمئن" },
+        { "icon": "cube", "value": "بازدید سه بعدی", "label": "", "note": "تجربه خرید متفاوت" },
+        { "icon": "headset", "value": "پشتیبانی ۲۴/۷", "label": "", "note": "همیشه کنار شما" }
+      ],
+      "featured": {
+        "index": "01",
+        "total": "04",
+        "eyebrow": "Featured\nProduct",
+        "category": "مبل راحتی",
+        "title": "مدل آریا",
+        "description": "ترکیبی بی‌نقصی از راحتی، زیبایی و دوام برای خانه‌های امروزی",
+        "presentationKey": "test",
+        "chips": [
+          { "icon": "rotate", "label": "چرخش ۳۶۰ درجه" },
+          { "icon": "ar", "label": "AR موجود" },
+          { "icon": "layers", "label": "مشاهده سازه" },
+          { "icon": "palette", "label": "رنگ قابل تغییر" }
+        ],
+        "colorLabel": "رنگ",
+        "coverLabel": "رویه",
+        "frameLabel": "مشاهده سازه",
+        "arLabel": "نمایش در خانه (AR)",
+        "rotateHint": { "value": "360°", "label": "بچرخانید" },
+        "cta": { "label": "مشاهده و شخصی‌سازی", "href": "/product/test" },
+        "specsLabel": "مشخصات کوتاه",
+        "specs": [
+          { "label": "ابعاد", "value": "۲۴۰ × ۹۵ × ۸۰ سانتی‌متر" },
+          { "label": "جنس", "value": "پارچه و چوب جامد" },
+          { "label": "ظرفیت", "value": "۴-۵ نفر" },
+          { "label": "گارانتی", "value": "۵ سال" }
+        ]
+      },
+      "virtual": {
+        "eyebrow": "شوروم مجازی رویال هوم",
+        "title": "قبل از خرید، تجربه کنید.",
+        "description": "با ورود به شوروم مجازی، تمام مدل‌ها را در فضایی واقعی و تعاملی ببینید، بچرخید، مقایسه کنید و خریدی مطمئن‌تر داشته باشید.",
+        "cta": { "label": "ورود به شوروم مجازی", "href": "/store", "icon": "vr" },
+        "image": "/images/about/service-showroom.webp",
+        "imageAlt": "نمای داخلی فروشگاه رویال هوم",
+        "imageCaption": "داخل فروشگاه قدم بزنید",
+        "imageNote": "تصویر قابل تغییر",
+        "imageBadge": ["VIRTUAL", "SHOWROOM", "REAL EXPERIENCE"],
+        "map": { "image": null, "label": "Explore\nthe space" }
+      },
+      "collection": {
+        "eyebrow": "مجموعه محصولات",
+        "title": "محبوب‌ترین مدل‌ها",
+        "description": "طراحی بهتر برای زندگی بهتر",
+        "addLabel": "افزودن",
+        "items": [
+          {
+            "id": "lima",
+            "category": "مبل سه نفره",
+            "name": "مدل لیما",
+            "image": null,
+            "href": "/product/test",
+            "badge": null,
+            "colors": ["#2b2320", "#8b6f4e", "#c2b099"]
+          },
+          {
+            "id": "tiba",
+            "category": "مبل راحتی",
+            "name": "مدل تیبا",
+            "image": null,
+            "href": "/product/test",
+            "badge": null,
+            "colors": ["#1a1a1a", "#5e2129", "#c8a06a"]
+          },
+          {
+            "id": "baran",
+            "category": "مبل ال",
+            "name": "مدل باران",
+            "image": null,
+            "href": "/product/test",
+            "badge": "پرفروش",
+            "colors": ["#5c4033", "#8b8b8b", "#e8e0d2"]
+          },
+          {
+            "id": "nima",
+            "category": "مبل تک‌نفره",
+            "name": "مدل نیما",
+            "image": null,
+            "href": "/product/test",
+            "badge": null,
+            "colors": ["#5a5f43", "#36454f", "#c8a06a"]
+          },
+          {
+            "id": "arya",
+            "category": "مبل راحتی",
+            "name": "مدل آریا",
+            "image": null,
+            "href": "/product/test",
+            "badge": null,
+            "colors": ["#36454f", "#1b2f5c", "#c2b099"]
+          }
+        ]
+      },
+      "closing": {
+        "platform": { "name": "OmidCity", "tagline": "Virtual Lives Better", "logo": null },
+        "eyebrow": "رویال هوم، در شهر امید",
+        "title": "آینده خرید مبلمان، همین جاست.",
+        "description": "تجربه‌ای متفاوت در بزرگ‌ترین پلتفرم نمایشگاه‌های مجازی ایران",
+        "cta": { "label": "همین حالا وارد شوید", "href": "/store" },
+        "image": null,
+        "sideText": ["REAL", "SPACES", "REAL", "PEOPLE", "A BRIGHTER", "TOMORROW"]
+      },
+      "footer": {
+        "about": "رویال هوم، تولیدکننده و عرضه‌کننده مبلمان مدرن با بیش از دو دهه تجربه در طراحی و ساخت فضای زندگی ایرانی.",
+        "columns": [
+          {
+            "title": "دسترسی سریع",
+            "links": [
+              { "label": "محصولات", "href": "#collection" },
+              { "label": "شوروم مجازی", "href": "/store" },
+              { "label": "نمایش در واقعیت افزوده", "href": "/ar" },
+              { "label": "درباره ما", "href": "/about" }
+            ]
+          },
+          {
+            "title": "دسته‌بندی‌ها",
+            "links": [
+              { "label": "مبلمان", "href": "#collection" },
+              { "label": "صندلی", "href": "#collection" },
+              { "label": "میز", "href": "#collection" },
+              { "label": "دکوراسیون", "href": "#collection" }
+            ]
+          }
+        ],
+        "contact": {
+          "title": "تماس با ما",
+          "items": [
+            { "icon": "pin", "text": "تهران، خیابان ولیعصر، پلاک ۱۳۳" },
+            { "icon": "phone", "text": "۰۲۱-۸۸۷۷۶۵۴۳" },
+            { "icon": "mail", "text": "info@royalhome.ir" }
+          ]
+        },
+        "social": [
+          { "label": "اینستاگرام", "href": "#" },
+          { "label": "تلگرام", "href": "#" },
+          { "label": "واتساپ", "href": "#" }
+        ],
+        "copyright": "© تمامی حقوق برای رویال هوم محفوظ است. ساخته شده در شهر امید."
+      }
+    }
+  ]
+}

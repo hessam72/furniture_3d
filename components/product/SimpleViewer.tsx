@@ -49,12 +49,16 @@ function Piece({
   path,
   envIntensity,
   onRadius,
+  sourceRef,
 }: {
   path: string
   envIntensity: number
   /** The piece's bounding-sphere radius, once measured — the camera frames on
    *  it and cannot solve anything before it arrives. */
   onRadius: (radius: number) => void
+  /** Publishes the raw cached GLTF scene — not the painted clone below — for an
+   *  AR export built outside the Canvas. @see exportSinglePieceGLB */
+  sourceRef?: React.MutableRefObject<THREE.Object3D | null>
 }) {
   const gltf = useGLTF(path)
   const { settings } = useQuality()
@@ -86,6 +90,14 @@ function Piece({
 
   useZonePaint(targets)
   useEffect(() => () => disposeTargets(targets), [targets])
+
+  useEffect(() => {
+    if (!sourceRef) return
+    sourceRef.current = gltf.scene
+    return () => {
+      sourceRef.current = null
+    }
+  }, [sourceRef, gltf.scene])
   useEffect(() => onRadius(radius), [radius, onRadius])
 
   return <primitive object={scene} />
@@ -180,6 +192,9 @@ interface Props {
   /** Raised once the piece is measured — the page holds its splash until then. */
   onReady: () => void
   onError: (category: string, error: Error) => void
+  /** Optional: receives the loaded GLB so the host page can export it for AR
+   *  with the live colours applied. Left out, nothing is published. */
+  sourceRef?: React.MutableRefObject<THREE.Object3D | null>
 }
 
 /**
@@ -203,7 +218,7 @@ interface Props {
  * Everything it draws comes from the manifest's `simple` block, defaults filled
  * in. @see SimpleViewerMeta
  */
-export default function SimpleViewer({ config, coverage, onReady, onError }: Props) {
+export default function SimpleViewer({ config, coverage, onReady, onError, sourceRef }: Props) {
   const { settings } = useQuality()
   const [perfScale, setPerfScale] = useState(1)
   const [radius, setRadius] = useState(0)
@@ -282,7 +297,7 @@ export default function SimpleViewer({ config, coverage, onReady, onError }: Pro
 
       <Suspense fallback={null}>
         <PartErrorBoundary category="piece" onError={onError}>
-          <Piece path={view.model} envIntensity={envIntensity} onRadius={handleRadius} />
+          <Piece path={view.model} envIntensity={envIntensity} onRadius={handleRadius} sourceRef={sourceRef} />
         </PartErrorBoundary>
       </Suspense>
 
