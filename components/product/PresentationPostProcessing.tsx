@@ -2,9 +2,8 @@
 
 import { memo, type ReactElement } from 'react'
 import { EffectComposer, Bloom, N8AO, SMAA, Vignette } from '@react-three/postprocessing'
-import { useState } from 'react'
 import { useQuality } from '@/contexts/QualityContext'
-import { TOUCH_QUERY, type PresentationConfig } from '@/lib/product/presentation'
+import { type DeviceClass, type PresentationConfig } from '@/lib/product/presentation'
 
 /**
  * A lighter composer than the showroom's, tuned for fabric rather than paint.
@@ -36,14 +35,18 @@ import { TOUCH_QUERY, type PresentationConfig } from '@/lib/product/presentation
  * or anisotropy this is not a knob the manifest gets to spend: it decides how
  * sharp the piece looks, not whether the tab survives being opened.
  */
-function PresentationPostProcessingImpl({ config }: { config: PresentationConfig }) {
+function PresentationPostProcessingImpl({
+  config,
+  device = 'desktop',
+}: {
+  config: PresentationConfig
+  /** Resolved once by PresentationScene and handed down — it has to be right on
+   *  the *first* render, since a composer that starts multisampled has already
+   *  made the allocation by the time an effect could correct it. */
+  device?: DeviceClass
+}) {
   const { settings } = useQuality()
-  // Read once, synchronously. This component only ever mounts inside a Canvas
-  // that is `dynamic(..., { ssr: false })`, so there is no server HTML to
-  // disagree with — and it must be right on the *first* render: a composer that
-  // starts multisampled has already made the allocation by the time an effect
-  // could correct it.
-  const [touch] = useState(() => window.matchMedia(TOUCH_QUERY).matches)
+  const touch = device !== 'desktop'
   const effects: ReactElement[] = []
 
   const multisampling = touch ? 0 : settings.multisampling

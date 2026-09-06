@@ -1,0 +1,228 @@
+{
+  "wheels": [
+     {
+      "id": "wheel-none",
+      "name": "None",
+      "category": "wheels",
+      "price": 0,
+      "thumbnail": "/images/parts/wheels/none.jpeg",
+      "hideNodes": ["Stock_Wheel_FL", "Stock_Wheel_FR", "Stock_Wheel_RL", "Stock_Wheel_RR"]
+    },
+    {
+      "id": "wheel-stock",
+      "name": "Stock Wheels",
+      "category": "wheels",
+      "model_path": "/models/parts/wheels/stock.glb",
+      "price": 0,
+      "thumbnail": "/images/parts/wheels/stock.jpeg",
+      "attachNodes": ["Wheel_FL", "Wheel_FR", "Wheel_RL", "Wheel_RR"]
+    }, 
+    {
+      "id": "wheel-stock2",
+      "name": "Stock Wheels2",
+      "category": "wheels",
+      "model_path": "/models/parts/wheels/scene (9).glb",
+      "price": 1400,
+      "thumbnail": "/images/parts/wheels/stock.jpeg",
+      "attachNodes": ["Wheel_FL", "Wheel_FR", "Wheel_RL", "Wheel_RR"]
+    }
+  ],
+  "spoilers": [
+    {
+      "id": "spoiler-none",
+      "name": "None",
+      "category": "spoilers",
+      "price": 0,
+      "thumbnail": "/images/parts/spoilers/none.jpeg",
+      "hideNodes": ["Stock_Spoiler"]
+    },
+    {
+      "id": "spoiler-stock",
+      "name": "Stock Spoiler",
+      "category": "spoilers",
+      "model_path": "/models/parts/spoilers/stock.glb",
+      "price": 0,
+      "thumbnail": "/images/parts/spoilers/stock.jpeg",
+      "attachNodes": ["Spoiler_Mount"]
+    }
+  ],
+  "hoods": [
+    {
+      "id": "hood-stock",
+      "name": "Stock Hood",
+      "category": "hoods",
+      "model_path": "/models/parts/hoods/stock.glb",
+      "price": 0,
+      "thumbnail": "/images/parts/hoods/stock.jpeg",
+      "replaceNode": "Hood"
+    }
+  ],
+  "bumpers": [
+    {
+      "id": "bumper-front-stock",
+      "name": "Stock Front Bumper",
+      "category": "bumpers",
+      "model_path": "/models/parts/bumpers/stock.glb",
+      "price": 0,
+      "thumbnail": "/images/parts/bumpers/stock.jpeg",
+      "replaceNode": "Front_Bumper"
+    }
+  ],
+  "mirrors": [
+    {
+      "id": "mirror-stock",
+      "name": "Stock Mirrors",
+      "category": "mirrors",
+      "model_path": "/models/parts/mirrors/stock.glb",
+      "price": 0,
+      "thumbnail": "/images/parts/mirrors/stock.jpeg",
+      "attachNodes": ["Mirror_L", "Mirror_R"]
+    }
+  
+  ],
+  "exhaust": [
+    {
+      "id": "exhaust-stock",
+      "name": "Stock Exhaust",
+      "category": "exhaust",
+      "model_path": "/models/parts/exhaust/stock.glb",
+      "price": 0,
+      "thumbnail": "/images/parts/exhaust/stock.jpeg",
+      "replaceNode": "Exhaust"
+    }
+  ],
+  "side-skirts": [
+    {
+      "id": "skirts-none",
+      "name": "None",
+      "category": "side-skirts",
+      "price": 0,
+      "thumbnail": "/images/parts/side-skirts/none.jpeg"
+    }
+  ],
+  "seats": [
+    {
+      "id": "seat-stock",
+      "name": "Stock Seats",
+      "category": "seats",
+      "model_path": "/models/parts/seats/stock.glb",
+      "price": 0,
+      "thumbnail": "/images/parts/seats/stock.jpeg",
+      "attachNodes": ["Seat_FL", "Seat_FR", "Seat_RL", "Seat_RR"]
+    },
+    {
+      "id": "seat-sport",
+      "name": "Sport Seats",
+      "category": "seats",
+      "model_path": "/models/parts/seats/sport.glb",
+      "price": 2500,
+      "thumbnail": "/images/parts/seats/sport.jpeg",
+      "attachNodes": ["Seat_FL", "Seat_FR", "Seat_RL", "Seat_RR"]
+    },
+    {
+      "id": "seat-racing",
+      "name": "Racing Bucket Seats",
+      "category": "seats",
+      "model_path": "/models/parts/seats/racing.glb",
+      "price": 4500,
+      "thumbnail": "/images/parts/seats/racing.jpeg",
+      "attachNodes": ["Seat_FL", "Seat_FR", "Seat_RL", "Seat_RR"]
+    }
+  ],
+  "steering-wheels": [
+    {
+      "id": "steering-stock",
+      "name": "Stock Steering Wheel",
+      "category": "steering-wheels",
+      "model_path": "/models/parts/steering/stock.glb",
+      "price": 0,
+      "thumbnail": "/images/parts/steering/stock.jpeg",
+      "replaceNode": "Steering_Wheel"
+    },
+    {
+      "id": "steering-sport",
+      "name": "Sport Steering Wheel",
+      "category": "steering-wheels",
+      "model_path": "/models/parts/steering/sport.glb",
+      "price": 800,
+      "thumbnail": "/images/parts/steering/sport.jpeg",
+      "replaceNode": "Steering_Wheel"
+    },
+    {
+      "id": "steering-racing",
+      "name": "Racing Flat-Bottom Wheel",
+      "category": "steering-wheels",
+      "model_path": "/models/parts/steering/racing.glb",
+      "price": 1500,
+      "thumbnail": "/images/parts/steering/racing.jpeg",
+      "replaceNode": "Steering_Wheel"
+    }
+  ],
+  "brake-calipers": [
+    {
+      "id": "caliper-stock",
+      "name": "Stock Calipers",
+      "category": "brake-calipers",
+      "model_path": "/models/parts/calipers/stock.glb",
+      "price": 0,
+      "thumbnail": "/images/parts/calipers/stock.jpeg",
+      "attachNodes": ["Caliper_FL", "Caliper_FR", "Caliper_RL", "Caliper_RR"]
+    },
+    {
+      "id": "caliper-brembo-red",
+      "name": "Brembo Red",
+      "category": "brake-calipers",
+      "model_path": "/models/parts/calipers/brembo-red.glb",
+      "price": 3500,
+      "thumbnail": "/images/parts/calipers/brembo-red.jpeg",
+      "attachNodes": ["Caliper_FL", "Caliper_FR", "Caliper_RL", "Caliper_RR"]
+    },
+    {
+      "id": "caliper-brembo-yellow",
+      "name": "Brembo Yellow",
+      "category": "brake-calipers",
+      "model_path": "/models/parts/calipers/brembo-yellow.glb",
+      "price": 3500,
+      "thumbnail": "/images/parts/calipers/brembo-yellow.jpeg",
+      "attachNodes": ["Caliper_FL", "Caliper_FR", "Caliper_RL", "Caliper_RR"]
+    },
+    {
+      "id": "caliper-ap-racing",
+      "name": "AP Racing Carbon Ceramic",
+      "category": "brake-calipers",
+      "model_path": "/models/parts/calipers/ap-racing.glb",
+      "price": 7500,
+      "thumbnail": "/images/parts/calipers/ap-racing.jpeg",
+      "attachNodes": ["Caliper_FL", "Caliper_FR", "Caliper_RL", "Caliper_RR"]
+    }
+  ],
+  "headlights": [
+    {
+      "id": "headlight-stock",
+      "name": "Stock Headlights",
+      "category": "headlights",
+      "model_path": "/models/parts/headlights/stock.glb",
+      "price": 0,
+      "thumbnail": "/images/parts/headlights/stock.jpeg",
+      "attachNodes": ["Headlight_L", "Headlight_R"]
+    },
+    {
+      "id": "headlight-led",
+      "name": "LED Matrix Headlights",
+      "category": "headlights",
+      "model_path": "/models/parts/headlights/led.glb",
+      "price": 1200,
+      "thumbnail": "/images/parts/headlights/led.jpeg",
+      "attachNodes": ["Headlight_L", "Headlight_R"]
+    },
+    {
+      "id": "headlight-xenon",
+      "name": "Bi-Xenon Performance",
+      "category": "headlights",
+      "model_path": "/models/parts/headlights/xenon.glb",
+      "price": 900,
+      "thumbnail": "/images/parts/headlights/xenon.jpeg",
+      "attachNodes": ["Headlight_L", "Headlight_R"]
+    }
+  ]
+}

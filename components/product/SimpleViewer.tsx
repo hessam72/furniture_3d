@@ -1,0 +1,309 @@
+'use client'
+
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Canvas, useThree, type RootState } from '@react-three/fiber'
+import { Environment, OrbitControls, useGLTF } from '@react-three/drei'
+import * as THREE from 'three'
+import { NeutralToneMapping } from 'three'
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+import { PerfLadder } from '@/components/three/PerfLadder'
+import { PartErrorBoundary } from '@/components/car/PartErrorBoundary'
+import { clampDprToBudget } from '@/lib/three/dprBudget'
+import { useQuality } from '@/contexts/QualityContext'
+import { collectZoneTargets, disposeTargets, preparePresentationObject } from '@/lib/three/layerMaterials'
+import { applyFirstCoat, useZonePaint } from '@/hooks/useZonePaint'
+import { usePresentation } from '@/stores/presentationStore'
+import {
+  simpleViewer,
+  type PresentationConfig,
+  type ResolvedSimpleViewer,
+} from '@/lib/product/presentation'
+
+// Must run before any preload in this chunk — drei otherwise reaches for its
+// CDN decoder. Same reason CarPageClient and ProductPageClient set it.
+useGLTF.setDecoderPath('/draco/')
+
+/** Never let the control panel claim more than this much of the height, however
+ *  tall it measures — past it the piece has no frame left to be judged in. */
+const MAX_PANEL_COVERAGE = 0.5
+
+/** The opening three-quarter view: slightly off-axis and slightly above, which
+ *  is how furniture is photographed. Normalised on use. */
+const OPENING_DIR = new THREE.Vector3(0.55, 0.3, 1)
+
+/**
+ * The finished piece, centred on the origin.
+ *
+ * Every mesh becomes a `cover` paint target. On the full presentation page the
+ * zone is implied by which layer GLB a mesh came from; here there is one file
+ * and no ladder, so the whole piece takes the cover palette — the same call
+ * CoverLayer already makes for this exact model.
+ *
+ * Deliberately **not** matted. `isMatte` exists on the full page because an HDR
+ * reflecting into the upholstery shifted the colours away from the hex the
+ * buyer picked in a room already lit by spots. Here the environment is the only
+ * light there is, and showing what it does to the material is the point of the
+ * page.
+ */
+function Piece({
+  path,
+  envIntensity,
+  onRadius,
+}: {
+  path: string
+  envIntensity: number
+  /** The piece's bounding-sphere radius, once measured — the camera frames on
+   *  it and cannot solve anything before it arrives. */
+  onRadius: (radius: number) => void
+}) {
+  const gltf = useGLTF(path)
+  const { settings } = useQuality()
+
+  const { scene, targets, radius } = useMemo(() => {
+    const clone = gltf.scene.clone(true)
+    preparePresentationObject(clone, {
+      envMapIntensity: envIntensity,
+      anisotropy: settings.anisotropyLevel,
+      // No sun on this page, so no mesh takes part in a shadow pass and no
+      // shadow map is ever allocated.
+      shadows: false,
+    })
+
+    const collected = collectZoneTargets(clone, { zone: 'cover' })
+    applyFirstCoat(collected, usePresentation.getState().paint)
+
+    // Centred rather than seated: with the piece's own centre on the origin,
+    // the orbit turns it in place and the camera's distance is simply its
+    // position's length. Seating it on a floor there is no floor for would put
+    // the pivot at its feet and swing it round the frame as you drag.
+    const box = new THREE.Box3().setFromObject(clone)
+    clone.position.sub(box.getCenter(new THREE.Vector3()))
+
+    const sphere = box.getBoundingSphere(new THREE.Sphere())
+    return { scene: clone, targets: collected, radius: sphere.radius }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gltf.scene, path, envIntensity, settings.anisotropyLevel])
+
+  useZonePaint(targets)
+  useEffect(() => () => disposeTargets(targets), [targets])
+  useEffect(() => onRadius(radius), [radius, onRadius])
+
+  return <primitive object={scene} />
+}
+
+/**
+ * Frames the piece from its measured size, the live canvas aspect, and how much
+ * of the screen the control panel is standing on.
+ *
+ * A fixed distance frames a desktop window and a portrait phone completely
+ * differently, because `fov` is vertical — so the fit solves for whichever of
+ * the two half-angles is tighter. The panel then narrows the vertical one
+ * further: the piece has to fit the band *above* it, not the whole canvas, or
+ * it is framed perfectly into a strip of screen the viewer cannot see.
+ *
+ * `setViewOffset` does the lift rather than a moved camera or an offset model,
+ * and that is the only version that survives an orbit: it shifts the frustum
+ * window, so the piece still turns about its own centre and the controls still
+ * aim at the origin. Moving either would put the pivot off the piece and turn
+ * a rotation into an orbit around empty space.
+ *
+ * Re-run on a resize, an orientation change or a panel that grows, keeping the
+ * viewer's own orbit and dolly (as a fraction of the previous fit) rather than
+ * snapping back to the opening shot.
+ */
+function Frame({
+  radius,
+  coverage,
+  view,
+  controls,
+}: {
+  radius: number
+  /** Fraction of the viewport height the control panel covers. */
+  coverage: number
+  view: ResolvedSimpleViewer
+  controls: React.MutableRefObject<OrbitControlsImpl | null>
+}) {
+  const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
+  const size = useThree((s) => s.size)
+  const invalidate = useThree((s) => s.invalidate)
+  const fitted = useRef(0)
+
+  useEffect(() => {
+    if (!radius || !Number.isFinite(radius)) return
+
+    const hidden = Math.min(Math.max(coverage, 0), MAX_PANEL_COVERAGE)
+    const halfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)
+    // The usable half-angles: vertical shrunk by the band the panel leaves,
+    // horizontal opened by the aspect.
+    const vHalf = Math.atan(halfFov * (1 - hidden))
+    const hHalf = Math.atan(halfFov * (size.width / size.height))
+    const distance = (radius / Math.sin(Math.min(vHalf, hHalf))) * view.padding
+
+    const previous = fitted.current
+    fitted.current = distance
+
+    // Tight around the piece, so depth precision is spent where the geometry
+    // actually is.
+    camera.near = Math.max(0.01, radius / 100)
+    camera.far = distance * 6
+
+    const direction = previous ? camera.position.clone().normalize() : OPENING_DIR.clone().normalize()
+    const keep = previous ? camera.position.length() / previous : 1
+    camera.position.copy(direction).multiplyScalar(distance * keep)
+    camera.lookAt(0, 0, 0)
+
+    // A positive offsetY walks the frustum window down the virtual image, which
+    // is what carries the piece up the screen — half the panel's coverage puts
+    // it in the middle of what is left. Also updates the projection matrix, so
+    // it goes last.
+    if (hidden > 0) camera.setViewOffset(size.width, size.height, 0, (size.height * hidden) / 2, size.width, size.height)
+    else camera.clearViewOffset()
+
+    const orbit = controls.current
+    if (orbit) {
+      orbit.target.set(0, 0, 0)
+      orbit.minDistance = distance * view.minZoom
+      orbit.maxDistance = distance * view.maxZoom
+      orbit.update()
+    }
+    invalidate()
+  }, [radius, coverage, view, size.width, size.height, camera, controls, invalidate])
+
+  return null
+}
+
+interface Props {
+  config: PresentationConfig
+  /** Fraction of the viewport height the control panel covers, measured by the
+   *  page. The piece is framed into what it leaves. @see Frame */
+  coverage: number
+  /** Raised once the piece is measured — the page holds its splash until then. */
+  onReady: () => void
+  onError: (category: string, error: Error) => void
+}
+
+/**
+ * A plain product viewer: one GLB, one HDR, on a flat ground.
+ *
+ * The full presentation page is a room — a modelled booth, a window sun with a
+ * PCSS shadow map, a post chain and a layer ladder. None of that is here, and
+ * its absence is the feature: no shadow map, no composer and no second scene
+ * render, so what the GPU spends goes entirely into the piece. Two consequences
+ * worth naming:
+ *
+ *  - **Canvas MSAA, not SMAA.** With no composer to bypass it, `antialias` is
+ *    live again — and on the tile-based GPU in every phone and every Apple
+ *    machine, multisampling resolves inside tile memory, which is far cheaper
+ *    than the two full-resolution targets an SMAA pass allocates. The page gets
+ *    better edges for less than the heavy one pays.
+ *  - **A demand loop that genuinely parks.** Nothing here animates on its own.
+ *    OrbitControls invalidates while it is damping and stops when it settles,
+ *    so a viewer who is not touching the screen costs zero frames.
+ *
+ * Everything it draws comes from the manifest's `simple` block, defaults filled
+ * in. @see SimpleViewerMeta
+ */
+export default function SimpleViewer({ config, coverage, onReady, onError }: Props) {
+  const { settings } = useQuality()
+  const [perfScale, setPerfScale] = useState(1)
+  const [radius, setRadius] = useState(0)
+  const controls = useRef<OrbitControlsImpl | null>(null)
+
+  const view = useMemo(() => simpleViewer(config), [config])
+  const envIntensity = view.envIntensity ?? settings.envIntensity
+
+  const dpr = useMemo<[number, number]>(() => {
+    const [min, max] = clampDprToBudget(settings.dpr)
+    return [min, Math.max(min, +(max * perfScale).toFixed(2))]
+  }, [settings.dpr, perfScale])
+
+  const handleRadius = useCallback(
+    (value: number) => {
+      setRadius(value)
+      if (value) onReady()
+    },
+    [onReady]
+  )
+
+  // Nothing here allocates enough to lose a context, but a page that cannot
+  // report one leaves the viewer staring at a frozen frame.
+  const handleCreated = useCallback(({ gl }: RootState) => {
+    const canvas = gl.domElement
+    const lost = (event: Event) => event.preventDefault()
+    canvas.addEventListener('webglcontextlost', lost, false)
+  }, [])
+
+  return (
+    <Canvas
+      /* Explicitly off. No light on this page casts, so three never allocates a
+         shadow map — which is the single largest buffer the heavy page holds. */
+      shadows={false}
+      frameloop="demand"
+      dpr={dpr}
+      style={{ touchAction: 'none', background: view.background }}
+      gl={{
+        // Live, unlike every other scene in the app: those route their output
+        // through an EffectComposer, which renders past the canvas's own
+        // multisampled buffer and makes paying for it pure waste. @see the note
+        // on the component.
+        antialias: true,
+        powerPreference: 'high-performance',
+        toneMapping: NeutralToneMapping,
+        toneMappingExposure: 1,
+      }}
+      camera={{ position: [0, 0, 4], fov: view.fov, near: 0.1, far: 100 }}
+      onCreated={handleCreated}
+    >
+      <color attach="background" args={[view.background]} />
+
+      {/* Sustained-FPS ladder only. AdaptiveDpr is deliberately left off: it
+          drops resolution while the camera moves, and on a page whose whole
+          purpose is judging a finish, a piece that goes soft the moment you
+          turn it is the wrong trade. */}
+      <PerfLadder onScale={setPerfScale} adaptive={false} />
+
+      {/* The image-based light, and the reason the material reads as leather or
+          velvet rather than as flat colour. Its own boundary: `useEnvironment`
+          suspends while the HDR downloads, and without one that would unmount
+          the piece until it lands. */}
+      <Suspense fallback={null}>
+        {view.hdr && (
+          <Environment files={view.hdr} background={false} environmentIntensity={envIntensity} />
+        )}
+      </Suspense>
+
+      {/* A studio fill over the top of the HDR, not a sun — no `castShadow`
+          anywhere, so there is still no shadow pass. The key gives the piece
+          its form where an interior HDR alone would leave it flat; the low
+          ambient keeps the shaded side off pure black against the ground. */}
+      <ambientLight intensity={view.lighting.ambient} />
+      <directionalLight position={[4, 6, 5]} intensity={view.lighting.key} />
+      <directionalLight position={[-5, 2, -3]} intensity={view.lighting.fill} />
+
+      <Suspense fallback={null}>
+        <PartErrorBoundary category="piece" onError={onError}>
+          <Piece path={view.model} envIntensity={envIntensity} onRadius={handleRadius} />
+        </PartErrorBoundary>
+      </Suspense>
+
+      <Frame radius={radius} coverage={coverage} view={view} controls={controls} />
+
+      {/* Rotate and dolly, nothing else. Panning would slide the piece off the
+          pivot the orbit turns about, which is the one thing this camera must
+          not do. */}
+      <OrbitControls
+        ref={controls}
+        makeDefault
+        enablePan={false}
+        enableDamping
+        dampingFactor={0.08}
+        rotateSpeed={0.85}
+        zoomSpeed={0.8}
+        // Stops short of the poles: at the exact top the azimuth is undefined
+        // and the piece spins on the spot as you drag past it.
+        minPolarAngle={0.15}
+        maxPolarAngle={Math.PI - 0.35}
+      />
+    </Canvas>
+  )
+}

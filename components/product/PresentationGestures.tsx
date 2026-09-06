@@ -165,6 +165,30 @@ export default function PresentationGestures({ config, controls, framing, roomBo
    * nothing changes at all.
    */
   const solveShot = (zoomFactor: number) => {
+    // Null until there is something to solve from.
+    //
+    // `need` and `baseHalf` are both 0 until `reframe` has run, and `reframe`
+    // returns early until the stack publishes its measured bounds. This used to
+    // fall straight through to `0 / 0`, and the NaN was not a harmless
+    // placeholder that the next good solve would replace:
+    //
+    //   - it damps into `distance.current`, and `damp` lerps *from* the current
+    //     value, so NaN in means NaN out on every subsequent frame;
+    //   - `camera.position` goes with it, and so does `matrixWorldInverse`;
+    //   - `WebGLClipping` projects the cover's clip planes through that matrix,
+    //     which puts NaN in `clippingPlanes[0]`;
+    //   - and three's `flatten` guards that array with an inline `!isNaN` on
+    //     element 0 alone. A NaN falls past it into `firstElem.toArray(r, 0)`
+    //     against a plain number, which throws `toArray is not a function` out
+    //     of the render loop — every frame, unrecoverably.
+    //
+    // The window is real and it is a React one: `useClipWipe` attaches the
+    // planes in a layout effect, while the stack publishes `framing` in a
+    // passive effect, and React can paint between the two. Rare on a fast
+    // desktop, routine on Safari and on mobile, which is exactly where it was
+    // reported. Reproduced by deferring the publish: 1028 throws in 20s.
+    if (!(baseHalf.current > 0) || !(need.current > 0)) return null
+
     const limit = pullBackLimit()
     const wanted = (need.current / baseHalf.current) * zoomFactor
     if (!(wanted > limit)) return { distance: wanted, half: baseHalf.current }
@@ -174,7 +198,7 @@ export default function PresentationGestures({ config, controls, framing, roomBo
     return { distance: Math.min((need.current / half) * zoomFactor, limit), half }
   }
 
-  const solveDistance = (zoomFactor: number) => solveShot(zoomFactor).distance
+  const solveDistance = (zoomFactor: number) => solveShot(zoomFactor)?.distance ?? NaN
   const fovFor = (half: number) => 2 * THREE.MathUtils.radToDeg(Math.atan(half))
 
   // Framing is the fiddliest thing on this page — `?debug=1` prints the solve.
@@ -299,6 +323,20 @@ export default function PresentationGestures({ config, controls, framing, roomBo
 
     const limit = pullBackLimit()
     const shot = solveShot(zoom.current)
+    // Only when the piece measures nothing at all — an empty or unloadable GLB.
+    // The camera then stays on its placeholder rather than being aimed by a
+    // divide by zero, and the warning says which asset to look at.
+    if (!shot) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(
+          `[PresentationGestures] ${config.layers.frame.path} measures ${frame.size
+            .toArray()
+            .map((n) => n.toFixed(2))
+            .join(' x ')}m, so there is no shot to solve. The camera is left where it was.`
+        )
+      }
+      return
+    }
     targetHalf.current = shot.half
     camera.fov = fovFor(shot.half)
     applyLens(shot.distance)
@@ -402,7 +440,11 @@ export default function PresentationGestures({ config, controls, framing, roomBo
 
     const applyZoom = (factor: number) => {
       zoom.current = THREE.MathUtils.clamp(zoom.current * factor, minZoom, maxZoom)
+      // A wheel or pinch can land before the piece has been measured. The zoom
+      // ratio is still worth keeping — the first re-frame reads it — but there
+      // is no distance to derive from it yet.
       const shot = solveShot(zoom.current)
+      if (!shot) return
       targetDistance.current = shot.distance
       targetHalf.current = shot.half
     }
@@ -496,6 +538,9 @@ export default function PresentationGestures({ config, controls, framing, roomBo
     // after the camera has already settled, and the walls have to pull it back
     // in — and re-spend the difference on the lens — when they arrive.
     const legal = solveShot(zoom.current)
+    // Nothing measured yet — leave the camera on its placeholder. @see solveShot
+    // for what writing the NaN here used to cost.
+    if (!legal) return
     if (legal.distance !== targetDistance.current) targetDistance.current = legal.distance
     targetHalf.current = legal.half
 
@@ -516,11 +561,24 @@ export default function PresentationGestures({ config, controls, framing, roomBo
     }
 
     if (!distanceSettled) {
-      const next = THREE.MathUtils.damp(distance.current, targetDistance.current, 12, delta)
+      // Snap rather than damp out of a non-finite state. `damp` lerps from the
+      // current value, so it cannot recover one — a single bad frame would
+      // otherwise be permanent. Nothing above should produce one any more; this
+      // is here because the failure mode is a hard throw out of three's uniform
+      // upload rather than a dropped frame. @see solveShot.
+      const next = Number.isFinite(distance.current)
+        ? THREE.MathUtils.damp(distance.current, targetDistance.current, 12, delta)
+        : targetDistance.current
       distance.current = Math.abs(next - targetDistance.current) < 1e-4 ? targetDistance.current : next
     }
     if (targetSettled) target.current.copy(desiredTarget.current)
     else target.current.lerp(desiredTarget.current, 1 - Math.exp(-10 * delta))
+
+    // Never hand the renderer a camera it cannot invert. A non-finite view
+    // matrix is not a dropped frame on this page: three projects the cover's
+    // clipping planes through it and throws out of WebGLUniforms. Refusing the
+    // write costs one frame of staleness; the alternative took the page down.
+    if (!Number.isFinite(distance.current) || !isFinite(target.current.lengthSq())) return
 
     // The shift depends on how far away we are — see applyLens. Only on a real
     // change, so a settled camera is not re-projecting every frame.

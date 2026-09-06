@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { ShadowSystem } from '@/components/store/ShadowSystem'
 import { SunLight, DEFAULT_SUN } from '@/components/store/SunLight'
 import type { PartialSun } from '@/components/store/hooks/useStoreConfig'
+import { SHADOW_BUDGET, type DeviceClass } from '@/lib/product/presentation'
 
 /** Slack around the fitted frustum, metres. Covers the piece standing in the
  *  room, and the fact that the box is fitted once, from bounds measured before
@@ -80,11 +81,15 @@ function fitToBox(box: THREE.Box3, position: THREE.Vector3, target: THREE.Vector
 function PresentationSun({
   sun,
   roomBox,
+  device = 'desktop',
 }: {
   sun: PartialSun
   /** The measured room, once PresentationRoom has loaded it. */
   roomBox?: THREE.Box3 | null
+  /** Caps the map size and the PCSS tap count. @see SHADOW_BUDGET */
+  device?: DeviceClass
 }) {
+  const budget = SHADOW_BUDGET[device]
   const fitted = useMemo<PartialSun>(() => {
     if (!roomBox || hasBounds(sun)) return sun
 
@@ -110,10 +115,13 @@ function PresentationSun({
           afterwards and compile against the patched version. */}
       <ShadowSystem
         size={sun.soft?.size ?? DEFAULT_SUN.soft.size}
-        samples={sun.soft?.samples ?? DEFAULT_SUN.soft.samples}
+        // The manifest's tap count is a desktop number. Every shadow-receiving
+        // fragment in the room pays it twice over — blocker search then PCF —
+        // so on a phone it is halved rather than trusted. @see SHADOW_BUDGET
+        samples={Math.min(sun.soft?.samples ?? DEFAULT_SUN.soft.samples, budget.samples)}
         focus={sun.soft?.focus ?? DEFAULT_SUN.soft.focus}
       />
-      <SunLight sun={fitted} />
+      <SunLight sun={fitted} maxResolution={budget.resolution} />
     </>
   )
 }

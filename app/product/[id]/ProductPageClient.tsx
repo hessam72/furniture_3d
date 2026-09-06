@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import { useEnvironment, useGLTF, useTexture } from '@react-three/drei'
 import { QualityProvider } from '@/contexts/QualityContext'
 import { useAssetProbe } from '@/hooks/useAssetProbe'
-import { usePresentation, type ZonePaintConfig } from '@/stores/presentationStore'
+import { usePresentation } from '@/stores/presentationStore'
 import { useShop } from '@/stores/storeShopStore'
 import { findCatalogItemBySceneObject } from '@/lib/store/catalog'
 import catalog from '@/public/config/catalog.json'
@@ -17,14 +17,18 @@ import {
   type ExportSources,
 } from '@/lib/three/exportConfigured'
 import {
-  coverSurface,
+  defaultPaint,
   findCoverVariant,
   isMatte,
+  lowerTier,
   needsEnvironment,
   PHONE_QUERY,
   presentationQuality,
+  readDeviceClass,
   requiredAssets,
   roomMode,
+  TOUCH_QUERY,
+  type DeviceClass,
   type PresentationConfig,
   type ResolvedPresentation,
 } from '@/lib/product/presentation'
@@ -44,32 +48,6 @@ const PresentationScene = dynamic(() => import('@/components/product/Presentatio
 })
 
 const ARProductViewer = dynamic(() => import('@/components/store/ARProductViewer'), { ssr: false })
-
-/** Seeds every zone from the first swatch of its palette, so the piece opens in
- *  a real, sellable finish rather than whatever the GLB happened to ship with. */
-function defaultPaint(config: PresentationConfig): ZonePaintConfig {
-  const cover = findCoverVariant(config, config.layers.cover.default)
-  // Same helper selectCover uses, so the opening finish and every later swap
-  // are described the same way.
-  const surface = coverSurface(config, cover)
-  const first = (zone: 'wood' | 'cover' | 'cushion') => config.palettes[zone]?.[0]
-
-  return {
-    wood: {
-      color: first('wood')?.hex ?? '#c8a06a',
-      roughness: first('wood')?.roughness ?? 0.55,
-      metalness: 0,
-      clearcoat: 0,
-    },
-    cover: { color: first('cover')?.hex ?? '#36454f', ...surface },
-    cushion: {
-      color: first('cushion')?.hex ?? '#e8e0d2',
-      roughness: 0.8,
-      metalness: 0,
-      clearcoat: 0,
-    },
-  }
-}
 
 export default function ProductPageClient({ presentation }: { presentation: ResolvedPresentation }) {
   const { key, product, config } = presentation
@@ -94,6 +72,15 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
   /** Raised by the scene once the piece and room are actually drawn — the probe
    *  below only proves the files exist. */
   const [sceneReady, setSceneReady] = useState(false)
+  /**
+   * How many rungs the tier has been dropped by lost contexts this session.
+   *
+   * A context is lost because the device ran out of room for what we asked it
+   * to draw, so coming back at the same tier asks for it again — which is the
+   * loop the page was stuck in on iPhones: crash, reload, crash. Each loss
+   * costs a rung, permanently for this page view.
+   */
+  const [downgrades, setDowngrades] = useState(0)
 
   const initProduct = usePresentation((s) => s.initProduct)
   const reset = usePresentation((s) => s.reset)
@@ -107,19 +94,23 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
    * desktop tier and a phone with a `quality.mobile` override settles onto it
    * before the canvas mounts behind the splash.
    */
-  const [phone, setPhone] = useState(false)
+  const [device, setDevice] = useState<DeviceClass>('desktop')
+  const phone = device === 'phone'
   useEffect(() => {
-    const mq = window.matchMedia(PHONE_QUERY)
-    const apply = () => setPhone(mq.matches)
+    const queries = [window.matchMedia(PHONE_QUERY), window.matchMedia(TOUCH_QUERY)]
+    const apply = () => setDevice(readDeviceClass())
     apply()
     // matchMedia rather than a resize listener: this only ever needs to know
     // which side of the query we are on, and a resize handler would re-render
     // the page on every frame of a window drag. It also keeps up with a phone
     // being turned, which the query is written to answer either way round.
-    mq.addEventListener('change', apply)
-    return () => mq.removeEventListener('change', apply)
+    queries.forEach((mq) => mq.addEventListener('change', apply))
+    return () => queries.forEach((mq) => mq.removeEventListener('change', apply))
   }, [])
-  const qualityPreset = useMemo(() => presentationQuality(config, phone), [config, phone])
+  const qualityPreset = useMemo(
+    () => lowerTier(presentationQuality(config, device), downgrades),
+    [config, device, downgrades]
+  )
 
   const assets = useMemo(() => requiredAssets(config), [config])
   const { state, missing } = useAssetProbe(useMemo(() => assets, [assets, probeKey]))
@@ -139,6 +130,13 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
   useEffect(() => {
     setArSupported(isARCapable())
     supportsBlobAR().then(setLiveARPossible)
+  }, [])
+
+  // Kills iOS pull-to-refresh over this page. @see .viewport-locked
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.add('viewport-locked')
+    return () => root.classList.remove('viewport-locked')
   }, [])
 
   // Object URLs outlive React state, so the last one has to be released by hand.
@@ -220,6 +218,13 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
     // and a room GLB so `room.mode` can switch between them.
     if (roomMode(config) === 'image' && config.room.image) useTexture.preload(config.room.image)
 
+    // Not on a phone. Warming the other covers buys a swap that never suspends,
+    // and pays for it in exactly the currency a phone has least of: every warmed
+    // variant is a second full GLB parsed and held in drei's cache, on a device
+    // already at its ceiling with the one it is showing. There the swap
+    // suspends behind the wipe instead, which is what the wipe is for.
+    if (phone) return
+
     const rest = config.layers.cover.variants
       .filter((v) => v.id !== config.layers.cover.default)
       .map((v) => v.path)
@@ -232,7 +237,7 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
       if (idle && cancel) cancel(handle)
       else window.clearTimeout(handle as number)
     }
-  }, [state, assets, config])
+  }, [state, assets, config, phone])
 
   const retry = useCallback(() => {
     // Purge the cache only when the *files* are the problem — a 404, or a GLB
@@ -293,6 +298,9 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
    */
   const handleContextLost = useCallback(() => {
     setContextLost(true)
+    // Whatever we asked for was too much for this GPU, so `retry` must not ask
+    // for it again. @see downgrades
+    setDowngrades((n) => n + 1)
     setLayerError('نمایش سه‌بعدی متوقف شد — حافظه گرافیکی دستگاه پر شد')
   }, [])
 
@@ -311,7 +319,12 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
 
   return (
     <QualityProvider preset={qualityPreset}>
-      <div className="relative h-screen w-screen overflow-hidden bg-[var(--surface-0)]">
+      {/* `viewport-fill`, not `h-screen`: iOS reads `100vh` as the height with
+          the address bar retracted, so a full-screen container is taller than
+          the screen. Here that only cost the canvas ~13% of its pixels to draw
+          behind the bar, but it is the same bug that cropped the simple
+          viewer's controls. */}
+      <div className="viewport-fill relative w-screen overflow-hidden bg-[var(--surface-0)]">
         {/* Unmounted while AR is open: model-viewer takes a WebGL context of
             its own, and two live contexts plus the exported GLB is what tips a
             phone over. Remounting is cheap — the GLBs stay in drei's cache. */}

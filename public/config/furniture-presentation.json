@@ -6,7 +6,7 @@
       "path": "/models/presentation/test/final-scene.glb",
       "imageDistance": 2,
       "imageOffsetY": 0,
-      "pieceOffsetY": 0 ,
+      "pieceOffsetY": 0,
       "pieceLift": 0.08,
       "offset": [
         -0.12,
@@ -181,24 +181,27 @@
       }
     },
     "quality": {
-      "preset": "high",
-      "mobile": "high"
+      "preset": "low",
+      "mobile": "low"
     },
-    "floor": {
-      "enabled": true,
-      "opacity": 0.35,
-      "blend": "normal",
-      "offsetY": 0.1,
-      "resolution": 512,
-      "mixStrength": 1,
-      "mixBlur": 1.4,
-      "mixContrast": 1,
-      "roughness": 0.6,
-      "metalness": 0.4,
-      "depthScale": 1.2,
-      "minDepthThreshold": 0.2,
-      "maxDepthThreshold": 1.4,
-      "color": "#ffffff"
+    "simple": {
+      "model": "/models/presentation/test/final curve-optimized.glb",
+      "hdr": "/hdr/simple_hdr.exr",
+      "envIntensity": 1,
+      "background": "#ffffff",
+      "fov": 35,
+      "padding": 1.1,
+      "minZoom": 0.1,
+      "maxZoom": 2.6,
+      "lighting": {
+        "ambient": 0.35,
+        "key": 1.1,
+        "fill": 0.35
+      },
+      "quality": {
+        "preset": "high",
+        "mobile": "medium"
+      }
     },
     "explode": {
       "gap": 0.45,

@@ -2,7 +2,8 @@ import presentationConfig from '@/public/config/furniture-presentation.json'
 import productsConfig from '@/public/config/products.json'
 import type { ProductData } from '@/components/store/ProductInteraction'
 import type { PartialSun } from '@/components/store/hooks/useStoreConfig'
-import { DEFAULT_QUALITY, type QualityPreset } from '@/lib/config/quality'
+import type { ZonePaintConfig } from '@/stores/presentationStore'
+import { type QualityPreset } from '@/lib/config/quality'
 
 /** The three independently colourable parts of a piece. Unlike the showroom's
  *  keyword matching, the zone is implied by which layer GLB a mesh came from —
@@ -202,49 +203,13 @@ export function sunEnabled(config: PresentationConfig): boolean {
   return config.sun?.enabled === true
 }
 
-/** Code-side fallback, so a manifest names only what it wants to change.
- *  Tuned for a lit room rather than /store's dark salon: a sheen you can see
- *  the tiles through, not a mirror. */
-export const DEFAULT_FLOOR: PresentationFloorConfig = {
-  enabled: false,
-  opacity: 0.35,
-  blend: 'normal',
-  offsetY: 0.004,
-  mixStrength: 1,
-  mixBlur: 1.4,
-  mixContrast: 1,
-  roughness: 0.6,
-  metalness: 0.4,
-  depthScale: 1.2,
-  minDepthThreshold: 0.2,
-  maxDepthThreshold: 1.4,
-  color: '#ffffff',
-}
-
-/** Floor settings with every default filled in. */
-export function floorReflection(config: PresentationConfig): PresentationFloorConfig {
-  return { ...DEFAULT_FLOOR, ...config.floor }
-}
-
 /**
- * The tier this product renders at.
- *
- * The app-wide provider drops to `low` under 768px and otherwise restores
- * whatever /car's quality selector last stored — right for a scene you walk
- * around, wrong here. A presentation is one piece in a booth under a camera
- * that only dollies: the frame cost is known up front, so the manifest names
- * the tier and the device only decides which of the two it gets.
- *
- * `phone` is deliberately not "narrow". A phone held sideways is wider than a
- * 768px breakpoint and would have been served the desktop tier; a desktop
- * browser in a short window is not a phone and must not be served the mobile
- * one. @see isPhoneViewport
+ * This page's own fallback, deliberately not `DEFAULT_QUALITY` — that one is
+ * shared with /car and /store, whose costs scale with what the player walks
+ * into. A manifest that names a tier still wins outright, up to the device
+ * ceiling below.
  */
-export function presentationQuality(config: PresentationConfig, phone: boolean): QualityPreset {
-  const q = config.quality
-  const base = q?.preset ?? DEFAULT_QUALITY
-  return phone ? q?.mobile ?? base : base
-}
+export const PRESENTATION_DEFAULT_QUALITY: QualityPreset = 'medium'
 
 /**
  * Media query for "a phone", as opposed to a tablet or a small window.
@@ -268,6 +233,272 @@ export const PHONE_QUERY = '(pointer: coarse) and ((max-width: 767px) or (max-he
  * that one target. @see PresentationPostProcessing
  */
 export const TOUCH_QUERY = '(pointer: coarse)'
+
+/** What class of hardware is drawing this page. @see readDeviceClass */
+export type DeviceClass = 'desktop' | 'tablet' | 'phone'
+
+/**
+ * Resolve the device class from the two queries above.
+ *
+ * Safe to call during a server render — it answers `desktop`, which is what the
+ * page's first (server) paint is anyway, and the client settles it before the
+ * canvas mounts. Inside the Canvas, which is `dynamic(..., { ssr: false })`, it
+ * can be read synchronously in a `useState` initialiser.
+ */
+export function readDeviceClass(): DeviceClass {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 'desktop'
+  if (window.matchMedia(PHONE_QUERY).matches) return 'phone'
+  if (window.matchMedia(TOUCH_QUERY).matches) return 'tablet'
+  return 'desktop'
+}
+
+/** Cheapest first — the ladder the ceilings and the downgrade below walk. */
+const TIER_LADDER: QualityPreset[] = ['low', 'medium', 'high', 'ultra']
+
+/**
+ * The highest tier each class of hardware may be handed, whatever the manifest
+ * asks for.
+ *
+ * This is not a taste setting, it is the page's memory budget, and it is the
+ * fix for /product killing iPhones while /store — a far bigger scene — did not.
+ * /store runs under the app-wide provider, which drops a phone to `low`; this
+ * page pins its tier from the manifest and so *bypassed* that downgrade, and the
+ * manifest asked for `high` on mobile. On an iPhone that meant, all at once:
+ *
+ *  - DPR 1.75 instead of 1 — 3x the pixels, and every full-screen pass with them
+ *  - a 2048² shadow map instead of 512² — 16x the texels, ~32MB on its own
+ *  - the floor's planar reflection — since dropped from the page outright —
+ *    re-rendering the whole room from a mirrored camera on every drawn frame
+ *  - an RGBA16F composer chain sized to those 3x pixels
+ *
+ * Sum it and the tab is past what iOS Safari will let a WebGL page hold, so the
+ * context is dropped and the tab reloaded — repeatedly, since the retry came
+ * back at the same tier. A phone therefore gets what /store proves a phone can
+ * hold, a tablet stops one rung short of the desktop render, and the manifest
+ * keeps its say anywhere below the ceiling.
+ */
+export const DEVICE_TIER_CEILING: Record<DeviceClass, QualityPreset> = {
+  phone: 'low',
+  tablet: 'medium',
+  desktop: 'ultra',
+}
+
+/**
+ * Shadow work a device may be asked for, independent of the tier.
+ *
+ * Separate from the ceiling above because it is the one cost the tier does not
+ * describe honestly: drei's PCSS patch bakes `samples` into the global shadow
+ * chunk, so every shadow-receiving fragment in the room pays a blocker search
+ * *plus* a PCF loop of that many taps. The manifest asks for 16, which is a
+ * desktop number — on a phone it is the single most expensive thing on screen.
+ */
+export const SHADOW_BUDGET: Record<DeviceClass, { resolution: number; samples: number }> = {
+  phone: { resolution: 512, samples: 8 },
+  tablet: { resolution: 1024, samples: 12 },
+  desktop: { resolution: Infinity, samples: Infinity },
+}
+
+/** Clamp a tier to a ceiling, on the ladder above. */
+function capTier(tier: QualityPreset, ceiling: QualityPreset): QualityPreset {
+  const at = TIER_LADDER.indexOf(tier)
+  const max = TIER_LADDER.indexOf(ceiling)
+  return at > max ? ceiling : tier
+}
+
+/** Step a tier down the ladder, never below `low`. @see the context-loss
+ *  downgrade in ProductPageClient. */
+export function lowerTier(tier: QualityPreset, steps: number): QualityPreset {
+  if (steps <= 0) return tier
+  return TIER_LADDER[Math.max(0, TIER_LADDER.indexOf(tier) - steps)]
+}
+
+/**
+ * The tier this product renders at.
+ *
+ * The app-wide provider drops to `low` under 768px and otherwise restores
+ * whatever /car's quality selector last stored — right for a scene you walk
+ * around, wrong here. A presentation is one piece in a booth under a camera
+ * that only dollies: the frame cost is known up front, so the manifest names
+ * the tier and the device only decides which of the two it gets.
+ *
+ * What it does *not* get to do is name a tier the device cannot hold — the
+ * manifest is authored on a desktop and cannot know. @see DEVICE_TIER_CEILING
+ */
+export function presentationQuality(config: PresentationConfig, device: DeviceClass): QualityPreset {
+  const q = config.quality
+  const base = q?.preset ?? PRESENTATION_DEFAULT_QUALITY
+  const asked = device === 'phone' ? q?.mobile ?? base : base
+  return capTier(asked, DEVICE_TIER_CEILING[device])
+}
+
+/**
+ * The tier the plain viewer at /product/[id]/simple opens on.
+ *
+ * Deliberately not `presentationQuality`. That one is a memory budget for a
+ * page carrying a room GLB, a 2048² shadow map and an RGBA16F composer chain —
+ * none of which exist here. The tier on the simple viewer
+ * buys DPR and anisotropy and nothing else, so a phone can honestly hold more
+ * than `low`, and a desktop should not inherit a `preset` that was dialled down
+ * to keep phones alive on the heavy page. The picker overrides all of it.
+ */
+export const SIMPLE_VIEWER_QUALITY: Record<DeviceClass, QualityPreset> = {
+  phone: 'medium',
+  tablet: 'high',
+  desktop: 'high',
+}
+
+/**
+ * The one GLB a plain viewer shows, when the manifest does not name one.
+ *
+ * The cover variant *is* the finished piece — the layer ladder on the full page
+ * hides the frame at step 1 and shows the cover alone — so a viewer that wants
+ * "the product" wants this file. A product that ships no cover variants falls
+ * back to the frame, which is then all there is of it.
+ */
+export function finishedPiecePath(config: PresentationConfig): string {
+  return findCoverVariant(config, config.layers.cover.default)?.path ?? config.layers.frame.path
+}
+
+/**
+ * The `simple` block: everything /product/[id]/simple draws, as a manifest.
+ *
+ * Every field is optional and every default is the value the page shipped with,
+ * so a product with no `simple` block renders exactly as before. What the block
+ * buys is a product presented on its own terms — a piece photographed against
+ * warm grey rather than white, a longer lens for a wardrobe, its own HDR — with
+ * none of it touching the full presentation page, which reads a different part
+ * of the same manifest.
+ */
+export interface SimpleViewerMeta {
+  /** The GLB to show. Omitted → the finished piece. @see finishedPiecePath */
+  model?: string
+  /** Image-based light. Omitted → `room.hdr`; `null` to render with the studio
+   *  fill alone, for a product whose materials are meant to be read flat. */
+  hdr?: string | null
+  /** Strength of the environment. Omitted → `room.envIntensity`, then the tier's. */
+  envIntensity?: number
+  /** Backdrop, and the canvas clear colour with it. Meant for a studio ground —
+   *  white, off-white, a warm grey; the page's own chrome is light-themed and
+   *  would not read over a dark one. */
+  background?: string
+  /**
+   * Vertical field of view.
+   *
+   * Long by default. A wide lens bows straight edges, which is the first thing
+   * a buyer notices on a piece of furniture and the last thing you want on a
+   * product shot — so this goes *up* only for a piece that has to be shot from
+   * close in.
+   */
+  fov?: number
+  /**
+   * Breathing room around the fitted piece, as a multiple of the just-fits
+   * distance.
+   *
+   * Small by default, because the fit is solved against the piece's bounding
+   * *sphere* — the only measure that cannot clip at some angle of a free orbit —
+   * and a sphere is a generous bound for anything that is not round, so most
+   * pieces already carry margin this number never sees. Raise it for a piece
+   * that reads cramped, which usually means a genuinely round one.
+   */
+  padding?: number
+  /** Dolly clamps, as multiples of the framed distance. */
+  minZoom?: number
+  maxZoom?: number
+  /**
+   * The studio fill over the top of the HDR. Not a sun: nothing here casts, so
+   * there is still no shadow pass and no shadow map.
+   *
+   * `key` gives the piece its form where an interior HDR alone would leave it
+   * flat, `fill` opens the shaded side, and `ambient` keeps that side off pure
+   * black against a white ground. Zero any of them for a piece that should be
+   * read by the environment alone.
+   */
+  lighting?: { ambient?: number; key?: number; fill?: number }
+  /** Opening tier, per device. The on-screen picker overrides it either way.
+   *  @see SIMPLE_VIEWER_QUALITY */
+  quality?: { preset?: QualityPreset; mobile?: QualityPreset }
+}
+
+export interface ResolvedSimpleViewer {
+  model: string
+  hdr: string | null
+  envIntensity?: number
+  background: string
+  fov: number
+  padding: number
+  minZoom: number
+  maxZoom: number
+  lighting: { ambient: number; key: number; fill: number }
+}
+
+/** The `simple` block with every default filled in, in the shape of
+ *  `floorReflection` and `galleryLighting`. */
+export function simpleViewer(config: PresentationConfig): ResolvedSimpleViewer {
+  const s = config.simple ?? {}
+  return {
+    model: s.model ?? finishedPiecePath(config),
+    // `null` is a deliberate "no environment", so only `undefined` falls through.
+    hdr: s.hdr === null ? null : s.hdr ?? config.room.hdr ?? null,
+    // Left undefined so the viewer can fall back to the quality tier's value,
+    // which the manifest has no business knowing.
+    envIntensity: s.envIntensity ?? config.room.envIntensity,
+    background: s.background ?? '#ffffff',
+    fov: s.fov ?? 35,
+    padding: s.padding ?? 1.1,
+    minZoom: s.minZoom ?? 0.35,
+    maxZoom: s.maxZoom ?? 2.6,
+    lighting: {
+      ambient: s.lighting?.ambient ?? 0.35,
+      key: s.lighting?.key ?? 1.1,
+      fill: s.lighting?.fill ?? 0.35,
+    },
+  }
+}
+
+/**
+ * The tier the plain viewer opens on: the manifest's, else the device default.
+ *
+ * Uncapped, unlike `presentationQuality`. There is no ceiling to enforce
+ * because there is nothing here to overrun one — no shadow map, no composer,
+ * no second scene render — so the tier moves DPR and anisotropy and stops.
+ */
+export function simpleViewerQuality(config: PresentationConfig, device: DeviceClass): QualityPreset {
+  const q = config.simple?.quality
+  const base = q?.preset ?? SIMPLE_VIEWER_QUALITY[device]
+  return device === 'phone' ? q?.mobile ?? base : base
+}
+
+/**
+ * Seeds every zone from the first swatch of its palette, so the piece opens in
+ * a real, sellable finish rather than whatever the GLB happened to ship with.
+ *
+ * Shared by the full presentation and the plain viewer: both put the same piece
+ * on screen in the same opening colours, and a swatch picked on one page means
+ * the same thing on the other.
+ */
+export function defaultPaint(config: PresentationConfig): ZonePaintConfig {
+  const cover = findCoverVariant(config, config.layers.cover.default)
+  // Same helper selectCover uses, so the opening finish and every later swap
+  // are described the same way.
+  const surface = coverSurface(config, cover)
+  const first = (zone: PresentationZone) => config.palettes[zone]?.[0]
+
+  return {
+    wood: {
+      color: first('wood')?.hex ?? '#c8a06a',
+      roughness: first('wood')?.roughness ?? 0.55,
+      metalness: 0,
+      clearcoat: 0,
+    },
+    cover: { color: first('cover')?.hex ?? '#36454f', ...surface },
+    cushion: {
+      color: first('cushion')?.hex ?? '#e8e0d2',
+      roughness: 0.8,
+      metalness: 0,
+      clearcoat: 0,
+    },
+  }
+}
 
 export function lightingMode(config: PresentationConfig): RoomLighting {
   return config.room.lightingMode ?? 'studio'
@@ -322,65 +553,6 @@ export function galleryLighting(config: PresentationConfig): ResolvedGallery {
   }
 }
 
-/**
- * A semi-transparent planar reflection laid *over* the room's own floor.
- *
- * /store's ReflectiveFloor is an opaque plane carrying its own concrete texture
- * — it replaces the floor. Here the room GLB already has a floor worth looking
- * at, so only the reflection is ported: the same drei planar reflector (a
- * mirrored virtual camera into an FBO, obliquely clipped at the plane), on a
- * transparent plane a couple of millimetres above the real one, with no `map`
- * of its own. The floor's texture reads through the gaps in the reflection
- * rather than being covered over.
- */
-export interface PresentationFloorConfig {
-  enabled: boolean
-  /**
-   * How much of the reflection layer survives the blend, 0..1. This is the
-   * whole point of the feature: at 1 the floor is a mirror and its texture is
-   * gone, at 0.3 the texture is still what you read and the reflection is a
-   * sheen over it.
-   */
-  opacity: number
-  /**
-   * `normal` alpha-blends the reflection over the floor — dark reflections
-   * darken it, which is what a polished surface does as it turns mirror-like.
-   *
-   * `additive` only ever adds reflected light. Nothing darkens, so the floor's
-   * texture survives at any opacity; the trade is that a bright reflection can
-   * blow out. The better choice over a dark floor.
-   */
-  blend: 'normal' | 'additive'
-  /** Plane size in metres. Omitted → the room's own XZ footprint. */
-  size?: number
-  /** Clearance over `room.floorY`. Enough to beat depth precision, small enough
-   *  not to read as a sheet of glass hovering over the floor. */
-  offsetY: number
-  /**
-   * Reflection render-target size. Omitted → the quality tier's
-   * `floorReflectionResolution` (128 on low, up to 2048 on ultra).
-   *
-   * The tier is the right default because this is the one thing here that
-   * costs per pixel. Name it only to overrule a tier that reads too coarse —
-   * the floor is on screen at all times, and 128 on a phone shows it.
-   */
-  resolution?: number
-  /** Strength of the reflection in the layer, before `opacity`. */
-  mixStrength: number
-  /** Roughness-driven blur of the reflection. 0 is a hard mirror. */
-  mixBlur: number
-  /** Contrast pushed through the reflection. Above 1 deepens it. */
-  mixContrast: number
-  /** Higher = blurrier reflection, since `mixBlur` is scaled by it. */
-  roughness: number
-  metalness: number
-  /** Fades the reflection with distance from the reflected surface, so a piece
-   *  reflects hard at the feet and dissolves further out. 0 disables. */
-  depthScale: number
-  minDepthThreshold: number
-  maxDepthThreshold: number
-  color: string
-}
 
 export interface PresentationConfig {
   room: PresentationRoom
@@ -502,9 +674,6 @@ export interface PresentationConfig {
    * loads, instead of being hand-tuned per product. @see PresentationSun.
    */
   sun?: PartialSun
-  /** Semi-transparent reflection over the room's floor. Absent → off, and no
-   *  reflection pass runs. @see PresentationFloor */
-  floor?: Partial<PresentationFloorConfig>
   /** Render tier, pinned per product rather than per device. @see presentationQuality */
   quality?: {
     preset?: QualityPreset
@@ -517,6 +686,9 @@ export interface PresentationConfig {
      */
     ao?: boolean
   }
+  /** Everything /product/[id]/simple draws. Read by that page alone — the full
+   *  presentation ignores it entirely. @see SimpleViewerMeta */
+  simple?: SimpleViewerMeta
   explode?: { gap: number; durationMs: number }
   wipe?: { durationMs: number }
 }

@@ -47,10 +47,15 @@ const sunDebugRequested = () =>
  * (PCSS) early-returns fully-lit for any fragment outside it, so an undersized
  * box leaks sunlight through walls.
  */
-export function SunLight({ sun }: { sun?: PartialSun }) {
+export function SunLight({ sun, maxResolution }: { sun?: PartialSun; maxResolution?: number }) {
   const invalidate = useThree((s) => s.invalidate)
   const { settings } = useQuality()
-  const res = settings.shadowResolution
+  // The tier picks the map size; `maxResolution` is a hard device cap over the
+  // top of it, for a page that pins its tier from a manifest rather than taking
+  // the provider's phone downgrade. A 2048² map is ~32MB of FBO on a device
+  // that has nothing like that to spare. Left undefined (the store) nothing
+  // changes. @see SHADOW_BUDGET
+  const res = Math.min(settings.shadowResolution, maxResolution ?? Infinity)
 
   // Dev-helper live edits fully replace the config-merged value
   const [override, setOverride] = useState<SunConfig | null>(null)

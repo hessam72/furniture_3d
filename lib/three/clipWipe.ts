@@ -18,6 +18,12 @@ export interface WipeBounds {
  */
 export function localBoundsY(root: THREE.Object3D): WipeBounds {
   const box = new THREE.Box3().setFromObject(root)
+  // An object with no renderable geometry leaves the box *empty*, which in
+  // three means min = +Infinity and max = -Infinity rather than zero. Those go
+  // straight into the plane constant, and `coplanarPoint` — normal scaled by
+  // -constant — turns the zero components of a Y-normal into `0 * Infinity`,
+  // i.e. NaN, in a value the renderer uploads without checking.
+  if (box.isEmpty()) return { minY: -PAD, maxY: PAD }
   return { minY: box.min.y - PAD, maxY: box.max.y + PAD }
 }
 

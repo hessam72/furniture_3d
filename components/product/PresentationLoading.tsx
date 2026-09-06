@@ -25,6 +25,21 @@ import type { StackFraming } from './FurnitureStack'
  * Then one more drawn frame, after a `compile`, so the reveal is not the frame
  * that pays for shader compilation.
  */
+
+/**
+ * How often the waiting phase asks the demand loop for a frame, in ms.
+ *
+ * This used to be `invalidate()` from inside `useFrame`, which is a loop that
+ * feeds itself: the canvas ran flat out at 60fps for the whole load. Nothing is
+ * watching — the splash covers the canvas until `onReady` — and it is the most
+ * expensive moment of the page's life to be doing it in, since the room and the
+ * piece are still downloading and parsing on the same device. Frames are only
+ * needed here to notice that the stack has measured itself and the room has
+ * landed, and both of those already call `invalidate` when they happen; this is
+ * the safety net under them, not the mechanism.
+ */
+const WAIT_PUMP_MS = 120
+
 export function SceneReady({
   framing,
   needsRoom,
@@ -40,12 +55,17 @@ export function SceneReady({
   const { gl, scene, camera, invalidate } = useThree()
   const done = useRef(false)
   const compiled = useRef(false)
+  const [waiting, setWaiting] = useState(true)
+
+  useEffect(() => {
+    if (!waiting) return
+    invalidate()
+    const id = window.setInterval(invalidate, WAIT_PUMP_MS)
+    return () => window.clearInterval(id)
+  }, [waiting, invalidate])
 
   useFrame(() => {
     if (done.current) return
-    // Demand loop: nothing else is asking for frames while we wait.
-    invalidate()
-
     if (!framing.current) return
     if (needsRoom && !roomBox) return
 
@@ -54,10 +74,12 @@ export function SceneReady({
       // Warm every program while the overlay still covers the canvas, so the
       // first frame the user sees is not the one that stalls compiling them.
       gl.compile(scene, camera)
+      invalidate()
       return
     }
 
     done.current = true
+    setWaiting(false)
     onReady()
   })
 
