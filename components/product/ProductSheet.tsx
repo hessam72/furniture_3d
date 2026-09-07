@@ -46,6 +46,12 @@ interface Props {
   arLive?: boolean
   arBuilding?: boolean
   arError?: boolean
+  /** False where there is no layer stack to pull apart — the plain viewer
+   *  mounts one file at a time. @see LayerStepper */
+  explodable?: boolean
+  /** A line under the swatch rows. The plain viewer shows one layer at a
+   *  time, so it says which view a given palette is visible on. */
+  zoneNote?: string
   /** Slides the sheet off-screen while the AR overlay owns the display. Kept
    *  mounted so the open tab, the expanded state and the reported screen
    *  coverage all survive — closing AR returns you exactly where you were. */
@@ -61,6 +67,8 @@ export default function ProductSheet({
   arLive = false,
   arBuilding = false,
   arError = false,
+  explodable = true,
+  zoneNote,
   hidden = false,
 }: Props) {
   const { product, config } = presentation
@@ -254,12 +262,15 @@ export default function ProductSheet({
                       onPick={pick(zone)}
                     />
                   ))}
+                  {zoneNote && (
+                    <p className="text-[11px] leading-6 text-[var(--text-muted)]">{zoneNote}</p>
+                  )}
                 </div>
               )}
 
               {activeTab === 'layers' && (
                 <div className="space-y-5">
-                  <LayerStepper config={config} />
+                  <LayerStepper config={config} explode={explodable} />
                   <div className="space-y-2">
                     <span className="text-[12px] text-[var(--text-muted)]">جنس رویه</span>
                     <CoverVariantGrid
