@@ -7,7 +7,7 @@ import type * as THREE from 'three'
 import { usePresentation } from '@/stores/presentationStore'
 import { useAssetProbe } from '@/hooks/useAssetProbe'
 import { isARCapable, supportsBlobAR } from '@/lib/device-utils'
-import { exportSignature, exportSinglePieceGLB } from '@/lib/three/exportConfigured'
+import { exportSignature, exportSinglePieceGLB, loadExportScene } from '@/lib/three/exportConfigured'
 import {
   defaultPaint,
   findCoverVariant,
@@ -147,8 +147,19 @@ export default function ShowroomFeatured({
       return
     }
 
-    const { paint } = usePresentation.getState()
-    const signature = exportSignature(paint, layer)
+    /**
+     * AR ships the upholstered piece, never the bare frame — the frame is the
+     * structure under it, and nobody places a skeleton in their living room.
+     *
+     * Showing it also means the section is painting the *cover* zone with a
+     * wood swatch, since the viewer paints whatever single file it mounts as
+     * `cover`. So the export takes the manifest's opening finish instead, which
+     * is the colour the piece is wearing the moment the customer switches back.
+     */
+    const live = usePresentation.getState().paint
+    const arVariant = variant ?? (config ? findCoverVariant(config, config.layers.cover.default) : null)
+    const paint = showingFrame && config ? defaultPaint(config) : live
+    const signature = exportSignature(paint, `cover:${arVariant?.id ?? 'default'}`)
     if (arCache.current?.signature === signature) {
       setArUrl(arCache.current.url)
       setArOpen(true)
@@ -157,7 +168,11 @@ export default function ShowroomFeatured({
 
     setArBusy(true)
     try {
-      const blob = await exportSinglePieceGLB(source.current, paint, variant)
+      // Loaded only when the frame is what is mounted; otherwise the scene
+      // already on screen is the finished piece.
+      const piece =
+        showingFrame && arVariant ? await loadExportScene(arVariant.path) : source.current
+      const blob = await exportSinglePieceGLB(piece, paint, arVariant)
       const url = URL.createObjectURL(blob)
       if (arCache.current) URL.revokeObjectURL(arCache.current.url)
       arCache.current = { signature, url }
@@ -173,7 +188,7 @@ export default function ShowroomFeatured({
     } finally {
       setArBusy(false)
     }
-  }, [layer, liveAR, variant, fallbackGlb])
+  }, [config, liveAR, showingFrame, variant, fallbackGlb])
 
   const productName = presentation?.product.name ?? featured.title
 

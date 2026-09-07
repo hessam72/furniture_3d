@@ -13,7 +13,7 @@ import { useShop } from '@/stores/storeShopStore'
 import { findCatalogItemBySceneObject, type Catalog } from '@/lib/store/catalog'
 import catalog from '@/public/config/catalog.json'
 import { isARCapable, supportsBlobAR } from '@/lib/device-utils'
-import { exportSignature, exportSinglePieceGLB } from '@/lib/three/exportConfigured'
+import { exportSignature, exportSinglePieceGLB, loadExportScene } from '@/lib/three/exportConfigured'
 import { QUALITY_PRESETS, type QualityPreset } from '@/lib/config/quality'
 import {
   defaultPaint,
@@ -243,7 +243,12 @@ function Viewer({
     }
 
     const { paint } = usePresentation.getState()
-    const signature = exportSignature(paint, `${zone}:${coverId ?? 'frame'}`)
+    /** What the customer places in their room is always the upholstered piece,
+     *  whichever layer the page is showing — the frame is the structure *under*
+     *  it, not a product. Keyed on the cover, so the file the page happens to
+     *  be mounting cannot split the cache. */
+    const coverPath = variant?.path ?? finishedPiecePath(config)
+    const signature = exportSignature(paint, `cover:${variant?.id ?? 'default'}`)
     if (arCache.current?.signature === signature) {
       setArUrl(arCache.current.url)
       setShowAR(true)
@@ -253,7 +258,10 @@ function Viewer({
     setArBuilding(true)
     setArError(false)
     try {
-      const blob = await exportSinglePieceGLB(source.current, paint, variant, { zone })
+      // Loaded only when the frame is what is mounted; otherwise the scene
+      // already on screen is the finished piece.
+      const piece = showingFrame ? await loadExportScene(coverPath) : source.current
+      const blob = await exportSinglePieceGLB(piece, paint, variant, { zone: 'cover' })
       const url = URL.createObjectURL(blob)
       if (arCache.current) URL.revokeObjectURL(arCache.current.url)
       arCache.current = { signature, url }
@@ -268,7 +276,7 @@ function Viewer({
     } finally {
       setArBuilding(false)
     }
-  }, [coverId, liveAR, product.glbPath, variant, zone])
+  }, [config, liveAR, product.glbPath, showingFrame, variant])
 
   /**
    * Leaving AR remounts the canvas: it was unmounted to give the overlay the
