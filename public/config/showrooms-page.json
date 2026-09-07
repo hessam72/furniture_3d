@@ -208,9 +208,9 @@
           "defaultCover": "leather",
           "hdr": "/hdr/200_hdrmaps_com_free_1kk.exr",
           "envIntensity": 1,
-          "background": "#f6f7f9",
+          "background": "#ececef",
           "fov": 35,
-          "padding": 1.1,
+          "padding": 0.95,
           "minZoom": 0.1,
           "maxZoom": 2.6,
           "lighting": {

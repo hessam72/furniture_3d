@@ -29,7 +29,7 @@ import type { PlinthSpec } from '@/components/product/ViewerPlinth'
  */
 /** The canvas clear colour. Matched by `.sr-stage`'s own ground so the square
  *  canvas disappears into the rounded plate it sits on. */
-export const STAGE_BG = '#f6f7f9'
+export const STAGE_BG = '#ececef'
 
 export default function ShowroomStage({
   config,
