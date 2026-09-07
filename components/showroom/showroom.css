@@ -952,17 +952,17 @@
   position: relative;
   aspect-ratio: 4 / 3;
   border-radius: var(--sr-r-md);
-  background: radial-gradient(70% 60% at 50% 35%, #ffffff, #f0f2f5 75%);
+  /* background: radial-gradient(70% 60% at 50% 35%, #ffffff, #f0f2f5 75%); */
   overflow: hidden;
   display: grid;
   place-items: center;
 }
 .sr-card-media img { inline-size: 100%; block-size: 100%; object-fit: contain; }
 .sr-card-media .sr-podium {
-  inset-inline: 26%;
-  inset-block-end: 12%;
-  block-size: 10%;
-  box-shadow: 0 16px 26px -18px rgb(14 22 38 / 45%), 0 0 34px 8px var(--sr-glow-soft);
+     inset-inline: 8%;
+    inset-block-end: 15%;
+    block-size: 10%;
+    box-shadow: 0 16px 26px -18px rgb(14 22 38 / 13%), 0 0 34px 8px rgb(91 141 239 / 19%);
 }
 .sr-card-ghost { color: var(--sr-line-2); }
 .sr-badge {
