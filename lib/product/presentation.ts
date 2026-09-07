@@ -45,10 +45,9 @@ export interface LayerMeta {
  *    its can become a paint target however it is named or tagged. The swatches
  *    dress the piece, and a plinth that changed with them would read as part
  *    of the product.
- *  - **No AR.** `ExportSources` has room for the frame, the soft layer and the
- *    cover, and nothing else; the stage is simply never registered, so the
- *    configured GLB cannot carry it. What the customer places in their room is
- *    the furniture, not the showroom it was photographed in.
+ *  - **No AR.** AR hands model-viewer the selected cover's own GLB (@see
+ *    arModelPath), and the stage is a separate file. What the customer places
+ *    in their room is the furniture, not the showroom it was photographed in.
  *
  * It does spin with the piece — see `stageYawRef` in FurnitureStack.
  */
@@ -357,6 +356,29 @@ export const SIMPLE_VIEWER_QUALITY: Record<DeviceClass, QualityPreset> = {
  */
 export function finishedPiecePath(config: PresentationConfig): string {
   return findCoverVariant(config, config.layers.cover.default)?.path ?? config.layers.frame.path
+}
+
+/**
+ * The file every AR button hands to model-viewer: the selected cover's own GLB,
+ * straight from `public/models`.
+ *
+ * Shared by all three surfaces so "view in your room" means the same file
+ * wherever it is tapped, and deliberately a *static path* rather than a model
+ * built in the browser. The runtime export baked the chosen colours in, but
+ * building it — walking the scene, cloning every material, holding the GLB as
+ * both an ArrayBuffer and a Blob while model-viewer starts a second WebGL
+ * context — is what crashed real phones mid-"preparing". A URL the browser has
+ * already cached costs nothing, works on every AR path (Scene Viewer refuses
+ * blob URLs outright), and still carries the choice that matters most: the
+ * upholstery the customer picked.
+ *
+ * Never the frame: what goes in the room is the finished piece.
+ */
+export function arModelPath(config: PresentationConfig, coverId: string | null): string | null {
+  const path = findCoverVariant(config, coverId)?.path ?? finishedPiecePath(config)
+  // A product with no cover variants falls back to the frame, which is not a
+  // product to place in a room — the caller's published GLB stands in instead.
+  return path === config.layers.frame.path ? null : path
 }
 
 /**

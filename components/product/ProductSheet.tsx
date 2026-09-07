@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, type PanInfo } from 'framer-motion'
-import { Box, ChevronDown, Loader2, ShoppingBag, Smartphone } from 'lucide-react'
+import { Box, ChevronDown, ShoppingBag, Smartphone } from 'lucide-react'
 import { faPrice } from '@/lib/store/catalog'
 import { SpecDetails, SpecDimensions, SpecFabric } from '@/components/store/productSpecTabs'
 import { usePresentation } from '@/stores/presentationStore'
@@ -42,10 +42,6 @@ interface Props {
   arAvailable: boolean
   /** Whether this device can enter AR at all — steers the copy, not the button. */
   arCapable?: boolean
-  /** True when AR will show the live configuration rather than the stock model. */
-  arLive?: boolean
-  arBuilding?: boolean
-  arError?: boolean
   /** False where there is no layer stack to pull apart — the plain viewer
    *  mounts one file at a time. @see LayerStepper */
   explodable?: boolean
@@ -64,9 +60,6 @@ export default function ProductSheet({
   onAddToCart,
   arAvailable,
   arCapable = false,
-  arLive = false,
-  arBuilding = false,
-  arError = false,
   explodable = true,
   zoneNote,
   hidden = false,
@@ -289,31 +282,19 @@ export default function ProductSheet({
               {activeTab === 'ar' && (
                 <div className="space-y-3">
                   <p className="text-[13px] leading-7 text-[var(--text-secondary)]">
-                    {!arCapable
-                      ? 'پیش‌نمایش سه‌بعدی از همین چیدمان انتخابی شما باز می‌شود. برای قرار دادن آن در فضای واقعی، صفحه را روی گوشی یا تبلت باز کنید.'
-                      : arLive
-                        ? 'همین چیدمان — جنس رویه و هر سه رنگ انتخابی شما — در فضای واقعی اتاقتان قرار می‌گیرد. آماده‌سازی مدل چند ثانیه طول می‌کشد.'
-                        : 'مرورگر این دستگاه از نمایش مدل ساخته‌شده پشتیبانی نمی‌کند؛ مدل پیش‌فرض محصول نمایش داده می‌شود.'}
+                    {arCapable
+                      ? 'رویه‌ای که انتخاب کرده‌اید، در اندازه واقعی در فضای اتاق شما قرار می‌گیرد.'
+                      : 'پیش‌نمایش سه‌بعدی رویه انتخابی شما باز می‌شود. برای قرار دادن آن در فضای واقعی، صفحه را روی گوشی یا تبلت باز کنید.'}
                   </p>
-                  {arError && (
-                    <p className="text-[12px] leading-6 text-red-400">
-                      ساخت مدل واقعیت افزوده ناموفق بود. دوباره تلاش کنید.
-                    </p>
-                  )}
                   <button
                     onClick={onViewAR}
-                    disabled={!arAvailable || arBuilding}
+                    disabled={!arAvailable}
                     className="flex w-full items-center justify-center gap-2 rounded-xl border
                                border-[var(--border-default)] py-2.5 text-[13px]
                                text-[var(--gold-primary)] transition-colors
                                hover:bg-[var(--gold-primary)]/10 disabled:opacity-40"
                   >
-                    {arBuilding ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        در حال آماده‌سازی مدل…
-                      </>
-                    ) : arCapable ? (
+                    {arCapable ? (
                       <>
                         <Smartphone className="h-4 w-4" />
                         مشاهده در واقعیت افزوده

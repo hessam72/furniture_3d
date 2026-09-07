@@ -9,17 +9,10 @@ import { usePresentation } from '@/stores/presentationStore'
 import { useShop } from '@/stores/storeShopStore'
 import { findCatalogItemBySceneObject } from '@/lib/store/catalog'
 import catalog from '@/public/config/catalog.json'
-import { isARCapable, supportsBlobAR } from '@/lib/device-utils'
+import { isARCapable } from '@/lib/device-utils'
 import {
-  emptyExportSources,
-  exportConfiguredGLB,
-  exportSignature,
-  type ExportSources,
-} from '@/lib/three/exportConfigured'
-import {
+  arModelPath,
   defaultPaint,
-  findCoverVariant,
-  isMatte,
   lowerTier,
   needsEnvironment,
   PHONE_QUERY,
@@ -53,12 +46,6 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
   const { key, product, config } = presentation
   const [showAR, setShowAR] = useState(false)
   const [arSupported, setArSupported] = useState(false)
-  /** False only on Android without WebXR, where Scene Viewer is the sole AR
-   *  path and it refuses blob URLs — there AR falls back to the static asset. */
-  const [liveARPossible, setLiveARPossible] = useState(true)
-  const [arBuilding, setArBuilding] = useState(false)
-  const [arError, setArError] = useState(false)
-  const [arUrl, setArUrl] = useState<string | null>(null)
   const [probeKey, setProbeKey] = useState(0)
   /** Bumped by `retry` to force a fresh WebGL context — a Canvas whose context
    *  died has to be remounted, not re-rendered. */
@@ -84,6 +71,8 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
 
   const initProduct = usePresentation((s) => s.initProduct)
   const reset = usePresentation((s) => s.reset)
+  /** Which cover the sheet has selected — the file AR shows. @see arPath */
+  const coverId = usePresentation((s) => s.coverId)
   const addToCart = useShop((s) => s.addToCart)
 
   /**
@@ -120,17 +109,7 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
     return item?.id ?? null
   }, [key])
 
-  /** Written by FurnitureStack with the raw cached GLTFs — the AR export lives
-   *  out here, outside the Canvas, and has no other way to reach them. */
-  const sources = useRef<ExportSources>(emptyExportSources())
-  /** The last built model, keyed by the config that produced it. Re-opening AR
-   *  without touching a swatch reuses it instead of re-serialising. */
-  const arCache = useRef<{ signature: string; url: string } | null>(null)
-
-  useEffect(() => {
-    setArSupported(isARCapable())
-    supportsBlobAR().then(setLiveARPossible)
-  }, [])
+  useEffect(() => setArSupported(isARCapable()), [])
 
   // Kills iOS pull-to-refresh over this page. @see .viewport-locked
   useEffect(() => {
@@ -139,63 +118,31 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
     return () => root.classList.remove('viewport-locked')
   }, [])
 
-  // Object URLs outlive React state, so the last one has to be released by hand.
-  useEffect(
-    () => () => {
-      if (arCache.current) URL.revokeObjectURL(arCache.current.url)
-      arCache.current = null
-    },
-    []
-  )
-
   /**
-   * Serialise what is on screen — chosen cover variant, all three zone colours —
-   * and hand model-viewer the result. With no `ios-src` alongside it, Quick Look
-   * gets a USDZ generated from this same file, so iOS matches Android.
+   * The file AR shows: the cover variant the customer picked, served straight
+   * from `public/models`.
+   *
+   * It used to be serialised in the browser from the live scene, colours baked
+   * in — and that is what crashed real phones. Building it walks the whole
+   * scene, clones every material, and holds the finished GLB in memory as an
+   * ArrayBuffer *and* as a Blob while a second WebGL context (model-viewer's)
+   * is starting up, on a device that had just been rendering a room. What the
+   * customer got for it was a spinner and, often, a reloaded tab.
+   *
+   * A static URL has none of that: nothing is built, nothing is held, the
+   * browser streams the same file it already cached for the page and every AR
+   * path works with it — Scene Viewer included, which refuses blob URLs
+   * outright. The cost is that the swatch colours do not travel to AR; the
+   * *material* the customer chose does, which is the choice that changes the
+   * shape of what they are placing in the room.
    */
-  const openAR = useCallback(async () => {
-    if (!liveARPossible) {
-      setShowAR(true)
-      return
-    }
+  const arPath = useMemo(() => arModelPath(config, coverId) ?? product.glbPath ?? null, [
+    config,
+    coverId,
+    product.glbPath,
+  ])
 
-    const { paint, coverId } = usePresentation.getState()
-    const signature = exportSignature(paint, coverId)
-
-    if (arCache.current?.signature === signature) {
-      setArUrl(arCache.current.url)
-      setShowAR(true)
-      return
-    }
-
-    setArBuilding(true)
-    setArError(false)
-    try {
-      const blob = await exportConfiguredGLB(
-        sources.current,
-        paint,
-        findCoverVariant(config, coverId),
-        { softMatch: config.layers.soft?.zoneMatch, matte: isMatte(config) }
-      )
-      const url = URL.createObjectURL(blob)
-      if (arCache.current) URL.revokeObjectURL(arCache.current.url)
-      arCache.current = { signature, url }
-      setArUrl(url)
-      setShowAR(true)
-
-      if (new URLSearchParams(window.location.search).has('debug')) {
-        console.log(`[AR] configured GLB ${(blob.size / 1048576).toFixed(1)} MB`)
-      }
-      if (blob.size > 40 * 1048576) {
-        console.warn('[AR] configured GLB exceeds 40MB — Quick Look may struggle')
-      }
-    } catch (error) {
-      console.error('[AR] export failed', error)
-      setArError(true)
-    } finally {
-      setArBuilding(false)
-    }
-  }, [config, liveARPossible])
+  const openAR = useCallback(() => setShowAR(true), [])
 
   useEffect(() => {
     initProduct(key, defaultPaint(config), config.layers.cover.default, config.layers.startStep ?? 1)
@@ -273,19 +220,11 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
    * defaults *and* sets `coverPhase: 'wipeIn'`, so the return plays the same
    * bottom-up reveal a first load does rather than snapping into place. Both
    * updates land in one batch, so the scene mounts already knowing to wipe in.
-   *
-   * The exported blob goes too on a phone: the scene is about to take its
-   * context back, and holding it is dead weight on the devices that can least
-   * spare it.
    */
   const closeAR = useCallback(() => {
     setShowAR(false)
     initProduct(key, defaultPaint(config), config.layers.cover.default, config.layers.startStep ?? 1)
-    if (!phone) return
-    if (arCache.current) URL.revokeObjectURL(arCache.current.url)
-    arCache.current = null
-    setArUrl(null)
-  }, [phone, initProduct, key, config])
+  }, [initProduct, key, config])
 
   /**
    * A lost context is not a React error, so no error boundary sees it — and
@@ -335,7 +274,6 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
             onLayerError={handleLayerError}
             onReady={() => setSceneReady(true)}
             onContextLost={handleContextLost}
-            sources={sources}
           />
         )}
 
@@ -356,11 +294,8 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
             // Not gated on the device: the viewer is a 3D preview of the
             // configured piece everywhere, and AR is the extra it adds when the
             // device supports it. `arCapable` only steers the copy.
-            arAvailable={liveARPossible || !!product.glbPath}
+            arAvailable={!!arPath}
             arCapable={arSupported}
-            arLive={liveARPossible}
-            arBuilding={arBuilding}
-            arError={arError}
             hidden={showAR}
             onViewAR={openAR}
             onAddToCart={() => addToCart(catalogId ?? product.id)}
@@ -376,15 +311,13 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
           />
         )}
 
-        {showAR && (arUrl || product.glbPath) && (
+        {showAR && arPath && (
           <ARProductViewer
-            // The configured build when we have one; `ios-src` is deliberately
-            // left off so Quick Look regenerates from it instead of the stale
-            // catalogue USDZ. WebXR first, so Android never reaches Scene
-            // Viewer with a blob it cannot fetch.
-            glbPath={arUrl ?? product.glbPath!}
-            usdzPath={arUrl ? undefined : product.usdzPath}
-            arModes={arUrl ? 'webxr quick-look scene-viewer' : undefined}
+            glbPath={arPath}
+            // Only meaningful when the file on screen is the catalogue model the
+            // USDZ was authored from; for a cover variant model-viewer builds
+            // Quick Look's USDZ from the GLB itself.
+            usdzPath={arPath === product.glbPath ? product.usdzPath : undefined}
             arScale="fixed"
             productName={product.name}
             onClose={closeAR}

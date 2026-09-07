@@ -65,7 +65,7 @@ function Piece({
    *  it and cannot solve anything before it arrives. */
   onRadius: (radius: number) => void
   /** Publishes the raw cached GLTF scene — not the painted clone below — for an
-   *  AR export built outside the Canvas. @see exportSinglePieceGLB */
+   *  host page to inspect outside the Canvas. */
   sourceRef?: React.MutableRefObject<THREE.Object3D | null>
   /** Stands the piece on a plinth. @see ViewerPlinth */
   plinth?: PlinthSpec
