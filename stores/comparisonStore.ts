@@ -1,3 +1,11 @@
+/**
+ * Zustand Store: Car Configuration Comparison
+ *
+ * Purpose: Before/after comparison mode for car customizations (snapshot system)
+ * Why Zustand: Comparison toggle accessed by UI button and 3D scene
+ * Pattern: Snapshot capture + restore for side-by-side comparisons
+ * Used By: Car configurator comparison feature
+ */
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import type { MultiZonePaintConfig } from './carConfigStore'

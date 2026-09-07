@@ -1,3 +1,12 @@
+/**
+ * Custom Hook: Landing Page Scroll Orchestration
+ *
+ * Purpose: Syncs scroll position with 3D scene state (camera, colors, parts)
+ * Pattern: MotionValue listener → store updates (Zustand) → bidirectional changes
+ * Why Hook: Separates scroll logic from scene rendering, prevents prop drilling
+ * Performance: Throttled to 60fps, state diffing to avoid redundant updates
+ * Used By: Homepage car showcase section
+ */
 import { useEffect, useRef } from 'react'
 import { MotionValue } from 'framer-motion'
 import { useCameraStore } from '@/stores/cameraStore'

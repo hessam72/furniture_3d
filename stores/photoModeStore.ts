@@ -1,3 +1,11 @@
+/**
+ * Zustand Store: Photo Mode State
+ *
+ * Purpose: Manages GPU pathtracer state for high-quality renders
+ * Why Zustand: Progress tracking accessed by both pathtracer component and UI overlay
+ * Pattern: Status flags + progress tracking for async operations
+ * Used By: Photo mode feature (pathtracer renders)
+ */
 import { create } from 'zustand'
 
 export type PhotoModeStatus = 'idle' | 'building' | 'rendering'

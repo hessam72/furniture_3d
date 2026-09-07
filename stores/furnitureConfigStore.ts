@@ -1,3 +1,11 @@
+/**
+ * Zustand Store: Store Furniture Selection
+ *
+ * Purpose: Tracks selected furniture in 3D walkable store + color transitions
+ * Why Zustand: Selection state shared between raycaster (click handler) and UI panel
+ * Pattern: Object ref + color interpolation state
+ * Used By: /store page - furniture selection and color picker
+ */
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import * as THREE from 'three'

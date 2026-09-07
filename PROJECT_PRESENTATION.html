@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>راهنمای ارائه پروژه - مصاحبه React/Next.js</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'B Nazanin', 'Tahoma', 'Arial', sans-serif;
+            font-size: 11pt;
+            line-height: 1.8;
+            color: #1a1a1a;
+            direction: rtl;
+            text-align: right;
+        }
+
+        h1 {
+            font-size: 22pt;
+            font-weight: bold;
+            color: #0066cc;
+            margin: 30px 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #0066cc;
+            page-break-after: avoid;
+        }
+
+        h2 {
+            font-size: 18pt;
+            font-weight: bold;
+            color: #2c5aa0;
+            margin: 25px 0 15px 0;
+            page-break-after: avoid;
+        }
+
+        h3 {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #4a7ba7;
+            margin: 20px 0 12px 0;
+            page-break-after: avoid;
+        }
+
+        h4 {
+            font-size: 12pt;
+            font-weight: bold;
+            color: #5a8bb7;
+            margin: 15px 0 10px 0;
+            page-break-after: avoid;
+        }
+
+        p {
+            margin: 10px 0;
+            text-align: justify;
+        }
+
+        ul, ol {
+            margin: 10px 0 10px 25px;
+        }
+
+        li {
+            margin: 5px 0;
+            line-height: 1.6;
+        }
+
+        code {
+            font-family: 'Courier New', 'Consolas', monospace;
+            background-color: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10pt;
+            direction: ltr;
+            display: inline-block;
+        }
+
+        pre {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            direction: ltr;
+            text-align: left;
+            page-break-inside: avoid;
+        }
+
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            font-size: 9pt;
+            line-height: 1.5;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: right;
+        }
+
+        th {
+            background-color: #4a7ba7;
+            color: white;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .tech-stack {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: center;
+            font-size: 13pt;
+            font-weight: bold;
+        }
+
+        .info-box {
+            background-color: #e8f4f8;
+            border-right: 4px solid #0066cc;
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 5px;
+            page-break-inside: avoid;
+        }
+
+        .warning-box {
+            background-color: #fff3cd;
+            border-right: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 5px;
+            page-break-inside: avoid;
+        }
+
+        .success-box {
+            background-color: #d4edda;
+            border-right: 4px solid #28a745;
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 5px;
+            page-break-inside: avoid;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .comparison-item {
+            padding: 15px;
+            border-radius: 5px;
+            page-break-inside: avoid;
+        }
+
+        .comparison-bad {
+            background-color: #f8d7da;
+            border: 2px solid #dc3545;
+        }
+
+        .comparison-good {
+            background-color: #d4edda;
+            border: 2px solid #28a745;
+        }
+
+        .key-point {
+            background-color: #fff9e6;
+            border-right: 4px solid #ffcc00;
+            padding: 12px 18px;
+            margin: 12px 0;
+            font-weight: bold;
+            border-radius: 5px;
+            page-break-inside: avoid;
+        }
+
+        .section-divider {
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+            page-break-after: always;
+        }
+
+        .emoji {
+            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+            font-size: 14pt;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 16pt;
+            font-weight: bold;
+            border-radius: 8px;
+        }
+
+        strong {
+            color: #0066cc;
+            font-weight: bold;
+        }
+
+        @media print {
+            body {
+                font-size: 10pt;
+            }
+
+            h1 {
+                font-size: 20pt;
+            }
+
+            h2 {
+                font-size: 16pt;
+            }
+
+            h3 {
+                font-size: 13pt;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<h1><span class="emoji">📋</span> راهنمای ارائه پروژه - مصاحبه React/Next.js</h1>
+
+<h2><span class="emoji">🎯</span> پروژه چیست؟</h2>
+<div class="info-box">
+    <p><strong>شهر امید</strong> - یک showroom مجازی مبلمان با قابلیت‌های پیشرفته:</p>
+    <ul>
+        <li>مشاهده 3D محصولات با تغییر رنگ real-time</li>
+        <li>پیاده‌روی در فروشگاه مجازی (first-person)</li>
+        <li>پیش‌نمایش AR در موبایل</li>
+        <li>Configurator ماشین (bonus feature)</li>
+    </ul>
+</div>
+
+<div class="tech-stack">
+    Next.js 14 • React 18 • TypeScript • Three.js • Zustand • Tailwind 4
+</div>
+
+<div class="section-divider"></div>
+
+<h2><span class="emoji">📁</span> معماری کلی پروژه</h2>
+
+<h3>ساختار اصلی</h3>
+<pre><code>app/              → Pages (Next.js App Router)
+components/       → React Components
+lib/              → Business Logic & Utils
+stores/           → Zustand Stores
+hooks/            → Custom Hooks
+contexts/         → React Contexts
+public/           → Static Assets (models, configs)</code></pre>
+
+<h3>تصمیم معماری: جداسازی مسئولیت‌ها</h3>
+<div class="key-point">
+    <strong>چرا این ساختار؟</strong>
+    <ul>
+        <li><code>components/</code> فقط UI rendering</li>
+        <li><code>lib/</code> تمام business logic و calculations</li>
+        <li><code>stores/</code> state management مرکزی</li>
+        <li><code>hooks/</code> reusable logic برای components</li>
+    </ul>
+</div>
+
+<div class="success-box">
+    <strong>مزایا:</strong>
+    <ul>
+        <li>Testability بالا (logic جدا از UI)</li>
+        <li>Reusability (hooks قابل استفاده در چند component)</li>
+        <li>Maintainability (تغییر logic بدون دست زدن به UI)</li>
+    </ul>
+</div>
+
+<div class="section-divider"></div>
+
+<h2><span class="emoji">🗺️</span> Routing Strategy</h2>
+
+<h3>App Router (Next.js 14)</h3>
+<pre><code>/                          Landing page
+/product/[id]              Dynamic route محصول
+/product/[id]/simple       Nested route (fallback)
+/showroom/[slug]           SSG brand pages
+/store                     Static route
+/ar                        Static route</code></pre>
+
+<h3>تصمیمات Routing</h3>
+
+<h4>1. Dynamic Routes با <code>[id]</code></h4>
+<p><strong>چرا؟</strong> محصولات از JSON config می‌خوانند، نه database</p>
+<div class="success-box">
+    <strong>مزایا:</strong>
+    <ul>
+        <li>یک component برای همه محصولات</li>
+        <li>URL-based state (share link)</li>
+        <li>SEO-friendly</li>
+    </ul>
+</div>
+
+<h4>2. Static Generation برای Showrooms</h4>
+<p><strong>چرا SSG؟</strong></p>
+<ul>
+    <li>تعداد محدود برندها (10-20)</li>
+    <li>محتوا static است</li>
+    <li>Performance بهتر از SSR</li>
+</ul>
+
+<h4>3. Client-Side Navigation</h4>
+<p>از <code>next/link</code> و <code>useRouter</code> برای SPA experience</p>
+<p><strong>چرا؟</strong> بدون page reload، smooth transitions</p>
+
+<div class="section-divider"></div>
+
+<h2><span class="emoji">🔄</span> State Management: Zustand vs Context</h2>
+
+<h3>تصمیم: کی از کدام استفاده کنیم؟</h3>
+
+<h4><span class="emoji">✅</span> Zustand - Application State</h4>
+<div class="info-box">
+    <p><strong>استفاده:</strong></p>
+    <ul>
+        <li>رنگ محصول</li>
+        <li>لایه فعال (frame/cover/soft)</li>
+        <li>وضعیت explode</li>
+        <li>paint config</li>
+    </ul>
+</div>
+
+<div class="key-point">
+    <strong>چرا Zustand؟</strong>
+    <ul>
+        <li>State بین چندین component share می‌شود</li>
+        <li>نیاز به update از event handlers (button click)</li>
+        <li>DevTools برای debugging</li>
+        <li>سبک‌تر از Redux (1KB)</li>
+    </ul>
+</div>
+
+<p><strong>مثال استفاده:</strong></p>
+<ul>
+    <li>کاربر در <code>PresentationSheet</code> رنگ انتخاب می‌کند</li>
+    <li><code>ProductCover</code> component باید re-render شود</li>
+    <li>بدون prop drilling</li>
+</ul>
+
+<h4><span class="emoji">✅</span> Context API - Infrastructure State</h4>
+<div class="info-box">
+    <p><strong>استفاده:</strong></p>
+    <ul>
+        <li>Quality tier (desktop/tablet/phone)</li>
+        <li>Canvas settings</li>
+        <li>WebGL capabilities</li>
+    </ul>
+</div>
+
+<div class="key-point">
+    <strong>چرا Context؟</strong>
+    <ul>
+        <li>کل app نیاز به این settings دارد</li>
+        <li>یک‌بار set می‌شود، کمتر update</li>
+        <li>Provider در root layout</li>
+    </ul>
+</div>
+
+<h4><span class="emoji">❌</span> useState - Local State</h4>
+<p>فقط در همان component نیاز است، مثل hover state یک button</p>
+
+<h3>جدول تصمیم‌گیری</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Scenario</th>
+            <th>انتخاب</th>
+            <th>دلیل</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>رنگ محصول بین 5 component</td>
+            <td>Zustand</td>
+            <td>Shared state</td>
+        </tr>
+        <tr>
+            <td>Quality settings در root</td>
+            <td>Context</td>
+            <td>Infrastructure</td>
+        </tr>
+        <tr>
+            <td>Hover state یک button</td>
+            <td>useState</td>
+            <td>Local</td>
+        </tr>
+        <tr>
+            <td>Animation progress</td>
+            <td>useRef</td>
+            <td>High-frequency (60fps)</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="section-divider"></div>
+
+<h2><span class="emoji">🎣</span> Custom Hooks - چرا و کجا؟</h2>
+
+<h3>Pattern: استخراج Logic از Components</h3>
+
+<h4>1. useClipWipe - Clipping Plane Animation</h4>
+<p><strong>مشکل:</strong> Component باید هر frame clipping plane update کند</p>
+<p><strong>راه‌حل:</strong> Hook با <code>useFrame</code> از R3F</p>
+<div class="success-box">
+    <strong>چرا Hook؟</strong>
+    <ul>
+        <li>Logic پیچیده (matrix math)</li>
+        <li>قابل استفاده در چند layer</li>
+        <li>Test کردن راحت‌تر</li>
+    </ul>
+</div>
+
+<h4>2. useZonePaint - Color Interpolation</h4>
+<p><strong>مشکل:</strong> تغییر رنگ فوری ugly است</p>
+<p><strong>راه‌حل:</strong> Lerp با damping</p>
+<div class="success-box">
+    <strong>چرا Hook؟</strong>
+    <ul>
+        <li>هر zone (wood/cover/cushion) نیاز دارد</li>
+        <li><code>useRef</code> برای 60fps بدون re-render</li>
+        <li>Reusable logic</li>
+    </ul>
+</div>
+
+<h4>3. useAssetProbe - Asset Pre-check</h4>
+<p><strong>مشکل:</strong> 404 در GLTF = white screen</p>
+<p><strong>راه‌حل:</strong> Pre-flight check قبل از Canvas</p>
+<div class="success-box">
+    <strong>چرا Hook؟</strong>
+    <ul>
+        <li>Async logic (fetch)</li>
+        <li>Loading/error states</li>
+        <li>Component stays clean</li>
+    </ul>
+</div>
+
+<h3>مقایسه: با Hook vs بدون Hook</h3>
+<div class="comparison">
+    <div class="comparison-item comparison-bad">
+        <strong>❌ بدون Hook:</strong>
+        <p>150 خط logic پیچیده در component</p>
+        <p>غیرقابل test و reuse</p>
+    </div>
+    <div class="comparison-item comparison-good">
+        <strong>✅ با Hook:</strong>
+        <p>5 خط، clean و testable</p>
+        <p>Logic قابل استفاده مجدد</p>
+    </div>
+</div>
+
+<div class="section-divider"></div>
+
+<h2><span class="emoji">⚛️</span> React Patterns استفاده شده</h2>
+
+<h3>1. Server Components vs Client Components</h3>
+
+<h4>Server Components (پیش‌فرض)</h4>
+<div class="success-box">
+    <strong>مزایا:</strong>
+    <ul>
+        <li>Bundle size کوچک‌تر</li>
+        <li>Data fetching روی server</li>
+        <li>SEO بهتر</li>
+    </ul>
+</div>
+
+<h4>Client Components (با 'use client')</h4>
+<p><strong>چه موقع Client Component؟</strong></p>
+<ul>
+    <li>نیاز به browser APIs (<code>window</code>, <code>canvas</code>)</li>
+    <li>Event handlers (onClick, onHover)</li>
+    <li>React hooks (useState, useEffect)</li>
+    <li>Three.js (حتماً client)</li>
+</ul>
+
+<h3>2. Dynamic Imports با SSR Disable</h3>
+<p><strong>مشکل:</strong> Three.js در SSR crash می‌کند</p>
+<div class="success-box">
+    <strong>مزایا:</strong>
+    <ul>
+        <li>Bundle splitting</li>
+        <li>فقط client load می‌شود</li>
+        <li>Initial page load سریع‌تر</li>
+    </ul>
+</div>
+
+<h3>3. Error Boundaries</h3>
+<p><strong>منطق:</strong> یک layer خراب = کل scene خراب نشود</p>
+<div class="info-box">
+    <p><strong>سناریو:</strong></p>
+    <ul>
+        <li><code>cover.glb</code> خراب است → error UI نشان بده</li>
+        <li><code>frame.glb</code> و <code>soft.glb</code> همچنان render شوند</li>
+    </ul>
+</div>
+
+<h3>4. Memo برای Performance</h3>
+<div class="key-point">
+    <strong>چرا؟</strong>
+    <ul>
+        <li>Parent component (Canvas) هر frame re-render می‌شود</li>
+        <li>Room setup static است</li>
+        <li>بدون memo = هر frame rebuild scene</li>
+    </ul>
+</div>
+
+<h3>5. useRef برای High-Frequency State</h3>
+<p><strong>مشکل:</strong> <code>useState</code> → re-render → 60 re-render/sec</p>
+<div class="success-box">
+    <strong>چرا useRef؟</strong>
+    <ul>
+        <li>Animation smooth (هر frame update)</li>
+        <li>بدون re-render overhead</li>
+        <li>Performance بهتر</li>
+    </ul>
+</div>
+
+<div class="section-divider"></div>
+
+<h2><span class="emoji">🚀</span> Next.js Features استفاده شده</h2>
+
+<h3>1. App Router (نه Pages Router)</h3>
+<div class="key-point">
+    <strong>چرا App Router؟</strong>
+    <ul>
+        <li>Server Components</li>
+        <li>Layout nesting</li>
+        <li>Route handlers</li>
+        <li>Streaming با Suspense</li>
+    </ul>
+</div>
+
+<h3>2. Metadata Generation</h3>
+<p><strong>مزیت:</strong> SEO dynamic بدون third-party library</p>
+
+<h3>3. Static Asset Optimization</h3>
+<div class="info-box">
+    <strong>منطق:</strong>
+    <ul>
+        <li>GLB files immutable هستند</li>
+        <li>Browser cache برای 1 سال</li>
+        <li>Re-deploy = نام فایل تغییر می‌کند</li>
+    </ul>
+</div>
+
+<h3>4. TypeScript Integration</h3>
+<p><strong>همه جا type-safe:</strong> Props، Config files، Store state، API responses</p>
+
+<div class="section-divider"></div>
+
+<h2><span class="emoji">💡</span> تصمیمات کلیدی معماری</h2>
+
+<h3>1. چرا Layered Assets؟</h3>
+<div class="comparison">
+    <div class="comparison-item comparison-bad">
+        <strong>قبل:</strong>
+        <p>یک <code>product.glb</code> = 50MB</p>
+    </div>
+    <div class="comparison-item comparison-good">
+        <strong>بعد:</strong>
+        <p><code>frame.glb</code> + <code>soft.glb</code> + <code>cover-red.glb</code> = 15MB</p>
+    </div>
+</div>
+<div class="success-box">
+    <strong>مزایا:</strong>
+    <ul>
+        <li>تغییر cover بدون reload frame</li>
+        <li>Memory usage پایین</li>
+        <li>Parallel loading</li>
+    </ul>
+</div>
+
+<h3>2. چرا Demand Rendering؟</h3>
+<div class="comparison">
+    <div class="comparison-item comparison-bad">
+        <strong>قبل:</strong>
+        <p>60fps همیشه = battery drain</p>
+    </div>
+    <div class="comparison-item comparison-good">
+        <strong>بعد:</strong>
+        <p>0fps idle, 60fps فقط حین animation</p>
+    </div>
+</div>
+<p><strong>کی invalidate می‌کنیم؟</strong></p>
+<ul>
+    <li>User interaction (drag, click)</li>
+    <li>Color animation در حال اجرا</li>
+    <li>Layer transition</li>
+</ul>
+
+<h3>3. چرا Quality Tiers؟</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Device</th>
+            <th>Effects</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Desktop</td>
+            <td>N8AO + Bloom + MSAA</td>
+        </tr>
+        <tr>
+            <td>Tablet</td>
+            <td>SSAO + SMAA</td>
+        </tr>
+        <tr>
+            <td>Phone</td>
+            <td>فقط SMAA</td>
+        </tr>
+    </tbody>
+</table>
+<div class="key-point">
+    <strong>منطق:</strong>
+    <ul>
+        <li>iPhone 15 ≠ iPhone 8</li>
+        <li>Automatic downgrade بعد از crash</li>
+        <li>User experience > visual fidelity</li>
+    </ul>
+</div>
+
+<h3>4. چرا Pre-built AR Assets؟</h3>
+<div class="comparison">
+    <div class="comparison-item comparison-bad">
+        <strong>قبل:</strong>
+        <p>Runtime export از Three.js → crash</p>
+    </div>
+    <div class="comparison-item comparison-good">
+        <strong>بعد:</strong>
+        <p>Pre-built GLB/USDZ → stable</p>
+    </div>
+</div>
+<div class="info-box">
+    <strong>دلیل:</strong>
+    <ul>
+        <li>Mobile memory محدود</li>
+        <li>Serialization expensive</li>
+        <li>Production stability</li>
+    </ul>
+</div>
+
+<div class="section-divider"></div>
+
+<h2><span class="emoji">📊</span> Performance Optimizations</h2>
+
+<h3>1. Code Splitting</h3>
+<ul>
+    <li>Dynamic import برای Three.js</li>
+    <li>Route-based splitting automatic</li>
+    <li>Lazy load postprocessing effects</li>
+</ul>
+
+<h3>2. Asset Optimization</h3>
+<ul>
+    <li>Draco compression (50-80% کاهش)</li>
+    <li>Progressive loading (frame → cover → soft)</li>
+    <li>Texture compression</li>
+</ul>
+
+<h3>3. Rendering Optimization</h3>
+<ul>
+    <li>Frustum culling (Three.js)</li>
+    <li>Demand rendering</li>
+    <li>Adaptive DPR</li>
+    <li>Memo برای static subtrees</li>
+</ul>
+
+<h3>4. State Optimization</h3>
+<ul>
+    <li>useRef برای animations</li>
+    <li>Zustand با selective subscriptions</li>
+    <li>Debounce برای expensive operations</li>
+</ul>
+
+<div class="section-divider"></div>
+
+<h2><span class="emoji">🎤</span> چگونه ارائه کنیم؟</h2>
+
+<h3>1. شروع با Problem Statement (2 دقیقه)</h3>
+<div class="info-box">
+    <p>"فروشگاه‌های مبلمان مشکل دارند: مشتری باید حضوری بیاید. ما یک showroom مجازی ساختیم با 3D و AR."</p>
+</div>
+
+<h3>2. Tech Stack Justification (3 دقیقه)</h3>
+<ul>
+    <li><strong>Next.js App Router</strong> - چرا؟ SSG + Server Components</li>
+    <li><strong>Zustand نه Redux</strong> - چرا؟ سبک‌تر، همین کافی بود</li>
+    <li><strong>Three.js</strong> - چرا؟ وب‌سایت، نه native app</li>
+    <li><strong>TypeScript</strong> - چرا؟ Production code needs safety</li>
+</ul>
+
+<h3>3. Architecture Deep Dive (5 دقیقه)</h3>
+<ul>
+    <li>Folder structure چرا این طوری؟</li>
+    <li>State management strategy (Zustand vs Context vs useState)</li>
+    <li>Routing strategy (SSG vs dynamic)</li>
+    <li>Component patterns (Server vs Client)</li>
+</ul>
+
+<h3>4. یک Challenge + Solution (3 دقیقه)</h3>
+<div class="warning-box">
+    <strong>Option A: Mobile AR Crashes</strong>
+    <ul>
+        <li>مشکل: Runtime export → OOM</li>
+        <li>راه‌حل: Pre-built assets</li>
+        <li>نتیجه: Zero crashes</li>
+    </ul>
+</div>
+
+<div class="warning-box">
+    <strong>Option B: Battery Drain</strong>
+    <ul>
+        <li>مشکل: 60fps always</li>
+        <li>راه‌حل: Demand rendering</li>
+        <li>نتیجه: 60x reduction</li>
+    </ul>
+</div>
+
+<div class="warning-box">
+    <strong>Option C: Visual Jank</strong>
+    <ul>
+        <li>مشکل: Color jumps</li>
+        <li>راه‌حل: Lerp با useRef</li>
+        <li>نتیجه: Smooth 60fps</li>
+    </ul>
+</div>
+
+<h3>5. Demo (2 دقیقه)</h3>
+<ul>
+    <li>نشان بده live product viewer</li>
+    <li>تغییر رنگ</li>
+    <li>Layer transition</li>
+    <li>AR preview (اگر موبایل داری)</li>
+</ul>
+
+<h3>6. Q&A</h3>
+<div class="key-point">
+    <strong>آماده باش برای:</strong>
+    <ul>
+        <li>"چرا Zustand نه Context API؟"</li>
+        <li>"SSR یا CSR؟"</li>
+        <li>"Performance در mobile؟"</li>
+        <li>"Scalability?"</li>
+    </ul>
+</div>
+
+<div class="section-divider"></div>
+
+<h2><span class="emoji">📝</span> سوالات متداول + پاسخ‌های آماده</h2>
+
+<h3>Q: چرا Zustand به جای Redux؟</h3>
+<div class="info-box">
+    <p><strong>A:</strong> Redux برای complex async flows عالی است. این پروژه state ساده دارد (رنگ، layer، explode). Zustand 1KB است، Redux 8KB. کمتر boilerplate، همان قابلیت DevTools.</p>
+</div>
+
+<h3>Q: SSG یا SSR یا CSR؟</h3>
+<div class="info-box">
+    <p><strong>A:</strong></p>
+    <ul>
+        <li><strong>SSG</strong> برای showroom pages (static content)</li>
+        <li><strong>CSR</strong> برای 3D Canvas (نیاز به browser APIs)</li>
+        <li><strong>Hybrid</strong> در <code>/product/[id]</code> (SSR برای metadata, CSR برای Canvas)</li>
+    </ul>
+</div>
+
+<h3>Q: Performance در mobile چطور است؟</h3>
+<div class="info-box">
+    <p><strong>A:</strong> Quality tier system. iPhone 8 با settings پایین render می‌کند، iPhone 15 با full quality. Context loss detection برای crash recovery. Demand rendering برای battery.</p>
+</div>
+
+<h3>Q: چطور scale می‌کند؟</h3>
+<div class="info-box">
+    <p><strong>A:</strong></p>
+    <ul>
+        <li>محصولات از JSON config (add کردن راحت)</li>
+        <li>Components reusable (car configurator همان pattern)</li>
+        <li>Folder structure modular (add feature = add folder)</li>
+    </ul>
+</div>
+
+<h3>Q: Security considerations?</h3>
+<div class="info-box">
+    <p><strong>A:</strong> Type safety با TypeScript، Input validation در resolvers، CSP headers برای XSS، CORS برای asset loading</p>
+</div>
+
+<div class="section-divider"></div>
+
+<h2><span class="emoji">🎯</span> Key Takeaways برای مصاحبه‌گر</h2>
+
+<div class="success-box">
+    <h3><span class="emoji">✅</span> Modern React/Next.js Mastery</h3>
+    <p>App Router, Server Components, Dynamic Imports</p>
+</div>
+
+<div class="success-box">
+    <h3><span class="emoji">✅</span> Thoughtful Architecture</h3>
+    <p>State management strategy واضح، Separation of concerns، Config-driven design</p>
+</div>
+
+<div class="success-box">
+    <h3><span class="emoji">✅</span> Performance-First Mindset</h3>
+    <p>Demand rendering, Code splitting, Quality tiers</p>
+</div>
+
+<div class="success-box">
+    <h3><span class="emoji">✅</span> Production Ready</h3>
+    <p>Error handling, Type safety, Mobile optimization</p>
+</div>
+
+<div class="success-box">
+    <h3><span class="emoji">✅</span> Problem Solving</h3>
+    <p>Real-world challenges (memory, battery, crashes) با Practical solutions و measurable results</p>
+</div>
+
+<div class="footer">
+    <span class="emoji">🚀</span> موفق باشی! این پروژه رو با اعتماد به نفس ارائه بده
+</div>
+
+</body>
+</html>
