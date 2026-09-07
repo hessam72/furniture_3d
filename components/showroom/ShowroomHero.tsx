@@ -75,7 +75,12 @@ export default function ShowroomHero({ config }: { config: ShowroomConfig }) {
         <Reveal className="sr-hero-media" delay={120}>
           {hero.image && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={hero.image} alt={hero.imageAlt ?? config.brand.nameFa} loading="eager" />
+            <img
+              src={hero.image}
+              alt={hero.imageAlt ?? config.brand.nameFa}
+              loading="eager"
+              style={hero.imageFocus ? { objectPosition: hero.imageFocus } : undefined}
+            />
           )}
         </Reveal>
       </div>

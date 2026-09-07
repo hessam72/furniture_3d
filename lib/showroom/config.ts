@@ -55,6 +55,9 @@ export interface ShowroomConfig {
     description?: string
     image?: string | null
     imageAlt?: string
+    /** Which part of the photograph survives the crop, as an `object-position`
+     *  value — `left center` unless the render wants otherwise. */
+    imageFocus?: string
     contact?: IconLine[]
     ctas?: ShowroomCta[]
     video?: { label: string; note?: string; href?: string }
@@ -101,6 +104,9 @@ export interface ShowroomConfig {
     cta?: ShowroomCta
     image?: string | null
     imageAlt?: string
+    /** Which part of the photograph survives the crop, as an `object-position`
+     *  value — `left center` unless the render wants otherwise. */
+    imageFocus?: string
     imageCaption?: string
     imageNote?: string
     imageBadge?: string[]

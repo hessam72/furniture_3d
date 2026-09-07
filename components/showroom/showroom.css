@@ -361,6 +361,11 @@
   inline-size: 100%;
   block-size: 100%;
   object-fit: cover;
+  /* Anchored left, not centred. The band is taller and narrower than the
+     render, so `cover` has to lose something horizontally — and the edge it
+     should keep is the outer one: the right of the picture is the half that
+     dissolves under the copy anyway. Override per brand with `hero.imageFocus`. */
+  object-position: left center;
 }
 
 /**
