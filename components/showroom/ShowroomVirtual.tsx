@@ -57,24 +57,10 @@ export default function ShowroomVirtual({ virtual }: { virtual: ShowroomConfig['
             </Link>
           )}
 
-          {virtual.map && (
-            <div className="sr-map">
-              {virtual.map.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={virtual.map.image} alt="" loading="lazy" />
-              ) : (
-                <>
-                  <div className="sr-map-plan" aria-hidden="true" />
-                  <div className="sr-map-pin" aria-hidden="true" />
-                </>
-              )}
-              {virtual.map.label && (
-                <p className="sr-map-note" aria-hidden="true">
-                  {virtual.map.label}
-                </p>
-              )}
-            </div>
-          )}
+          <div className="sr-map">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/right.png" alt="" loading="lazy" />
+          </div>
         </Reveal>
       </div>
     </section>

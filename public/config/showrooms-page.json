@@ -173,7 +173,7 @@
           }
         ],
         "stage": {
-          "path": "/models/presentation/test/stage.glb",
+          "path": "/images/showroom-stage.glb",
           "radiusScale": 1.22,
           "scale": 1,
           "offset": [0, 0, 0]
@@ -219,7 +219,7 @@
             "fill": 0.35
           },
           "quality": {
-            "preset": "high",
+            "preset": "medium",
             "mobile": "medium"
           }
         }
@@ -233,7 +233,7 @@
           "href": "/store",
           "icon": "vr"
         },
-        "image": "/images/about/service-showroom.webp",
+        "image": "/images/left.jpeg",
         "imageAlt": "نمای داخلی شوروم نیلپر",
         "imageCaption": "داخل شوروم قدم بزنید",
         "imageNote": "تصویر قابل تغییر",
@@ -335,9 +335,9 @@
       },
       "closing": {
         "platform": {
-          "name": "OmidCity",
-          "tagline": "Virtual Lives Better",
-          "logo": null
+          "name": "",
+          "tagline": "",
+          "logo": "/images/Furnitures OC LOGO.png"
         },
         "eyebrow": "نیلپر، در شهر امید",
         "title": "آینده خرید مبلمان، همین جاست.",
