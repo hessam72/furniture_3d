@@ -330,6 +330,7 @@ export default function ShowroomFeatured({
                   modelPath={modelPath}
                   sourceRef={source}
                   plinth={featured.stage}
+                  background={featured.viewer?.background}
                   onReady={handleReady}
                   onError={handleError}
                 />

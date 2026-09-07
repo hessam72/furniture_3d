@@ -173,11 +173,55 @@
           }
         ],
         "stage": {
-          "path": null,
-          "color": "#f2f3f6",
-          "glow": "#5b8def",
+          "path": "/models/presentation/test/stage.glb",
           "radiusScale": 1.22,
-          "height": 0.12
+          "scale": 1,
+          "offset": [0, 0, 0]
+        },
+        "viewer": {
+          "frame": {
+            "path": "/models/presentation/test/frame.glb",
+            "label": "اسکلت چوبی"
+          },
+          "covers": [
+            {
+              "id": "velvet",
+              "name": "مخمل",
+              "path": "/models/presentation/test/Furniture high Test3-optimized.glb",
+              "material": {
+                "roughness": 0.95,
+                "metalness": 0,
+                "clearcoat": 0
+              }
+            },
+            {
+              "id": "leather",
+              "name": "چرم طبیعی",
+              "path": "/models/presentation/test/Furniture high Test2-optimized.glb",
+              "material": {
+                "roughness": 0.8,
+                "metalness": 0,
+                "clearcoat": 0
+              }
+            }
+          ],
+          "defaultCover": "leather",
+          "hdr": "/hdr/200_hdrmaps_com_free_1kk.exr",
+          "envIntensity": 1,
+          "background": "#f6f7f9",
+          "fov": 35,
+          "padding": 1.1,
+          "minZoom": 0.1,
+          "maxZoom": 2.6,
+          "lighting": {
+            "ambient": 0.35,
+            "key": 1.1,
+            "fill": 0.35
+          },
+          "quality": {
+            "preset": "high",
+            "mobile": "medium"
+          }
         }
       },
       "virtual": {
