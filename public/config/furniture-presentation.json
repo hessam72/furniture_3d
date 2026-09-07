@@ -195,7 +195,7 @@
       "model": "/models/presentation/test/new-single-fur.glb",
       "hdr": "/hdr/200_hdrmaps_com_free_1kk.exr",
       "envIntensity": 1,
-      "background": "#ffffff",
+      "background": "#000000",
       "fov": 35,
       "padding": 1.1,
       "minZoom": 0.1,
