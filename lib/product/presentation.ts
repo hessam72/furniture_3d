@@ -4,6 +4,7 @@ import type { ProductData } from '@/components/store/ProductInteraction'
 import type { PartialSun } from '@/components/store/hooks/useStoreConfig'
 import type { ZonePaintConfig } from '@/stores/presentationStore'
 import { type QualityPreset } from '@/lib/config/quality'
+import type { PlinthSpec } from '@/components/product/ViewerPlinth'
 
 /** The three independently colourable parts of a piece. Unlike the showroom's
  *  keyword matching, the zone is implied by which layer GLB a mesh came from —
@@ -417,6 +418,17 @@ export interface SimpleViewerMeta {
   /** Opening tier, per device. The on-screen picker overrides it either way.
    *  @see SIMPLE_VIEWER_QUALITY */
   quality?: { preset?: QualityPreset; mobile?: QualityPreset }
+  /**
+   * A second GLB under the piece: the plinth it stands on.
+   *
+   * Read by /product/[id]/simple alone — the full presentation has its own
+   * `layers.stage`, and the showroom passes its plinth in from
+   * `showrooms-page.json`, so neither sees this. Scenery like both of those:
+   * seated and fitted to the piece, never painted by a swatch, never exported
+   * to AR. `path: null` (or no block) leaves the piece floating as before.
+   * @see PlinthSpec
+   */
+  stage?: PlinthSpec
 }
 
 export interface ResolvedSimpleViewer {
@@ -429,6 +441,8 @@ export interface ResolvedSimpleViewer {
   minZoom: number
   maxZoom: number
   lighting: { ambient: number; key: number; fill: number }
+  /** The plinth GLB under the piece, or null for none. @see SimpleViewerMeta.stage */
+  stage: PlinthSpec | null
 }
 
 /** The `simple` block with every default filled in, in the shape of
@@ -452,6 +466,8 @@ export function simpleViewer(config: PresentationConfig): ResolvedSimpleViewer {
       key: s.lighting?.key ?? 1.1,
       fill: s.lighting?.fill ?? 0.35,
     },
+    // A block with `path: null` still stands: it asks for the procedural plinth.
+    stage: s.stage ?? null,
   }
 }
 

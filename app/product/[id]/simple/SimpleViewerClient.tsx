@@ -156,9 +156,25 @@ function Viewer({
   const probeAssets = useMemo(() => {
     const paths = [config.layers.frame.path, ...config.layers.cover.variants.map((v) => v.path)]
     if (view.hdr) paths.push(view.hdr)
+    if (view.stage?.path) paths.push(view.stage.path)
     return Array.from(new Set(paths))
-  }, [config, view.hdr])
+  }, [config, view.hdr, view.stage])
   const { state, missing } = useAssetProbe(probeAssets)
+
+  /**
+   * The plinth this page stands the piece on, from `simple.stage`.
+   *
+   * Scenery, so a missing GLB drops it rather than blocking the page — the
+   * product is still the thing on screen. Dropped only when the file is named
+   * and absent: a block with no `path` asks for the procedural plinth, which
+   * has nothing to load. @see ViewerPlinth
+   */
+  const plinth = useMemo(() => {
+    const spec = view.stage
+    if (!spec) return undefined
+    if (spec.path && missing.includes(spec.path)) return undefined
+    return spec
+  }, [view.stage, missing])
 
   /** Only what *this* view needs has to be present — a missing variant is the
    *  sheet's problem to report, not a reason to blank the page. */
@@ -307,6 +323,7 @@ function Viewer({
           config={viewConfig}
           coverage={coverage}
           zone={zone}
+          plinth={plinth}
           sourceRef={source}
           onReady={handleReady}
           onError={handleError}
