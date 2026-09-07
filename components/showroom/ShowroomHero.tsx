@@ -5,12 +5,14 @@ import Reveal from './Reveal'
 import { ArrowIcon, Icon, PlayIcon, VrIcon } from './icons'
 
 /**
- * The brand's opening statement: copy on the reading side, and on the other a
- * light plate with a white arch cut into it, looking through to the room.
+ * The brand's opening statement: copy on the reading side, the photograph on
+ * the other.
  *
- * The arch is drawn, not shipped — a ring of white `box-shadow` around a
- * rounded-top frame — so the only asset the section needs is the interior photo
- * behind it, and a brand that swaps that photo keeps the portal.
+ * The photograph carries no frame, no plate and no ornament — it simply runs to
+ * the edge and dissolves into the page where it meets the copy, so the two read
+ * as one spread rather than as a picture beside a paragraph. The dissolve is a
+ * mask on the image, not a white panel over it: the page's own ground shows
+ * through, so it stays right whatever the section is standing on.
  */
 export default function ShowroomHero({ config }: { config: ShowroomConfig }) {
   const { hero } = config
@@ -71,13 +73,10 @@ export default function ShowroomHero({ config }: { config: ShowroomConfig }) {
         </Reveal>
 
         <Reveal className="sr-hero-media" delay={120}>
-          <div className="sr-arch">
-            {hero.image && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={hero.image} alt={hero.imageAlt ?? config.brand.nameFa} loading="eager" />
-            )}
-          </div>
-          <div className="sr-hero-floor" />
+          {hero.image && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={hero.image} alt={hero.imageAlt ?? config.brand.nameFa} loading="eager" />
+          )}
         </Reveal>
       </div>
 

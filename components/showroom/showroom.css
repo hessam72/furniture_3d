@@ -273,7 +273,12 @@
 /* ─────────────────────────────────────────────
    Hero
 ───────────────────────────────────────────── */
-.sr-hero { position: relative; padding-block: clamp(1.5rem, 4vw, 3rem) 0; }
+.sr-hero {
+  position: relative;
+  padding-block: clamp(1.5rem, 4vw, 3rem) 0;
+  /* The ground the hero photograph dissolves into. */
+  background: linear-gradient(180deg, #ffffff 0%, #fdfdfe 55%, var(--sr-bg) 100%);
+}
 .sr-hero-grid {
   display: grid;
   gap: clamp(2rem, 4vw, 3.5rem);
@@ -341,49 +346,24 @@
 .sr-video-label strong { font-size: 0.85rem; font-weight: 700; color: var(--sr-ink); }
 .sr-video-label span { font-size: 0.72rem; color: var(--sr-faint); }
 
-/* ── Hero media: a white arch portal onto the room ─────────────────── */
+/* ── Hero media: the photograph, and nothing around it ─────────────── */
 .sr-hero-media {
   position: relative;
-  aspect-ratio: 16 / 10.2;
-  border-radius: var(--sr-r-xl);
-  background:
-    radial-gradient(120% 80% at 50% 0%, #ffffff 0%, #eef0f3 55%, #e4e7eb 100%);
+  aspect-ratio: 16 / 10.6;
   overflow: hidden;
-  box-shadow: var(--sr-shadow);
+  /* Reaches the shell's own edge rather than sitting inside its padding —
+     a picture with a margin reads as a card, which is what this is not. */
+  margin-left: calc(-1 * clamp(1rem, 3vw, 2.5rem));
+  /* Dissolves into the page on the side the copy is on, so the spread reads as
+     one field. A mask rather than a white panel over the top: the page's own
+     ground shows through, whatever the section is standing on. */
+  -webkit-mask-image: linear-gradient(to left, transparent 0%, #000 34%);
+  mask-image: linear-gradient(to left, transparent 0%, #000 34%);
 }
-.sr-arch {
-  position: absolute;
-  inset-block: 6% 11%;
-  inset-inline: 26%;
-  border-radius: 999px 999px 20px 20px;
-  overflow: hidden;
-  background: #0e1626;
-  box-shadow:
-    0 0 0 clamp(0.8rem, 2.2vw, 1.6rem) #fdfdfe,
-    0 0 0 calc(clamp(0.8rem, 2.2vw, 1.6rem) + 1px) rgb(14 22 38 / 7%),
-    0 40px 70px -34px rgb(14 22 38 / 55%);
-}
-.sr-arch img { inline-size: 100%; block-size: 100%; object-fit: cover; }
-/* The cold LED strip that runs the floor in front of the portal */
-.sr-hero-floor {
-  position: absolute;
-  inset-inline: 4%;
-  inset-block-end: 6%;
-  block-size: 22%;
-  border-radius: 50%;
-  background: radial-gradient(60% 100% at 50% 0%, var(--sr-glow-soft), transparent 72%);
-  filter: blur(2px);
-  pointer-events: none;
-}
-.sr-hero-floor::after {
-  content: "";
-  position: absolute;
-  inset-inline: 12%;
-  inset-block-start: 12%;
-  block-size: 2px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, var(--sr-glow), transparent);
-  opacity: 0.75;
+.sr-hero-media img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
 }
 
 .sr-side-text {
@@ -421,9 +401,9 @@
   block-size: 3.2rem;
   background: linear-gradient(180deg, var(--sr-line-2), transparent);
 }
-/* Only where there is real gutter beside the shell — below this the column
-   crowds the hero plate instead of framing it. */
-@media (min-width: 1400px) {
+/* Only where the outer gutter is wide enough to hold them clear of the
+   photograph, which now runs out to the shell's own edge. */
+@media (min-width: 1600px) {
   .sr-side-text, .sr-scroll-cue { display: flex; flex-direction: column; }
 }
 
@@ -444,7 +424,7 @@
 .sr-stat {
   display: grid;
   justify-items: center;
-  gap: 0.5rem;
+  gap: 0.7rem;
   padding: clamp(1.4rem, 2.4vw, 2.2rem) 1rem;
   text-align: center;
   border-inline-start: 1px solid var(--sr-line);
@@ -452,7 +432,16 @@
 }
 .sr-stat:first-child { border-inline-start: 0; }
 @media (min-width: 1000px) { .sr-stat { border-block-start: 0; } }
-.sr-stat svg { color: var(--sr-ink); opacity: 0.85; }
+.sr-stat-icon {
+  display: grid;
+  place-items: center;
+  inline-size: 2.6rem;
+  block-size: 2.6rem;
+  border-radius: 50%;
+  background: var(--sr-bg-soft);
+  color: var(--sr-ink);
+}
+.sr-stat-text { display: grid; gap: 0.25rem; }
 .sr-stat-value { font-size: 1rem; font-weight: 800; color: var(--sr-ink); }
 .sr-stat-label { font-size: 0.86rem; font-weight: 700; color: var(--sr-ink); }
 .sr-stat-note { font-size: 0.72rem; color: var(--sr-faint); }
@@ -520,16 +509,32 @@
 }
 .sr-chip svg { color: var(--sr-ink); opacity: 0.6; }
 
+/* Areas, not order: on a phone the controls belong *under* the piece they
+   change while its name stays above it, which no single column order gives. */
 .sr-featured-grid {
   display: grid;
-  gap: clamp(1.5rem, 3vw, 2.5rem);
+  gap: clamp(1.2rem, 3vw, 2.5rem);
   align-items: center;
+  grid-template-areas:
+    "head"
+    "stage"
+    "controls";
 }
+.sr-featured-head { grid-area: head; }
+.sr-stage-col { grid-area: stage; }
+.sr-featured-controls { grid-area: controls; }
+
 @media (min-width: 1000px) {
-  .sr-featured-grid { grid-template-columns: 0.82fr 1.18fr; }
-  /* Copy sits on the reading side, the piece takes the wide half. */
-  .sr-featured-copy { order: 1; }
-  .sr-stage-col { order: 2; }
+  .sr-featured-grid {
+    /* Copy on the reading side, the piece in the wide half beside it. */
+    grid-template-columns: 0.82fr 1.18fr;
+    grid-template-areas:
+      "head     stage"
+      "controls stage";
+    align-items: start;
+    row-gap: 1.4rem;
+  }
+  .sr-featured-head { align-self: end; }
 }
 
 .sr-stage-col { position: relative; }
@@ -591,7 +596,7 @@
   color: var(--sr-faint);
 }
 
-.sr-featured-copy .sr-h2 { margin-block-start: 0.35rem; }
+.sr-featured-head .sr-h2 { margin-block-start: 0.35rem; }
 .sr-featured-desc {
   margin-block-start: 1rem;
   font-size: 0.9rem;
@@ -604,9 +609,10 @@
   display: flex;
   align-items: center;
   gap: 0.9rem;
-  margin-block-start: 1.6rem;
+  margin-block-start: 1.2rem;
   flex-wrap: wrap;
 }
+.sr-featured-controls > .sr-option-row:first-child { margin-block-start: 0; }
 .sr-option-label { font-size: 0.8rem; color: var(--sr-dim); }
 .sr-swatches { display: flex; gap: 0.5rem; }
 .sr-swatch {
@@ -1013,13 +1019,36 @@
   display: grid;
   gap: 2rem;
   padding-block: clamp(2.2rem, 4vw, 3.2rem);
+  grid-template-areas:
+    "about"
+    "links"
+    "contact";
 }
-@media (min-width: 800px) { .sr-footer-grid { grid-template-columns: 1.4fr repeat(3, 1fr); } }
-.sr-footer-about { font-size: 0.82rem; line-height: 2.1; color: var(--sr-dim); max-inline-size: 24rem; }
+.sr-footer-about { grid-area: about; }
+.sr-footer-links { grid-area: links; }
+.sr-contact { grid-area: contact; }
+
+/* Two link columns side by side at every width — they are short lists, and
+   stacking them buries the second one. */
+.sr-footer-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+@media (min-width: 800px) {
+  .sr-footer-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-areas:
+      "about   links"
+      "contact contact";
+    column-gap: 3rem;
+  }
+}
+.sr-footer-about { font-size: 0.82rem; line-height: 2.1; color: var(--sr-dim); max-inline-size: 32rem; }
 .sr-footer-about .sr-brand { margin-block-end: 1.1rem; }
 .sr-footer h4 { font-size: 0.88rem; margin-block-end: 1rem; }
 .sr-footer li { margin-block-end: 0.7rem; }
-.sr-footer li a, .sr-footer-contact li {
+.sr-footer li a {
   display: flex;
   align-items: center;
   gap: 0.55rem;
@@ -1028,7 +1057,49 @@
   transition: color 0.3s var(--sr-ease);
 }
 .sr-footer li a:hover { color: var(--sr-ink); }
-.sr-footer-contact svg { flex: none; opacity: 0.6; }
+
+/* ── Contact band ────────────────────────────────────────────────────
+   One line per detail, each labelled: the thing people scroll down for
+   should not be the smallest print on the page. */
+.sr-contact {
+  padding-block-start: 1.8rem;
+  border-block-start: 1px solid var(--sr-line);
+}
+.sr-contact ul {
+  display: grid;
+  gap: 1rem 2.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+.sr-contact li {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin: 0;
+}
+.sr-contact-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
+  border-radius: 50%;
+  background: var(--sr-bg-soft);
+  color: var(--sr-ink);
+  transition: background 0.3s var(--sr-ease);
+}
+.sr-contact li:hover .sr-contact-icon { background: var(--sr-bg); }
+.sr-contact-body { display: grid; gap: 0.2rem; min-inline-size: 0; }
+.sr-contact-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--sr-faint);
+}
+.sr-contact-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.7;
+  color: var(--sr-ink);
+}
 .sr-social { display: flex; gap: 0.5rem; margin-block-start: 1.2rem; }
 .sr-social a {
   padding: 0.4rem 0.8rem;
@@ -1065,14 +1136,44 @@
   .sr-brand-name { font-size: 0.82rem; letter-spacing: 0.1em; }
   .sr-brand-tag { font-size: 0.45rem; letter-spacing: 0.24em; }
 
-  /* The arch needs more of the plate when the plate is only a phone wide. */
-  .sr-hero-media { aspect-ratio: 4 / 3.4; }
-  .sr-arch { inset-inline: 15%; inset-block: 7% 10%; }
+  /* Picture first, words under it — a phone reads top to bottom, so the
+     photograph opens the page and the copy answers it. */
+  .sr-hero-media {
+    order: 1;
+    aspect-ratio: 5 / 4;
+    /* Edge to edge, and the dissolve turns with the stack: it now meets the
+       copy below rather than beside, so the fade goes down instead of across. */
+    margin-inline: calc(-1 * clamp(1rem, 3vw, 2.5rem));
+    -webkit-mask-image: linear-gradient(to top, transparent 0%, #000 26%);
+    mask-image: linear-gradient(to top, transparent 0%, #000 26%);
+  }
+  .sr-hero-copy { order: 2; }
+  .sr-hero-grid { gap: 1rem; }
+  .sr-hero { padding-block-start: 0; }
   .sr-lead { font-size: 0.88rem; line-height: 1.95; }
 
   /* Full-width tap targets rather than two pills fighting over one row. */
   .sr-cta-row { flex-direction: column; align-items: stretch; }
   .sr-cta-row .sr-btn { justify-content: center; }
+
+  /* A list, not a grid of little boxes: five centred cells two-up leave three
+     ragged columns and a stranded fifth. */
+  .sr-stats { grid-template-columns: 1fr; border-radius: var(--sr-r-md); }
+  .sr-stat {
+    grid-template-columns: auto 1fr;
+    justify-items: start;
+    align-items: center;
+    gap: 0.95rem;
+    padding: 0.95rem 1.15rem;
+    text-align: start;
+    border-inline-start: 0;
+  }
+  .sr-stat:first-child { border-block-start: 0; }
+  .sr-stat-icon { inline-size: 2.35rem; block-size: 2.35rem; }
+  .sr-stat-text { gap: 0.15rem; }
+  .sr-stat-value { font-size: 0.92rem; }
+  .sr-stat-label { font-size: 0.8rem; font-weight: 600; color: var(--sr-dim); }
+  .sr-stat-note { font-size: 0.72rem; }
 
   .sr-featured-top { flex-wrap: wrap; gap: 0.9rem; }
   .sr-chips { gap: 0.4rem; }
@@ -1112,6 +1213,9 @@
   .sr-closing-media { justify-self: center; }
 
   .sr-footer-grid { gap: 1.6rem; }
+  .sr-footer-links { gap: 1rem; }
+  .sr-contact { padding-block-start: 1.4rem; }
+  .sr-contact ul { grid-template-columns: 1fr; gap: 0.9rem; }
 }
 
 @media (max-width: 420px) {

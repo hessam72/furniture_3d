@@ -204,11 +204,16 @@ export default function ShowroomFeatured({
         </div>
 
         <div className="sr-featured-grid">
-          <Reveal className="sr-featured-copy">
+          <Reveal className="sr-featured-head">
             {featured.category && <p className="sr-section-eyebrow">{featured.category}</p>}
             <h2 className="sr-h2">{featured.title}</h2>
             {featured.description && <p className="sr-featured-desc">{featured.description}</p>}
+          </Reveal>
 
+          {/* Everything that changes the piece. Its own block, because on a
+              phone it belongs under the piece it changes — the name and the
+              description stay above it. */}
+          <Reveal className="sr-featured-controls" delay={60}>
             {swatches.length > 0 && (
               <div className="sr-option-row">
                 <span className="sr-option-label">{featured.colorLabel ?? 'رنگ'}</span>

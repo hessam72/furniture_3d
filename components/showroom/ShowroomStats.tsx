@@ -11,10 +11,14 @@ export default function ShowroomStats({ stats }: { stats: ShowroomConfig['stats'
       <Reveal className="sr-stats">
         {stats.map((stat) => (
           <div className="sr-stat" key={`${stat.icon}-${stat.value}`}>
-            <Icon name={stat.icon} size={26} />
-            <span className="sr-stat-value">{stat.value}</span>
-            {stat.label && <span className="sr-stat-label">{stat.label}</span>}
-            {stat.note && <span className="sr-stat-note">{stat.note}</span>}
+            <span className="sr-stat-icon">
+              <Icon name={stat.icon} size={22} />
+            </span>
+            <span className="sr-stat-text">
+              <span className="sr-stat-value">{stat.value}</span>
+              {stat.label && <span className="sr-stat-label">{stat.label}</span>}
+              {stat.note && <span className="sr-stat-note">{stat.note}</span>}
+            </span>
           </div>
         ))}
       </Reveal>
