@@ -284,9 +284,6 @@
   gap: clamp(2rem, 4vw, 3.5rem);
   align-items: center;
 }
-@media (min-width: 1000px) {
-  .sr-hero-grid { grid-template-columns: 0.82fr 1.18fr; }
-}
 /* Copy leads on the reading side, media follows. */
 .sr-hero-copy { order: 1; }
 .sr-hero-media { order: 2; }
@@ -366,6 +363,50 @@
   object-fit: cover;
 }
 
+/**
+ * From tablet up the photograph stops being a block in a column and becomes the
+ * band's left half: taken out of flow, pinned to the viewport's edge and to the
+ * full height of the section, with the copy laid over the white it fades into.
+ *
+ * Out of flow is the point. In flow it could only be as tall as its own aspect
+ * box, which left the band half photograph and half empty ground; pinned, it
+ * fills whatever height the copy sets and `object-fit: cover` keeps it filled
+ * at any window width.
+ */
+@media (min-width: 1000px) {
+  .sr-hero {
+    padding-block: 0;
+    display: flex;
+    align-items: center;
+    min-block-size: min(78vh, 44rem);
+  }
+  .sr-hero-media {
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    inline-size: min(58%, 78rem);
+    margin: 0;
+    aspect-ratio: auto;
+    /* Wider than the stacked version: the copy sits over the tail of it, so
+       the photograph has to be gone by the time the text starts. */
+    -webkit-mask-image: linear-gradient(to left, transparent 0%, #000 42%);
+    mask-image: linear-gradient(to left, transparent 0%, #000 42%);
+  }
+  /* Deliberately NOT positioned, and no width of its own: this element is the
+     shell too, so a width here would undo the page's max-width and a
+     `position` would make it — not the section — the photograph's containing
+     block, which is what pinned the photograph to the text's height instead of
+     the band's. */
+  .sr-hero-grid { grid-template-columns: minmax(0, 1fr); }
+  .sr-hero-copy {
+    position: relative;
+    z-index: 1;
+    justify-self: start;
+    max-inline-size: 34rem;
+  }
+}
+
+
 .sr-side-text {
   display: none;
   position: absolute;
@@ -401,10 +442,33 @@
   block-size: 3.2rem;
   background: linear-gradient(180deg, var(--sr-line-2), transparent);
 }
-/* Only where the outer gutter is wide enough to hold them clear of the
-   photograph, which now runs out to the shell's own edge. */
-@media (min-width: 1600px) {
-  .sr-side-text, .sr-scroll-cue { display: flex; flex-direction: column; }
+/* Over the photograph, at the outer edge — there is no gutter left beside it
+   now that it runs to the window. Light on a bright frame, readable on a dark
+   one, by way of the shadow. */
+@media (min-width: 1200px) {
+  .sr-side-text, .sr-scroll-cue {
+    display: flex;
+    flex-direction: column;
+    z-index: 2;
+    /* Ink with a white halo rather than white with a dark one: the outer edge
+       of a showroom render is nearly always its brightest part. */
+    color: rgb(14 22 38 / 52%);
+    text-shadow: 0 1px 10px rgb(255 255 255 / 85%), 0 0 2px rgb(255 255 255 / 70%);
+  }
+  /* Low on the frame, where a showroom render is floor and reflection rather
+     than ceiling — the part of the picture that can carry text. */
+  .sr-side-text {
+    left: clamp(1rem, 2vw, 2rem);
+    inset-block-start: auto;
+    bottom: 8.5rem;
+  }
+  .sr-scroll-cue {
+    left: clamp(1.2rem, 2.2vw, 2.4rem);
+    inset-block-end: 1.6rem;
+  }
+  .sr-scroll-cue::after {
+    background: linear-gradient(180deg, rgb(14 22 38 / 30%), transparent);
+  }
 }
 
 /* ─────────────────────────────────────────────
@@ -515,19 +579,20 @@
   display: grid;
   gap: clamp(1.2rem, 3vw, 2.5rem);
   align-items: center;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
     "head"
     "stage"
     "controls";
 }
 .sr-featured-head { grid-area: head; }
-.sr-stage-col { grid-area: stage; }
+.sr-stage-col { grid-area: stage; min-inline-size: 0; }
 .sr-featured-controls { grid-area: controls; }
 
 @media (min-width: 1000px) {
   .sr-featured-grid {
     /* Copy on the reading side, the piece in the wide half beside it. */
-    grid-template-columns: 0.82fr 1.18fr;
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
     grid-template-areas:
       "head     stage"
       "controls stage";
@@ -549,6 +614,12 @@
   /* Vertical swipes scroll the page; horizontal ones turn the piece.
      @see EmbeddedGestures */
   touch-action: pan-y;
+}
+/* The canvas element's own width is in device pixels — twice the CSS size on a
+   phone — and a grid track would happily size itself to that. */
+.sr-stage canvas {
+  display: block;
+  max-inline-size: 100%;
 }
 .sr-stage canvas { display: block; }
 /* The lit plinth the piece stands on */
