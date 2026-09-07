@@ -208,12 +208,6 @@
       "quality": {
         "preset": "high",
         "mobile": "medium"
-      },
-      "stage": {
-        "path": "/models/presentation/test/stage.glb",
-        "radiusScale": 1.25,
-        "scale": 1,
-        "offset": [0, 0, 0]
       }
     },
     "explode": {
