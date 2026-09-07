@@ -59,7 +59,7 @@ export default function ShowroomVirtual({ virtual }: { virtual: ShowroomConfig['
 
           <div className="sr-map">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/right.png" alt="" loading="lazy" />
+            <img style={{background:'#fbfcfc'}} src="/images/right.png" alt="" loading="lazy" />
           </div>
         </Reveal>
       </div>

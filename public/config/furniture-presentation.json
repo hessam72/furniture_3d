@@ -140,14 +140,14 @@
     },
     "camera": {
       "azimuthDeg": 0,
-      "elevationDeg": 8,
+      "elevationDeg": 5,
       "fov": 50,
       "near": 0.1,
-      "far": 150,
+      "far": 130,
       "padding": 1.55,
       "minZoom": 0.3,
-      "maxZoom": 2.3,
-      "startZoom": 0.9,
+      "maxZoom": 2,
+      "startZoom": 0.8,
       "tiltLimitDeg": 0,
       "aimHeight": 0.8,
       "screenLift": -0.05
