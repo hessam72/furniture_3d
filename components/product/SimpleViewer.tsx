@@ -16,6 +16,7 @@ import { usePresentation } from '@/stores/presentationStore'
 import {
   simpleViewer,
   type PresentationConfig,
+  type PresentationZone,
   type ResolvedSimpleViewer,
 } from '@/lib/product/presentation'
 import ViewerPlinth, { type PlinthSpec } from './ViewerPlinth'
@@ -56,6 +57,7 @@ function Piece({
   onRadius,
   sourceRef,
   plinth,
+  zone,
 }: {
   path: string
   envIntensity: number
@@ -67,6 +69,9 @@ function Piece({
   sourceRef?: React.MutableRefObject<THREE.Object3D | null>
   /** Stands the piece on a plinth. @see ViewerPlinth */
   plinth?: PlinthSpec
+  /** Which palette this file wears. The frame is `wood`, a cover variant is
+   *  `cover` — one file at a time, so one zone at a time. */
+  zone: PresentationZone
 }) {
   const gltf = useGLTF(path)
   const { settings } = useQuality()
@@ -81,7 +86,7 @@ function Piece({
       shadows: false,
     })
 
-    const collected = collectZoneTargets(clone, { zone: 'cover' })
+    const collected = collectZoneTargets(clone, { zone })
     applyFirstCoat(collected, usePresentation.getState().paint)
 
     // Centred rather than seated: with the piece's own centre on the origin,
@@ -103,7 +108,7 @@ function Piece({
       footprint: Math.max(size.x, size.z) / 2,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gltf.scene, path, envIntensity, settings.anisotropyLevel])
+  }, [gltf.scene, path, envIntensity, zone, settings.anisotropyLevel])
 
   useZonePaint(targets)
   useEffect(() => () => disposeTargets(targets), [targets])
@@ -244,6 +249,9 @@ interface Props {
   lockPolar?: boolean
   /** Stands the piece on a plinth instead of on nothing. @see ViewerPlinth */
   plinth?: PlinthSpec
+  /** The palette the mounted file wears. Defaults to `cover`, which is the
+   *  finished piece — pass `wood` when showing the bare frame. */
+  zone?: PresentationZone
   /** The viewer sits inside a page that scrolls: gives vertical touch drags
    *  back to the document. Zoom is untouched. @see EmbeddedGestures */
   embedded?: boolean
@@ -279,6 +287,7 @@ export default function SimpleViewer({
   lockPolar,
   plinth,
   embedded,
+  zone = 'cover',
 }: Props) {
   const { settings } = useQuality()
   const [perfScale, setPerfScale] = useState(1)
@@ -364,6 +373,7 @@ export default function SimpleViewer({
             onRadius={handleRadius}
             sourceRef={sourceRef}
             plinth={plinth}
+            zone={zone}
           />
         </PartErrorBoundary>
       </Suspense>

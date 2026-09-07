@@ -141,7 +141,7 @@ export async function exportSinglePieceGLB(
   source: THREE.Object3D,
   paint: ZonePaintConfig,
   variant: CoverVariant | null,
-  options: { matte?: boolean } = {}
+  options: { matte?: boolean; zone?: PresentationZone } = {}
 ): Promise<Blob> {
   const { GLTFExporter } = await import('three/examples/jsm/exporters/GLTFExporter.js')
 
@@ -150,7 +150,13 @@ export async function exportSinglePieceGLB(
   // Matte defaults *off* here, unlike the layered export: the plain viewer is
   // deliberately not matted — the environment reading off the material is the
   // point of that page — so AR matches what it shows.
-  const built = buildLayer({ source, zone: 'cover', variant: variant ?? undefined }, paint, options.matte === true)
+  const built = buildLayer(
+    // Whatever the viewer is showing, painted the way the viewer paints it —
+    // the bare frame goes to AR in its wood colour, not in the upholstery's.
+    { source, zone: options.zone ?? 'cover', variant: variant ?? undefined },
+    paint,
+    options.matte === true
+  )
   root.add(built.object)
 
   try {

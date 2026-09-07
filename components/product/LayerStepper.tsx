@@ -7,7 +7,15 @@ import type { PresentationConfig } from '@/lib/product/presentation'
 
 const SPRING = { type: 'spring' as const, damping: 34, stiffness: 320, mass: 0.8 }
 
-export default function LayerStepper({ config }: { config: PresentationConfig }) {
+export default function LayerStepper({
+  config,
+  /** Off where there is no stack to pull apart — the plain viewer mounts one
+   *  file at a time, so an explode toggle there would do nothing. */
+  explode = true,
+}: {
+  config: PresentationConfig
+  explode?: boolean
+}) {
   const layerStep = usePresentation((s) => s.layerStep)
   const exploded = usePresentation((s) => s.exploded)
   const setLayerStep = usePresentation((s) => s.setLayerStep)
@@ -67,6 +75,7 @@ export default function LayerStepper({ config }: { config: PresentationConfig })
         <p className="text-[12px] leading-6 text-[var(--text-muted)]">{activeDesc}</p>
       )}
 
+      {explode && (
       <button
         onClick={toggleExplode}
         aria-pressed={exploded}
@@ -95,6 +104,7 @@ export default function LayerStepper({ config }: { config: PresentationConfig })
           />
         </span>
       </button>
+      )}
     </div>
   )
 }

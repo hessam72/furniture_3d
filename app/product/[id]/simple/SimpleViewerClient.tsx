@@ -4,26 +4,38 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
+import type * as THREE from 'three'
+import { useGLTF } from '@react-three/drei'
 import { QualityProvider, useQuality } from '@/contexts/QualityContext'
 import { useAssetProbe } from '@/hooks/useAssetProbe'
 import { usePresentation } from '@/stores/presentationStore'
+import { useShop } from '@/stores/storeShopStore'
+import { findCatalogItemBySceneObject, type Catalog } from '@/lib/store/catalog'
+import catalog from '@/public/config/catalog.json'
+import { isARCapable, supportsBlobAR } from '@/lib/device-utils'
+import { exportSignature, exportSinglePieceGLB } from '@/lib/three/exportConfigured'
 import { QUALITY_PRESETS, type QualityPreset } from '@/lib/config/quality'
 import {
   defaultPaint,
+  findCoverVariant,
+  finishedPiecePath,
   PHONE_QUERY,
   readDeviceClass,
   simpleViewer,
   simpleViewerQuality,
   TOUCH_QUERY,
   type DeviceClass,
+  type PresentationZone,
   type ResolvedPresentation,
-  type ZoneSwatch,
 } from '@/lib/product/presentation'
+import ProductSheet from '@/components/product/ProductSheet'
 
 const SimpleViewer = dynamic(() => import('@/components/product/SimpleViewer'), {
   ssr: false,
   loading: () => <div className="h-full w-full bg-white" />,
 })
+
+const ARProductViewer = dynamic(() => import('@/components/store/ARProductViewer'), { ssr: false })
 
 const QUALITY_LABELS: Record<QualityPreset, string> = {
   low: 'کم',
@@ -34,19 +46,26 @@ const QUALITY_LABELS: Record<QualityPreset, string> = {
 
 const TIERS = Object.keys(QUALITY_PRESETS) as QualityPreset[]
 
+/** Said once in the sheet, because a swatch that paints nothing on the layer
+ *  currently mounted reads as a broken control rather than a deliberate one. */
+const ZONE_NOTE =
+  'این نما هر بار یک لایه را نشان می‌دهد: رنگ چوب روی «اسکلت چوبی» و رنگ رویه روی نمای نهایی دیده می‌شود.'
+
 /**
  * A stripped viewer for the same piece the presentation page dresses.
  *
- * One GLB on white under an HDR, turned and dollied by hand, with the cover
- * palette and the render tier as the only controls. It exists so the piece can
- * be judged on its own — no room, no sun, no reflection and no post — and so
- * there is a page that runs the same everywhere.
+ * One GLB on white under an HDR, turned and dollied by hand — no room, no sun,
+ * no reflection and no post — so the piece can be judged on its own and the
+ * page runs the same everywhere.
  *
- * The colour lives in the shared presentation store, so a finish picked here is
- * the finish the full page opens on.
+ * What it is *not* is a lesser product page: it carries the presentation
+ * page's own bottom sheet, so every fact, swatch, layer and the AR button are
+ * where a customer already knows to find them. The sheet writes to the shared
+ * presentation store, which is what makes that possible — this page only has
+ * to answer the store's state with the right file on screen.
  */
 export default function SimpleViewerClient({ presentation }: { presentation: ResolvedPresentation }) {
-  const { key, product, config } = presentation
+  const { config } = presentation
 
   /** Which tier the viewer opens on. Only a seed — the picker below owns it
    *  from the first tap. @see SIMPLE_VIEWER_QUALITY */
@@ -61,160 +80,288 @@ export default function SimpleViewerClient({ presentation }: { presentation: Res
 
   return (
     <QualityProvider preset={simpleViewerQuality(config, device)}>
-      <Viewer presentation={presentation} productKey={key} productName={product.name} config={config} />
+      <Viewer presentation={presentation} device={device} />
     </QualityProvider>
   )
 }
 
 function Viewer({
   presentation,
-  productKey,
-  productName,
-  config,
+  device,
 }: {
   presentation: ResolvedPresentation
-  productKey: string
-  productName: string
-  config: ResolvedPresentation['config']
+  device: DeviceClass
 }) {
+  const { key: productKey, product, config } = presentation
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  /**
-   * How much of the screen the control panel stands on, so the camera can frame
-   * the piece into the band above it rather than into the whole canvas.
-   *
-   * Measured rather than assumed: the panel's height moves with the number of
-   * swatches, the font the browser actually loaded, and the safe-area inset on
-   * a notched phone. Quantised, because this drives a re-frame.
-   *
-   * Taken against the page's own root rather than `window.innerHeight` — the
-   * root is what the canvas fills, and on iOS those two are different numbers.
-   * @see .viewport-fill
-   */
-  const rootRef = useRef<HTMLDivElement>(null)
-  const panelRef = useRef<HTMLDivElement>(null)
-  const [coverage, setCoverage] = useState(0)
-  useEffect(() => {
-    const panel = panelRef.current
-    const root = rootRef.current
-    if (!panel || !root) return
-    const measure = () => {
-      const height = root.clientHeight
-      if (!height) return
-      // Plus the wrapper's padding, which the panel's own box does not carry.
-      const fraction = (panel.getBoundingClientRect().height + 32) / height
-      setCoverage((previous) => {
-        const next = Math.round(Math.min(fraction, 0.6) * 40) / 40
-        return next === previous ? previous : next
-      })
-    }
-    const observer = new ResizeObserver(measure)
-    observer.observe(panel)
-    observer.observe(root)
-    return () => observer.disconnect()
-  }, [ready])
+  const [canvasKey, setCanvasKey] = useState(0)
 
   const initProduct = usePresentation((s) => s.initProduct)
   const reset = usePresentation((s) => s.reset)
-  const setPaint = usePresentation((s) => s.setPaint)
-  const activeHex = usePresentation((s) => s.paint.cover.color)
+  const layerStep = usePresentation((s) => s.layerStep)
+  const coverId = usePresentation((s) => s.coverId)
+  const coverPhase = usePresentation((s) => s.coverPhase)
+  const commitCover = usePresentation((s) => s.commitCover)
+  const finishWipe = usePresentation((s) => s.finishWipe)
+  /**
+   * How much of the screen the sheet stands on, so the camera frames the piece
+   * into the band above it. Reported by the sheet itself — the same number the
+   * full presentation page's rig reads.
+   */
+  const coverage = usePresentation((s) => s.sheetCoverage)
 
-  // The two files this page needs. `public/models` is gitignored, so without
-  // the probe a mis-typed manifest path white-screens behind a Suspense
-  // fallback that never resolves.
-  const view = useMemo(() => simpleViewer(config), [config])
-  const assets = useMemo(
-    () => [view.model, view.hdr].filter((p): p is string => !!p),
-    [view]
+  const addToCart = useShop((s) => s.addToCart)
+  const catalogId = useMemo(
+    () => findCatalogItemBySceneObject(catalog as Catalog, productKey)?.id ?? null,
+    [productKey]
   )
-  const { state, missing } = useAssetProbe(assets)
+
+  /**
+   * The cover swap is a clip-plane wipe on the full page, played by the scene.
+   * Nothing plays it here — one file is unmounted and the next is mounted — so
+   * the phases are stepped through as they arrive, or `coverId` would never
+   * leave the variant the page opened on.
+   */
+  useEffect(() => {
+    if (coverPhase === 'wipeOut') commitCover()
+    else if (coverPhase === 'wipeIn') finishWipe()
+  }, [coverPhase, commitCover, finishWipe])
+
+  const showingFrame = layerStep === 0
+  const variant = findCoverVariant(config, coverId)
+  /** One file at a time: the bare frame, or the chosen cover. */
+  const modelPath = showingFrame
+    ? config.layers.frame.path
+    : variant?.path ?? finishedPiecePath(config)
+  const zone: PresentationZone = showingFrame ? 'wood' : 'cover'
+
+  const view = useMemo(() => simpleViewer(config), [config])
+  /** The manifest with the shown layer swapped in — `simpleViewer()` reads
+   *  `simple.model`, so this override is the whole layer switch. */
+  const viewConfig = useMemo(
+    () => ({ ...config, simple: { ...config.simple, model: modelPath } }),
+    [config, modelPath]
+  )
+
+  /**
+   * Every file the sheet can switch to, probed once.
+   *
+   * `public/models` is gitignored, so without the probe a mis-typed manifest
+   * path white-screens behind a Suspense fallback that never resolves. Probing
+   * the whole set rather than the file currently on screen is what keeps the
+   * sheet on screen: a per-layer probe re-enters `checking` on every switch,
+   * and the sheet would blink out of existence mid-tap.
+   */
+  const probeAssets = useMemo(() => {
+    const paths = [config.layers.frame.path, ...config.layers.cover.variants.map((v) => v.path)]
+    if (view.hdr) paths.push(view.hdr)
+    return Array.from(new Set(paths))
+  }, [config, view.hdr])
+  const { state, missing } = useAssetProbe(probeAssets)
+
+  /** Only what *this* view needs has to be present — a missing variant is the
+   *  sheet's problem to report, not a reason to blank the page. */
+  const blocked = useMemo(
+    () => missing.filter((path) => path === modelPath || path === view.hdr),
+    [missing, modelPath, view.hdr]
+  )
 
   useEffect(() => {
-    initProduct(productKey, defaultPaint(config), config.layers.cover.default)
+    initProduct(productKey, defaultPaint(config), config.layers.cover.default, config.layers.startStep ?? 1)
     return () => reset()
   }, [productKey, config, initProduct, reset])
 
-  // Same full-screen, non-scrolling shape as the full page, so it needs the same
-  // guard: an iOS swipe that misses the canvas is a pull-to-refresh otherwise.
-  // @see .viewport-locked
+  // Same full-screen, non-scrolling shape as the full page, so it needs the
+  // same guard: an iOS swipe that misses the canvas is a pull-to-refresh
+  // otherwise. @see .viewport-locked
   useEffect(() => {
     const root = document.documentElement
     root.classList.add('viewport-locked')
     return () => root.classList.remove('viewport-locked')
   }, [])
 
-  const handleReady = useCallback(() => setReady(true), [])
-  const handleError = useCallback(
-    (_category: string, err: Error) => setError(err.message),
+  // Warm the layers the sheet can switch to, so a swap does not suspend behind
+  // a blank stage. Not on a phone: every warmed file is a second GLB parsed and
+  // held on a device already at its ceiling with the one it is showing.
+  useEffect(() => {
+    if (state !== 'ready' || device === 'phone') return
+    const rest = [
+      config.layers.frame.path,
+      ...config.layers.cover.variants.map((v) => v.path),
+    ].filter((path) => path !== modelPath)
+
+    const warm = () => rest.forEach((path) => useGLTF.preload(path))
+    const idle = (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
+      .requestIdleCallback
+    const handle = idle ? idle(warm) : window.setTimeout(warm, 1500)
+    return () => {
+      const cancel = (window as unknown as { cancelIdleCallback?: (h: number) => void })
+        .cancelIdleCallback
+      if (idle && cancel) cancel(handle as number)
+      else window.clearTimeout(handle as number)
+    }
+  }, [state, device, config, modelPath])
+
+  // ── AR ────────────────────────────────────────────────────────────────
+  const [showAR, setShowAR] = useState(false)
+  const [arSupported, setArSupported] = useState(false)
+  /** False only on Android without WebXR, where Scene Viewer is the sole AR
+   *  path and it refuses blob URLs — there AR falls back to the static asset. */
+  const [liveAR, setLiveAR] = useState(true)
+  const [arBuilding, setArBuilding] = useState(false)
+  const [arError, setArError] = useState(false)
+  const [arUrl, setArUrl] = useState<string | null>(null)
+
+  /** The raw cached GLB behind the canvas, published by the viewer. The export
+   *  runs out here, outside the Canvas, and has no other way to reach it. */
+  const source = useRef<THREE.Object3D | null>(null)
+  /** The last built model, keyed by the config that produced it — re-opening
+   *  AR without touching a swatch reuses it instead of re-serialising. */
+  const arCache = useRef<{ signature: string; url: string } | null>(null)
+
+  useEffect(() => {
+    setArSupported(isARCapable())
+    supportsBlobAR().then(setLiveAR)
+  }, [])
+
+  useEffect(
+    () => () => {
+      if (arCache.current) URL.revokeObjectURL(arCache.current.url)
+      arCache.current = null
+    },
     []
   )
 
-  // Cover swatches carry no roughness of their own — that comes from the
-  // variant's material and must survive a colour change. @see coverSurface
-  const pick = useCallback((swatch: ZoneSwatch) => setPaint({ color: swatch.hex }, 'cover'), [setPaint])
+  const openAR = useCallback(async () => {
+    // No live model, or a device whose AR path refuses blob URLs: the
+    // product's published GLB stands in.
+    if (!source.current || !liveAR) {
+      setArUrl(null)
+      setShowAR(true)
+      return
+    }
 
-  const swatches = config.palettes.cover ?? []
+    const { paint } = usePresentation.getState()
+    const signature = exportSignature(paint, `${zone}:${coverId ?? 'frame'}`)
+    if (arCache.current?.signature === signature) {
+      setArUrl(arCache.current.url)
+      setShowAR(true)
+      return
+    }
+
+    setArBuilding(true)
+    setArError(false)
+    try {
+      const blob = await exportSinglePieceGLB(source.current, paint, variant, { zone })
+      const url = URL.createObjectURL(blob)
+      if (arCache.current) URL.revokeObjectURL(arCache.current.url)
+      arCache.current = { signature, url }
+      setArUrl(url)
+      setShowAR(true)
+    } catch (err) {
+      // Never a dead end: the published GLB stands in, and the sheet says so.
+      console.error('[simple] AR export failed', err)
+      setArError(true)
+      setArUrl(null)
+      if (product.glbPath) setShowAR(true)
+    } finally {
+      setArBuilding(false)
+    }
+  }, [coverId, liveAR, product.glbPath, variant, zone])
+
+  /**
+   * Leaving AR remounts the canvas: it was unmounted to give the overlay the
+   * GPU, and a Canvas whose context went with it has to be rebuilt, not
+   * re-rendered. The store is untouched, so the piece returns dressed exactly
+   * as it left.
+   */
+  const closeAR = useCallback(() => {
+    setShowAR(false)
+    setArError(false)
+    setCanvasKey((n) => n + 1)
+    if (device !== 'phone') return
+    // A phone is about to take its context back and cannot spare the blob.
+    if (arCache.current) URL.revokeObjectURL(arCache.current.url)
+    arCache.current = null
+    setArUrl(null)
+  }, [device])
+
+  const handleReady = useCallback(() => setReady(true), [])
+  const handleError = useCallback((_category: string, err: Error) => setError(err.message), [])
+
+  const live = state !== 'checking' && !blocked.length && !error
 
   return (
     // `viewport-fill`, not `h-screen`: on iOS `100vh` is the height with the
     // address bar retracted, so a container that tall puts everything anchored
-    // to its bottom — the whole control panel — behind the bar.
+    // to its bottom — the whole sheet — behind the bar.
     <div
-      ref={rootRef}
       dir="rtl"
       className="font-persian viewport-fill relative w-screen overflow-hidden"
       style={{ background: view.background }}
     >
-      {state === 'ready' && !error && (
+      {live && !showAR && (
         <SimpleViewer
-          config={config}
+          key={canvasKey}
+          config={viewConfig}
           coverage={coverage}
+          zone={zone}
+          sourceRef={source}
           onReady={handleReady}
           onError={handleError}
         />
       )}
 
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
-        <Link
-          href={`/product/${productKey}`}
-          aria-label="نمای کامل محصول"
-          className="pointer-events-auto flex h-9 items-center gap-1 rounded-full border border-neutral-200
-                     bg-white/85 px-3 text-[13px] text-neutral-700 backdrop-blur-sm transition-colors
-                     hover:border-neutral-300 hover:text-neutral-900"
-        >
-          <ChevronRight className="h-4 w-4" />
-          نمای کامل
-        </Link>
+        <div className="flex flex-col items-start gap-2">
+          <Link
+            href={`/product/${productKey}`}
+            aria-label="نمای کامل محصول"
+            className="pointer-events-auto flex h-9 items-center gap-1 rounded-full border border-neutral-200
+                       bg-white/85 px-3 text-[13px] text-neutral-700 backdrop-blur-sm transition-colors
+                       hover:border-neutral-300 hover:text-neutral-900"
+          >
+            <ChevronRight className="h-4 w-4" />
+            نمای کامل
+          </Link>
+          {live && !showAR && <QualityChips />}
+        </div>
 
         <h1 className="max-w-[55%] truncate pt-1 text-right text-[15px] font-semibold text-neutral-900">
-          {productName}
+          {product.name}
         </h1>
       </header>
 
-      {/* Controls: the finish, and how hard the device works to draw it. */}
-      {state === 'ready' && !error && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <div
-            ref={panelRef}
-            className="pointer-events-auto w-full max-w-[420px] space-y-3 rounded-2xl border border-neutral-200 bg-white/90 p-4 shadow-[0_8px_32px_-12px_rgb(0_0_0/0.25)] backdrop-blur-sm"
-          >
-            <Swatches swatches={swatches} activeHex={activeHex} onPick={pick} />
-            <QualityRow />
-          </div>
-        </div>
+      {live && (
+        <ProductSheet
+          presentation={presentation}
+          onViewAR={openAR}
+          onAddToCart={() => catalogId && addToCart(catalogId)}
+          arAvailable={liveAR || !!product.glbPath}
+          arCapable={arSupported}
+          arLive={liveAR}
+          arBuilding={arBuilding}
+          arError={arError}
+          // One file on screen at a time — there is no stack to pull apart,
+          // and each palette shows on the layer it belongs to.
+          explodable={false}
+          zoneNote={ZONE_NOTE}
+          hidden={showAR}
+        />
       )}
 
-      {(state === 'missing' || error) && (
+      {(blocked.length > 0 || error) && (
         <Notice
-          productName={productName}
-          detail={error ?? `فایل‌های یافت‌نشده: ${missing.join('، ')}`}
+          productName={product.name}
+          detail={error ?? `فایل‌های یافت‌نشده: ${blocked.join('، ')}`}
           productKey={productKey}
         />
       )}
 
       {/* Held over the canvas rather than shown in its place: the canvas has to
           be mounted and rendering to load its own model at all. */}
-      {!error && state !== 'missing' && (
+      {!error && !blocked.length && (
         <div
           aria-hidden={ready}
           className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center transition-opacity duration-500"
@@ -227,48 +374,19 @@ function Viewer({
           <span className="text-[11px] tracking-[0.4em] text-neutral-400">در حال بارگذاری</span>
         </div>
       )}
-    </div>
-  )
-}
 
-function Swatches({
-  swatches,
-  activeHex,
-  onPick,
-}: {
-  swatches: ZoneSwatch[]
-  activeHex: string
-  onPick: (swatch: ZoneSwatch) => void
-}) {
-  if (!swatches.length) return null
-  const activeName = swatches.find((s) => s.hex.toLowerCase() === activeHex.toLowerCase())?.name
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-baseline justify-between">
-        <span className="text-[12px] text-neutral-500">رنگ</span>
-        {activeName && <span className="text-[12px] text-neutral-800">{activeName}</span>}
-      </div>
-      <div role="radiogroup" aria-label="رنگ" className="scrollbar-hide flex items-center gap-3 overflow-x-auto py-1">
-        {swatches.map((swatch) => {
-          const active = swatch.hex.toLowerCase() === activeHex.toLowerCase()
-          return (
-            <button
-              key={swatch.id}
-              role="radio"
-              aria-checked={active}
-              aria-label={swatch.name}
-              title={swatch.name}
-              onClick={() => onPick(swatch)}
-              className={`h-8 w-8 shrink-0 rounded-full ring-1 ring-inset ring-black/10 transition
-                          hover:scale-110 active:scale-95 ${
-                            active ? 'outline outline-2 outline-offset-2 outline-neutral-900' : ''
-                          }`}
-              style={{ backgroundColor: swatch.hex }}
-            />
-          )
-        })}
-      </div>
+      {showAR && (
+        <ARProductViewer
+          glbPath={arUrl ?? product.glbPath ?? ''}
+          // Omitted for a runtime-built model: with no `ios-src`, model-viewer
+          // generates the USDZ from the blob and Quick Look shows the live
+          // configuration.
+          usdzPath={arUrl ? undefined : product.usdzPath}
+          productName={product.name}
+          arScale="fixed"
+          onClose={closeAR}
+        />
+      )}
     </div>
   )
 }
@@ -276,29 +394,30 @@ function Swatches({
 /** The render tier, exposed as a control rather than pinned. Nothing here
  *  allocates a shadow map, a reflection target or a composer buffer, so the
  *  tier only moves DPR and anisotropy and every rung is safe to offer. */
-function QualityRow() {
+function QualityChips() {
   const { preset, setPreset } = useQuality()
 
   return (
-    <div className="space-y-1.5 border-t border-neutral-200 pt-2.5">
-      <span className="text-[12px] text-neutral-500">کیفیت نمایش</span>
-      <div role="radiogroup" aria-label="کیفیت نمایش" className="grid grid-cols-4 gap-1.5">
-        {TIERS.map((tier) => (
-          <button
-            key={tier}
-            role="radio"
-            aria-checked={preset === tier}
-            onClick={() => setPreset(tier)}
-            className={`rounded-lg border px-2 py-1.5 text-[12px] transition-colors ${
-              preset === tier
-                ? 'border-neutral-900 bg-neutral-900 text-white'
-                : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-400 hover:text-neutral-900'
-            }`}
-          >
-            {QUALITY_LABELS[tier]}
-          </button>
-        ))}
-      </div>
+    <div
+      role="radiogroup"
+      aria-label="کیفیت نمایش"
+      className="pointer-events-auto flex gap-1 rounded-full border border-neutral-200 bg-white/85 p-1 backdrop-blur-sm"
+    >
+      {TIERS.map((tier) => (
+        <button
+          key={tier}
+          role="radio"
+          aria-checked={preset === tier}
+          onClick={() => setPreset(tier)}
+          className={`rounded-full px-2.5 py-1 text-[11px] transition-colors ${
+            preset === tier
+              ? 'bg-neutral-900 text-white'
+              : 'text-neutral-600 hover:text-neutral-900'
+          }`}
+        >
+          {QUALITY_LABELS[tier]}
+        </button>
+      ))}
     </div>
   )
 }
