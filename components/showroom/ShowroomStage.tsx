@@ -29,13 +29,14 @@ import type { PlinthSpec } from '@/components/product/ViewerPlinth'
  */
 /** The canvas clear colour. Matched by `.sr-stage`'s own ground so the square
  *  canvas disappears into the rounded plate it sits on. */
-export const STAGE_BG = '#f6f7f9'
+export const STAGE_BG = '#ececef'
 
 export default function ShowroomStage({
   config,
   modelPath,
   sourceRef,
   plinth,
+  background = STAGE_BG,
   onReady,
   onError,
 }: {
@@ -45,6 +46,9 @@ export default function ShowroomStage({
   sourceRef: React.MutableRefObject<THREE.Object3D | null>
   /** The stage the piece stands on. Omitted → it floats, as on the plain page. */
   plinth?: PlinthSpec
+  /** Canvas ground, from the showroom's own JSON. Omitted → `STAGE_BG`, which
+   *  is the colour the CSS plate under it is cut in. @see ShowroomViewer */
+  background?: string
   onReady: () => void
   onError: (category: string, error: Error) => void
 }) {
@@ -67,12 +71,12 @@ export default function ShowroomStage({
       simple: {
         ...config.simple,
         model: modelPath,
-        background: STAGE_BG,
+        background,
         // Room for the plinth, which reaches past the piece on every side.
         padding: plinth ? (config.simple?.padding ?? 1.1) * 1.12 : config.simple?.padding,
       },
     }),
-    [config, modelPath, plinth]
+    [config, modelPath, plinth, background]
   )
 
   return (

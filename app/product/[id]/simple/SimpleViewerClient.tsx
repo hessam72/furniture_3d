@@ -12,10 +12,10 @@ import { usePresentation } from '@/stores/presentationStore'
 import { useShop } from '@/stores/storeShopStore'
 import { findCatalogItemBySceneObject, type Catalog } from '@/lib/store/catalog'
 import catalog from '@/public/config/catalog.json'
-import { isARCapable, supportsBlobAR } from '@/lib/device-utils'
-import { exportSignature, exportSinglePieceGLB } from '@/lib/three/exportConfigured'
+import { isARCapable } from '@/lib/device-utils'
 import { QUALITY_PRESETS, type QualityPreset } from '@/lib/config/quality'
 import {
+  arModelPath,
   defaultPaint,
   findCoverVariant,
   finishedPiecePath,
@@ -206,69 +206,30 @@ function Viewer({
   // ── AR ────────────────────────────────────────────────────────────────
   const [showAR, setShowAR] = useState(false)
   const [arSupported, setArSupported] = useState(false)
-  /** False only on Android without WebXR, where Scene Viewer is the sole AR
-   *  path and it refuses blob URLs — there AR falls back to the static asset. */
-  const [liveAR, setLiveAR] = useState(true)
-  const [arBuilding, setArBuilding] = useState(false)
-  const [arError, setArError] = useState(false)
-  const [arUrl, setArUrl] = useState<string | null>(null)
 
-  /** The raw cached GLB behind the canvas, published by the viewer. The export
-   *  runs out here, outside the Canvas, and has no other way to reach it. */
-  const source = useRef<THREE.Object3D | null>(null)
-  /** The last built model, keyed by the config that produced it — re-opening
-   *  AR without touching a swatch reuses it instead of re-serialising. */
-  const arCache = useRef<{ signature: string; url: string } | null>(null)
-
-  useEffect(() => {
-    setArSupported(isARCapable())
-    supportsBlobAR().then(setLiveAR)
-  }, [])
-
-  useEffect(
-    () => () => {
-      if (arCache.current) URL.revokeObjectURL(arCache.current.url)
-      arCache.current = null
-    },
-    []
+  /**
+   * The file AR shows: the selected cover's own GLB, served as-is.
+   *
+   * Nothing is built at tap time any more. The old path serialised the live
+   * scene to a GLB in the browser — colours baked in — and that is what fell
+   * over on real devices: the whole scene walked and cloned, the result held as
+   * an ArrayBuffer *and* a Blob, while model-viewer spins up a second WebGL
+   * context on a phone that was already rendering. A static URL is instant,
+   * needs no memory of ours, and every AR path accepts it, Scene Viewer
+   * included — it refuses blob URLs outright.
+   */
+  const arPath = useMemo(
+    () => arModelPath(config, coverId) ?? product.glbPath ?? null,
+    [config, coverId, product.glbPath]
   )
 
-  const openAR = useCallback(async () => {
-    // No live model, or a device whose AR path refuses blob URLs: the
-    // product's published GLB stands in.
-    if (!source.current || !liveAR) {
-      setArUrl(null)
-      setShowAR(true)
-      return
-    }
+  /** The raw cached GLB behind the canvas, published by the viewer. Kept for
+   *  the viewer's own use — AR no longer reads it. */
+  const source = useRef<THREE.Object3D | null>(null)
 
-    const { paint } = usePresentation.getState()
-    const signature = exportSignature(paint, `${zone}:${coverId ?? 'frame'}`)
-    if (arCache.current?.signature === signature) {
-      setArUrl(arCache.current.url)
-      setShowAR(true)
-      return
-    }
+  useEffect(() => setArSupported(isARCapable()), [])
 
-    setArBuilding(true)
-    setArError(false)
-    try {
-      const blob = await exportSinglePieceGLB(source.current, paint, variant, { zone })
-      const url = URL.createObjectURL(blob)
-      if (arCache.current) URL.revokeObjectURL(arCache.current.url)
-      arCache.current = { signature, url }
-      setArUrl(url)
-      setShowAR(true)
-    } catch (err) {
-      // Never a dead end: the published GLB stands in, and the sheet says so.
-      console.error('[simple] AR export failed', err)
-      setArError(true)
-      setArUrl(null)
-      if (product.glbPath) setShowAR(true)
-    } finally {
-      setArBuilding(false)
-    }
-  }, [coverId, liveAR, product.glbPath, variant, zone])
+  const openAR = useCallback(() => setShowAR(true), [])
 
   /**
    * Leaving AR remounts the canvas: it was unmounted to give the overlay the
@@ -278,14 +239,8 @@ function Viewer({
    */
   const closeAR = useCallback(() => {
     setShowAR(false)
-    setArError(false)
     setCanvasKey((n) => n + 1)
-    if (device !== 'phone') return
-    // A phone is about to take its context back and cannot spare the blob.
-    if (arCache.current) URL.revokeObjectURL(arCache.current.url)
-    arCache.current = null
-    setArUrl(null)
-  }, [device])
+  }, [])
 
   const handleReady = useCallback(() => setReady(true), [])
   const handleError = useCallback((_category: string, err: Error) => setError(err.message), [])
@@ -338,11 +293,8 @@ function Viewer({
           presentation={presentation}
           onViewAR={openAR}
           onAddToCart={() => catalogId && addToCart(catalogId)}
-          arAvailable={liveAR || !!product.glbPath}
+          arAvailable={!!arPath}
           arCapable={arSupported}
-          arLive={liveAR}
-          arBuilding={arBuilding}
-          arError={arError}
           // One file on screen at a time — there is no stack to pull apart,
           // and each palette shows on the layer it belongs to.
           explodable={false}
@@ -375,13 +327,12 @@ function Viewer({
         </div>
       )}
 
-      {showAR && (
+      {showAR && arPath && (
         <ARProductViewer
-          glbPath={arUrl ?? product.glbPath ?? ''}
-          // Omitted for a runtime-built model: with no `ios-src`, model-viewer
-          // generates the USDZ from the blob and Quick Look shows the live
-          // configuration.
-          usdzPath={arUrl ? undefined : product.usdzPath}
+          glbPath={arPath}
+          // Only for the catalogue model the USDZ was authored from; for a
+          // cover variant, model-viewer builds Quick Look's USDZ from the GLB.
+          usdzPath={arPath === product.glbPath ? product.usdzPath : undefined}
           productName={product.name}
           arScale="fixed"
           onClose={closeAR}

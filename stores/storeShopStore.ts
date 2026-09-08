@@ -1,3 +1,11 @@
+/**
+ * Zustand Store: Store Shopping Cart
+ *
+ * Purpose: Manages likes and cart for walkable store + audio mute state
+ * Why Zustand + Persist: Cart persists across page refreshes (localStorage)
+ * Pattern: Array-based state + toggle actions
+ * Used By: /store page - shopping HUD and audio player
+ */
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 

@@ -1,3 +1,12 @@
+/**
+ * Custom Hook: Clipping Plane Animation
+ *
+ * Purpose: Creates bottom-up reveal effect for 3D layers (like building furniture piece by piece)
+ * Pattern: Three.js clipping plane synced to world space every frame (survives rotation/tilt)
+ * Why Hook: Complex matrix math + useFrame logic reusable across multiple layers (frame/cover/soft)
+ * Performance: Parked at constant=1e3 when idle to avoid shader recompilation
+ * Used By: ProductFrame, ProductCover, ProductSoft components
+ */
 'use client'
 
 import { useLayoutEffect, useMemo, useRef } from 'react'

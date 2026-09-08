@@ -101,8 +101,9 @@ export default function PresentationGestures({ config, controls, framing, roomBo
   const baseHalf = useRef(0)
   const capHalf = useRef(0)
   const targetHalf = useRef(0)
-  /** Furthest the camera may travel: what a landscape window would need. */
-  const distanceCeiling = useRef(Infinity)
+  /** The landscape solve's numerator — the metres a desktop window would spend
+   *  at any given zoom, and the phone's ceiling. @see pullBackLimit */
+  const needWide = useRef(0)
   /** How much of the just-fits framing the *vertical* constraint accounts for:
    *  1 in landscape, below it in portrait where the width binds instead. */
   const verticalShare = useRef(1)
@@ -132,8 +133,9 @@ export default function PresentationGestures({ config, controls, framing, roomBo
   }
 
   /**
-   * How far back the camera may go: the room's bounds, the landscape ceiling,
-   * and whatever `camera.maxDistance` says on top.
+   * How far back the camera may go at this zoom: the room's bounds, the metres
+   * a landscape canvas would spend on the same shot, and whatever
+   * `camera.maxDistance` says on top.
    *
    * The room's bounds alone were not enough, and this is why: the clamp
    * measures against the GLB's *bounding box*, and PresentationRoom's booth is
@@ -143,8 +145,20 @@ export default function PresentationGestures({ config, controls, framing, roomBo
    * the room looks exactly like one that flew out through the back of it. A
    * phone reached that dead air and a desktop never did, because a portrait
    * canvas asks for roughly twice the metres for the same shot.
+   *
+   * The landscape term is therefore scaled by the *live* zoom, not by `maxZoom`.
+   * Measured against the fully-zoomed-out shot it was no ceiling at all at the
+   * zoom the page opens on — a phone could sit at twice a desktop's distance and
+   * still be under it, which is exactly the opening shot that started behind the
+   * wall. Per-zoom, the invariant the comment above always claimed finally
+   * holds: **the camera is never further from the piece than a landscape canvas
+   * would put it at the same zoom**, so a desktop shot that clears the wall
+   * guarantees a phone one that does too, and the portrait residual is spent on
+   * the lens instead. Desktop is untouched — its aspect is ≥ 1, so this limit is
+   * the very distance it was already using.
    */
-  const pullBackLimit = () => Math.min(wallLimit(), maxDistance, distanceCeiling.current)
+  const pullBackLimit = (zoomFactor: number) =>
+    Math.min(wallLimit(), maxDistance, (needWide.current / baseHalf.current) * zoomFactor)
 
   /**
    * The shot for a given zoom — distance **and** lens, solved together.
@@ -189,7 +203,7 @@ export default function PresentationGestures({ config, controls, framing, roomBo
     // reported. Reproduced by deferring the publish: 1028 throws in 20s.
     if (!(baseHalf.current > 0) || !(need.current > 0)) return null
 
-    const limit = pullBackLimit()
+    const limit = pullBackLimit(zoomFactor)
     const wanted = (need.current / baseHalf.current) * zoomFactor
     if (!(wanted > limit)) return { distance: wanted, half: baseHalf.current }
     // Widen only as far as the cap allows; past that the room has nothing left
@@ -290,8 +304,8 @@ export default function PresentationGestures({ config, controls, framing, roomBo
     framedDistance.current = need.current / baseHalf.current
 
     /**
-     * The same solve at a landscape aspect, and the furthest the camera may
-     * ever travel.
+     * The same solve at a landscape aspect: the metres a desktop window would
+     * spend, and the ceiling every narrower canvas is held to.
      *
      * `fov` is vertical, so the whole of the extra pull-back a portrait canvas
      * asks for comes from `radius / aspect` — the horizontal fit — blowing up
@@ -299,14 +313,14 @@ export default function PresentationGestures({ config, controls, framing, roomBo
      * desktop window never left, and it is why a per-device `maxZoom` seemed
      * like the answer: it is the metres that differ, not the shot.
      *
-     * So the metres are capped at the landscape figure and the difference is
-     * spent on the lens instead (see `solveShot`). A phone is then never
-     * further from the piece than a desktop would be, at any zoom, with no
-     * per-device override and no change to the desktop at all — its aspect is
-     * already ≥ 1, so this ceiling is exactly the distance it was using.
+     * So the metres are capped at this figure — scaled by the live zoom, in
+     * `pullBackLimit` — and the difference is spent on the lens instead (see
+     * `solveShot`). A phone is then never further from the piece than a desktop
+     * would be at the same zoom, with no per-device override and no change to
+     * the desktop at all: its aspect is already ≥ 1, so `needWide` equals
+     * `need` and the limit is the distance it was using anyway.
      */
-    distanceCeiling.current =
-      ((Math.max(needV, radius / Math.max(aspect, 1)) * padding) / baseHalf.current) * maxZoom
+    needWide.current = Math.max(needV, radius / Math.max(aspect, 1)) * padding
 
     // 1 wherever the piece's height is what sets the framing, below it once the
     // width takes over — which is what portrait does. @see the opening zoom
@@ -321,7 +335,7 @@ export default function PresentationGestures({ config, controls, framing, roomBo
 
     bandCentre.current = coverage / 2 + (config.camera.screenLift ?? 0.02)
 
-    const limit = pullBackLimit()
+    const limit = pullBackLimit(zoom.current)
     const shot = solveShot(zoom.current)
     // Only when the piece measures nothing at all — an empty or unloadable GLB.
     // The camera then stays on its placeholder rather than being aimed by a
@@ -353,9 +367,16 @@ export default function PresentationGestures({ config, controls, framing, roomBo
     }
     if (process.env.NODE_ENV !== 'production' && !warnedTight.current && camera.fov > baseFov + 0.5) {
       warnedTight.current = true
+      const wide = (needWide.current / baseHalf.current) * zoom.current
+      const reason =
+        wide <= Math.min(wallLimit(), maxDistance)
+          ? ' (a landscape canvas would use exactly this, and no narrower one may go further)'
+          : maxDistance < wallLimit()
+            ? ' (camera.maxDistance)'
+            : ' (the room bounds)'
       console.warn(
         `[PresentationGestures] the camera may back off only ${limit.toFixed(2)}m` +
-          `${maxDistance < wallLimit() ? ' (camera.maxDistance)' : ' (the room bounds)'}, so the` +
+          `${reason}, so the` +
           ` lens opened from ${baseFov}° to ${camera.fov.toFixed(1)}° to keep the piece framed` +
           `${camera.fov >= maxFov - 0.5 ? ' — and hit camera.maxFov, so the view is still cropped' : ''}.` +
           ' Scale the room GLB up, or lower camera.padding, to shoot it at the intended focal length.'
