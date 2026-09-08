@@ -58,6 +58,7 @@ function Piece({
   sourceRef,
   plinth,
   zone,
+  paintable = true,
 }: {
   path: string
   envIntensity: number
@@ -72,6 +73,8 @@ function Piece({
   /** Which palette this file wears. The frame is `wood`, a cover variant is
    *  `cover` — one file at a time, so one zone at a time. */
   zone: PresentationZone
+  /** False leaves the GLB's own materials alone. @see Props.paintable */
+  paintable?: boolean
 }) {
   const gltf = useGLTF(path)
   const { settings } = useQuality()
@@ -86,8 +89,10 @@ function Piece({
       shadows: false,
     })
 
-    const collected = collectZoneTargets(clone, { zone })
-    applyFirstCoat(collected, usePresentation.getState().paint)
+    // An unpainted piece keeps every material the file shipped with — nothing
+    // is cloned, so nothing is recoloured and nothing needs disposing.
+    const collected = paintable ? collectZoneTargets(clone, { zone }) : []
+    if (paintable) applyFirstCoat(collected, usePresentation.getState().paint)
 
     // Centred rather than seated: with the piece's own centre on the origin,
     // the orbit turns it in place and the camera's distance is simply its
@@ -108,7 +113,7 @@ function Piece({
       footprint: Math.max(size.x, size.z) / 2,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gltf.scene, path, envIntensity, zone, settings.anisotropyLevel])
+  }, [gltf.scene, path, envIntensity, zone, paintable, settings.anisotropyLevel])
 
   useZonePaint(targets)
   useEffect(() => () => disposeTargets(targets), [targets])
@@ -255,6 +260,15 @@ interface Props {
   /** The viewer sits inside a page that scrolls: gives vertical touch drags
    *  back to the document. Zoom is untouched. @see EmbeddedGestures */
   embedded?: boolean
+  /**
+   * Whether the swatch palette dresses what is mounted. On by default, which is
+   * what every configurator surface wants.
+   *
+   * Off for a model nobody configured — an uploaded GLB is shown as its author
+   * exported it, and painting it would repaint every mesh in the store's
+   * current cover colour. @see /view/[id]
+   */
+  paintable?: boolean
 }
 
 /**
@@ -288,6 +302,7 @@ export default function SimpleViewer({
   plinth,
   embedded,
   zone = 'cover',
+  paintable = true,
 }: Props) {
   const { settings } = useQuality()
   const [perfScale, setPerfScale] = useState(1)
@@ -374,6 +389,7 @@ export default function SimpleViewer({
             sourceRef={sourceRef}
             plinth={plinth}
             zone={zone}
+            paintable={paintable}
           />
         </PartErrorBoundary>
       </Suspense>
