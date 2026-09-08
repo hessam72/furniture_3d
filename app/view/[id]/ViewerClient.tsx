@@ -15,6 +15,7 @@ import {
 import { isARCapable } from '@/lib/device-utils'
 import { assetHdrUrl, assetUrl, uploadViewerConfig } from '@/lib/uploads/viewer'
 import type { UploadedAsset } from '@/lib/uploads/store'
+import QualityChips from '@/components/product/QualityChips'
 
 const SimpleViewer = dynamic(() => import('@/components/product/SimpleViewer'), {
   ssr: false,
@@ -36,8 +37,9 @@ const ARProductViewer = dynamic(() => import('@/components/store/ARProductViewer
  * viewer would otherwise repaint every mesh in the presentation store's cover
  * colour, and an uploaded model must look like the file its author exported.
  *
- * AR is the one control it does carry, and it needs nothing built: the same
- * uploaded file the canvas is drawing is handed straight to model-viewer.
+ * The two controls it does carry are the ones that cost nothing to offer: AR,
+ * which is handed the same uploaded file the canvas is drawing, and the render
+ * tier, which on this viewer only moves DPR and anisotropy. @see QualityChips
  */
 export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
   const [device, setDevice] = useState<DeviceClass>('desktop')
@@ -83,29 +85,36 @@ export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
   const handleError = useCallback((_category: string, err: Error) => setError(err.message), [])
 
   return (
+    // The provider wraps the whole page, not just the canvas: the tier picker
+    // is chrome over it and reads the same context.
+    <QualityProvider preset={simpleViewerQuality(config, device)}>
     <div
       dir="rtl"
       className="font-persian viewport-fill relative w-screen overflow-hidden"
       style={{ background: view.background }}
     >
-      <QualityProvider preset={simpleViewerQuality(config, device)}>
-        {!error && !showAR && (
-          <SimpleViewer
-            key={canvasKey}
-            config={config}
-            coverage={0}
-            paintable={false}
-            onReady={handleReady}
-            onError={handleError}
-          />
-        )}
-      </QualityProvider>
+      {!error && !showAR && (
+        <SimpleViewer
+          key={canvasKey}
+          config={config}
+          coverage={0}
+          paintable={false}
+          onReady={handleReady}
+          onError={handleError}
+        />
+      )}
 
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
-        <h1 className="max-w-[70%] truncate text-[13px] text-neutral-600">{asset.name}</h1>
+        <div className="flex min-w-0 flex-col items-start gap-2">
+          <h1 className="max-w-full truncate text-[13px] text-neutral-600">{asset.name}</h1>
+          {/* Same picker the simple page carries, on the same terms: nothing
+              here allocates a shadow map or a composer buffer, so every rung is
+              safe to offer. */}
+          {!error && !showAR && <QualityChips />}
+        </div>
         <Link
           href="/manage"
-          className="pointer-events-auto rounded-full border border-neutral-300 bg-white/85 px-3 py-1
+          className="pointer-events-auto shrink-0 rounded-full border border-neutral-300 bg-white/85 px-3 py-1
                      text-[12px] text-neutral-700 backdrop-blur-sm transition-colors hover:border-neutral-400"
         >
           مدیریت فایل‌ها
@@ -164,5 +173,6 @@ export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
         </div>
       )}
     </div>
+    </QualityProvider>
   )
 }
