@@ -6,14 +6,13 @@ import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import type * as THREE from 'three'
 import { useGLTF } from '@react-three/drei'
-import { QualityProvider, useQuality } from '@/contexts/QualityContext'
+import { QualityProvider } from '@/contexts/QualityContext'
 import { useAssetProbe } from '@/hooks/useAssetProbe'
 import { usePresentation } from '@/stores/presentationStore'
 import { useShop } from '@/stores/storeShopStore'
 import { findCatalogItemBySceneObject, type Catalog } from '@/lib/store/catalog'
 import catalog from '@/public/config/catalog.json'
 import { isARCapable } from '@/lib/device-utils'
-import { QUALITY_PRESETS, type QualityPreset } from '@/lib/config/quality'
 import {
   arModelPath,
   defaultPaint,
@@ -29,6 +28,7 @@ import {
   type ResolvedPresentation,
 } from '@/lib/product/presentation'
 import ProductSheet from '@/components/product/ProductSheet'
+import QualityChips from '@/components/product/QualityChips'
 
 const SimpleViewer = dynamic(() => import('@/components/product/SimpleViewer'), {
   ssr: false,
@@ -36,15 +36,6 @@ const SimpleViewer = dynamic(() => import('@/components/product/SimpleViewer'), 
 })
 
 const ARProductViewer = dynamic(() => import('@/components/store/ARProductViewer'), { ssr: false })
-
-const QUALITY_LABELS: Record<QualityPreset, string> = {
-  low: 'کم',
-  medium: 'متوسط',
-  high: 'زیاد',
-  ultra: 'حداکثر',
-}
-
-const TIERS = Object.keys(QUALITY_PRESETS) as QualityPreset[]
 
 /** Said once in the sheet, because a swatch that paints nothing on the layer
  *  currently mounted reads as a broken control rather than a deliberate one. */
@@ -338,37 +329,6 @@ function Viewer({
           onClose={closeAR}
         />
       )}
-    </div>
-  )
-}
-
-/** The render tier, exposed as a control rather than pinned. Nothing here
- *  allocates a shadow map, a reflection target or a composer buffer, so the
- *  tier only moves DPR and anisotropy and every rung is safe to offer. */
-function QualityChips() {
-  const { preset, setPreset } = useQuality()
-
-  return (
-    <div
-      role="radiogroup"
-      aria-label="کیفیت نمایش"
-      className="pointer-events-auto flex gap-1 rounded-full border border-neutral-200 bg-white/85 p-1 backdrop-blur-sm"
-    >
-      {TIERS.map((tier) => (
-        <button
-          key={tier}
-          role="radio"
-          aria-checked={preset === tier}
-          onClick={() => setPreset(tier)}
-          className={`rounded-full px-2.5 py-1 text-[11px] transition-colors ${
-            preset === tier
-              ? 'bg-neutral-900 text-white'
-              : 'text-neutral-600 hover:text-neutral-900'
-          }`}
-        >
-          {QUALITY_LABELS[tier]}
-        </button>
-      ))}
     </div>
   )
 }
