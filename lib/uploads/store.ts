@@ -26,6 +26,9 @@ export interface UploadedAsset {
   file: string
   size: number
   uploadedAt: string
+  /** The environment this model is lit by, when one was uploaded with it.
+   *  Absent → the viewer's default HDR. @see uploadViewerConfig */
+  hdr?: { name: string; file: string; size: number }
 }
 
 const ROOT = path.join(process.cwd(), 'data', 'uploads')
@@ -33,6 +36,8 @@ const INDEX = path.join(ROOT, 'index.json')
 
 /** What the loader can actually open. */
 export const ALLOWED_EXTENSIONS = ['.glb', '.gltf']
+/** Radiance and OpenEXR — the two drei's `Environment` loads from a file. */
+export const ALLOWED_HDR_EXTENSIONS = ['.hdr', '.exr']
 /** Refused above this. A GLB past it will not survive a phone's AR path either. */
 export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 
@@ -69,10 +74,22 @@ export function assetPath(asset: UploadedAsset): string {
   return path.join(ROOT, path.basename(asset.file))
 }
 
-/** The extension of an uploaded filename, lowercased, or '' if it has none. */
+/** The extension of an uploaded model, lowercased, or '' if it is not one. */
 export function extensionOf(filename: string): string {
   const ext = path.extname(filename).toLowerCase()
   return ALLOWED_EXTENSIONS.includes(ext) ? ext : ''
+}
+
+/** The same, for an environment map. */
+export function hdrExtensionOf(filename: string): string {
+  const ext = path.extname(filename).toLowerCase()
+  return ALLOWED_HDR_EXTENSIONS.includes(ext) ? ext : ''
+}
+
+/** Absolute path of a model's environment map, or null when it has none. */
+export function assetHdrPath(asset: UploadedAsset): string | null {
+  if (!asset.hdr) return null
+  return path.join(ROOT, path.basename(asset.hdr.file))
 }
 
 /**
@@ -83,10 +100,19 @@ export function extensionOf(filename: string): string {
  * endpoint safe to leave unauthenticated: there is no traversal to attempt, no
  * name to collide with, and nothing executable can be written.
  */
-export async function addAsset(name: string, ext: string, data: Buffer): Promise<UploadedAsset> {
+export async function addAsset(
+  name: string,
+  ext: string,
+  data: Buffer,
+  /** Optional environment map, stored beside the model under the same id. */
+  hdr?: { name: string; ext: string; data: Buffer }
+): Promise<UploadedAsset> {
   const id = randomUUID()
   await mkdir(ROOT, { recursive: true })
   await writeFile(path.join(ROOT, `${id}${ext}`), data)
+  // `-env` keeps the pair adjacent on disk and distinct from the model, whose
+  // extension may differ but whose stem is the same id.
+  if (hdr) await writeFile(path.join(ROOT, `${id}-env${hdr.ext}`), hdr.data)
 
   const asset: UploadedAsset = {
     id,
@@ -94,6 +120,9 @@ export async function addAsset(name: string, ext: string, data: Buffer): Promise
     file: `${id}${ext}`,
     size: data.byteLength,
     uploadedAt: new Date().toISOString(),
+    ...(hdr
+      ? { hdr: { name: hdr.name, file: `${id}-env${hdr.ext}`, size: hdr.data.byteLength } }
+      : {}),
   }
   await writeIndex([asset, ...(await readIndex())])
   return asset
@@ -106,11 +135,14 @@ export async function removeAsset(id: string): Promise<boolean> {
   if (!asset) return false
 
   await writeIndex(assets.filter((entry) => entry.id !== id))
-  try {
-    await unlink(assetPath(asset))
-  } catch {
-    // Already gone — the library is what the index says, and it no longer
-    // mentions this file.
+  const hdrPath = assetHdrPath(asset)
+  for (const target of hdrPath ? [assetPath(asset), hdrPath] : [assetPath(asset)]) {
+    try {
+      await unlink(target)
+    } catch {
+      // Already gone — the library is what the index says, and it no longer
+      // mentions this file.
+    }
   }
   return true
 }
@@ -120,7 +152,7 @@ export async function removeAsset(id: string): Promise<boolean> {
 export async function orphanFiles(): Promise<string[]> {
   try {
     const [files, assets] = await Promise.all([readdir(ROOT), readIndex()])
-    const known = new Set(assets.map((asset) => asset.file))
+    const known = new Set(assets.flatMap((asset) => [asset.file, asset.hdr?.file ?? '']))
     return files.filter((file) => file !== 'index.json' && !known.has(file))
   } catch {
     return []

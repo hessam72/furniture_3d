@@ -12,13 +12,16 @@ import {
   TOUCH_QUERY,
   type DeviceClass,
 } from '@/lib/product/presentation'
-import { assetUrl, uploadViewerConfig } from '@/lib/uploads/viewer'
+import { isARCapable } from '@/lib/device-utils'
+import { assetHdrUrl, assetUrl, uploadViewerConfig } from '@/lib/uploads/viewer'
 import type { UploadedAsset } from '@/lib/uploads/store'
 
 const SimpleViewer = dynamic(() => import('@/components/product/SimpleViewer'), {
   ssr: false,
   loading: () => <div className="h-full w-full" />,
 })
+
+const ARProductViewer = dynamic(() => import('@/components/store/ARProductViewer'), { ssr: false })
 
 /**
  * The plain viewer, pointed at an uploaded file.
@@ -32,11 +35,19 @@ const SimpleViewer = dynamic(() => import('@/components/product/SimpleViewer'), 
  * `paintable={false}` is the one behavioural difference and it matters: the
  * viewer would otherwise repaint every mesh in the presentation store's cover
  * colour, and an uploaded model must look like the file its author exported.
+ *
+ * AR is the one control it does carry, and it needs nothing built: the same
+ * uploaded file the canvas is drawing is handed straight to model-viewer.
  */
 export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
   const [device, setDevice] = useState<DeviceClass>('desktop')
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showAR, setShowAR] = useState(false)
+  const [arCapable, setArCapable] = useState(false)
+  /** Remounts the canvas after AR: it is unmounted to give the overlay the GPU,
+   *  and a Canvas whose context went with it has to be rebuilt. */
+  const [canvasKey, setCanvasKey] = useState(0)
 
   useEffect(() => {
     const queries = [window.matchMedia(PHONE_QUERY), window.matchMedia(TOUCH_QUERY)]
@@ -54,7 +65,18 @@ export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
     return () => root.classList.remove('viewport-locked')
   }, [])
 
-  const config = useMemo(() => uploadViewerConfig(assetUrl(asset.id)), [asset.id])
+  useEffect(() => setArCapable(isARCapable()), [])
+
+  /** The uploaded environment, when one came with the model; otherwise the
+   *  house HDR. @see uploadViewerConfig */
+  const config = useMemo(
+    () =>
+      uploadViewerConfig(
+        assetUrl(asset.id),
+        asset.hdr ? assetHdrUrl(asset.id, asset.hdr.file) : null
+      ),
+    [asset.id, asset.hdr]
+  )
   const view = useMemo(() => simpleViewer(config), [config])
 
   const handleReady = useCallback(() => setReady(true), [])
@@ -67,8 +89,9 @@ export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
       style={{ background: view.background }}
     >
       <QualityProvider preset={simpleViewerQuality(config, device)}>
-        {!error && (
+        {!error && !showAR && (
           <SimpleViewer
+            key={canvasKey}
             config={config}
             coverage={0}
             paintable={false}
@@ -89,9 +112,36 @@ export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
         </Link>
       </header>
 
+      {/* The uploaded file itself goes to AR — nothing is built, so the button
+          opens straight into the overlay. */}
+      {!error && !showAR && (
+        <button
+          type="button"
+          onClick={() => setShowAR(true)}
+          className="pointer-events-auto absolute inset-x-0 bottom-[max(1.5rem,env(safe-area-inset-bottom))]
+                     z-20 mx-auto flex w-fit items-center gap-2 rounded-full border border-neutral-300
+                     bg-white/90 px-5 py-2.5 text-[13px] text-neutral-800 backdrop-blur-sm
+                     transition-colors hover:border-neutral-500"
+        >
+          {arCapable ? 'نمایش در فضای واقعی (AR)' : 'پیش‌نمایش سه‌بعدی'}
+        </button>
+      )}
+
+      {showAR && (
+        <ARProductViewer
+          glbPath={assetUrl(asset.id)}
+          productName={asset.name}
+          arScale="fixed"
+          onClose={() => {
+            setShowAR(false)
+            setCanvasKey((n) => n + 1)
+          }}
+        />
+      )}
+
       {/* Held over the canvas rather than shown in its place: the canvas has to
           be mounted and rendering to load its own model at all. */}
-      {!error && (
+      {!error && !showAR && (
         <div
           aria-hidden={ready}
           className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center transition-opacity duration-500"

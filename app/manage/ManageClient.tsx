@@ -19,25 +19,33 @@ export default function ManageClient({ initial }: { initial: UploadedAsset[] }) 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
-  const input = useRef<HTMLInputElement>(null)
+  const [model, setModel] = useState<File | null>(null)
+  const [hdr, setHdr] = useState<File | null>(null)
+  const form = useRef<HTMLFormElement>(null)
 
-  const upload = useCallback(async (file: File) => {
+  /** The model, and the environment to light it with if one was picked. An
+   *  empty HDR field is not an error — the viewer falls back to the default. */
+  const upload = useCallback(async () => {
+    if (!model) return
     setBusy(true)
     setError(null)
     try {
       const body = new FormData()
-      body.append('file', file)
+      body.append('file', model)
+      if (hdr) body.append('hdr', hdr)
       const response = await fetch('/api/uploads', { method: 'POST', body })
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error ?? 'بارگذاری ناموفق بود.')
       setAssets((current) => [payload.asset as UploadedAsset, ...current])
+      setModel(null)
+      setHdr(null)
+      form.current?.reset()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'بارگذاری ناموفق بود.')
     } finally {
       setBusy(false)
-      if (input.current) input.current.value = ''
     }
-  }, [])
+  }, [model, hdr])
 
   const remove = useCallback(async (id: string) => {
     // Optimistic: the row is the only thing that can be wrong, and a failed
@@ -71,24 +79,54 @@ export default function ManageClient({ initial }: { initial: UploadedAsset[] }) 
         فایل GLB را بارگذاری کنید تا لینک نمایش آن ساخته شود.
       </p>
 
-      <label
-        className={`mt-6 flex cursor-pointer items-center justify-center rounded-xl border border-dashed
-                    border-neutral-300 px-4 py-8 text-[13px] transition-colors
-                    ${busy ? 'text-neutral-400' : 'text-neutral-600 hover:border-neutral-500'}`}
+      <form
+        ref={form}
+        className="mt-6 space-y-3 rounded-xl border border-neutral-200 p-4"
+        onSubmit={(event) => {
+          event.preventDefault()
+          upload()
+        }}
       >
-        <input
-          ref={input}
-          type="file"
-          accept=".glb,.gltf,model/gltf-binary"
-          className="hidden"
-          disabled={busy}
-          onChange={(event) => {
-            const file = event.target.files?.[0]
-            if (file) upload(file)
-          }}
-        />
-        {busy ? 'در حال بارگذاری…' : 'انتخاب فایل GLB'}
-      </label>
+        <label className="flex items-center justify-between gap-3 text-[13px]">
+          <span className="text-neutral-600">فایل مدل (GLB)</span>
+          <input
+            type="file"
+            accept=".glb,.gltf,model/gltf-binary"
+            required
+            disabled={busy}
+            onChange={(event) => setModel(event.target.files?.[0] ?? null)}
+            className="max-w-[60%] text-[12px] text-neutral-500 file:mr-2 file:rounded-md file:border
+                       file:border-neutral-300 file:bg-white file:px-2 file:py-1 file:text-[12px]"
+          />
+        </label>
+
+        <label className="flex items-center justify-between gap-3 text-[13px]">
+          <span className="text-neutral-600">
+            فایل HDR <span className="text-neutral-400">(اختیاری)</span>
+          </span>
+          <input
+            type="file"
+            accept=".hdr,.exr"
+            disabled={busy}
+            onChange={(event) => setHdr(event.target.files?.[0] ?? null)}
+            className="max-w-[60%] text-[12px] text-neutral-500 file:mr-2 file:rounded-md file:border
+                       file:border-neutral-300 file:bg-white file:px-2 file:py-1 file:text-[12px]"
+          />
+        </label>
+
+        <p className="text-[11px] text-neutral-400">
+          بدون فایل HDR، نورپردازی پیش‌فرض استفاده می‌شود.
+        </p>
+
+        <button
+          type="submit"
+          disabled={busy || !model}
+          className="w-full rounded-lg border border-neutral-300 py-2 text-[13px] transition-colors
+                     hover:border-neutral-500 disabled:opacity-40"
+        >
+          {busy ? 'در حال بارگذاری…' : 'بارگذاری'}
+        </button>
+      </form>
 
       {error && <p className="mt-3 text-[12px] text-red-600">{error}</p>}
 
@@ -102,6 +140,7 @@ export default function ManageClient({ initial }: { initial: UploadedAsset[] }) 
               <p className="truncate text-[13px]">{asset.name}</p>
               <p className="text-[11px] text-neutral-500">
                 {(asset.size / MB).toFixed(1)} MB · {new Date(asset.uploadedAt).toLocaleDateString('fa-IR')}
+                {asset.hdr ? ' · HDR اختصاصی' : ' · HDR پیش‌فرض'}
               </p>
             </div>
 

@@ -12,6 +12,17 @@ export function assetUrl(id: string): string {
 }
 
 /**
+ * Where a model's own environment map is served from.
+ *
+ * The filename is part of the path on purpose: drei's `Environment` chooses its
+ * loader from the URL's extension, so an endpoint that ended in `/hdr` would
+ * load as neither RGBE nor EXR.
+ */
+export function assetHdrUrl(id: string, file: string): string {
+  return `/api/uploads/${id}/hdr/${file}`
+}
+
+/**
  * A one-file manifest for an uploaded model.
  *
  * `SimpleViewer` draws from a `PresentationConfig`'s `simple` block, so the
@@ -20,11 +31,14 @@ export function assetUrl(id: string): string {
  * product — an upload has no cover variants, no palettes and no room — so the
  * values are the plain studio defaults, and the model is framed from its own
  * measured bounds like every other piece.
+ *
+ * `hdrUrl` is the one thing an uploader can choose: pass the environment map
+ * that came with the model, or leave it out for the house default.
  */
 export const UPLOAD_VIEWER_HDR = '/hdr/200_hdrmaps_com_free_1kk.exr'
 export const UPLOAD_VIEWER_BG = '#ececef'
 
-export function uploadViewerConfig(modelUrl: string): PresentationConfig {
+export function uploadViewerConfig(modelUrl: string, hdrUrl?: string | null): PresentationConfig {
   return {
     room: {},
     // The frame is the required layer, and for an upload it is the whole model.
@@ -36,7 +50,7 @@ export function uploadViewerConfig(modelUrl: string): PresentationConfig {
     camera: { azimuthDeg: 0, elevationDeg: 8, fov: 35 },
     simple: {
       model: modelUrl,
-      hdr: UPLOAD_VIEWER_HDR,
+      hdr: hdrUrl || UPLOAD_VIEWER_HDR,
       envIntensity: 1,
       background: UPLOAD_VIEWER_BG,
       fov: 35,
