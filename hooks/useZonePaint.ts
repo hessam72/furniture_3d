@@ -1,3 +1,12 @@
+/**
+ * Custom Hook: Multi-Zone Color Interpolation
+ *
+ * Purpose: Smooth color transitions for different material zones (wood/cover/cushion)
+ * Pattern: useRef to avoid re-renders + useFrame for 60fps lerp + automatic settle detection
+ * Why Hook: Each zone needs same logic, performance critical (60fps), reusable across layers
+ * Performance: Animates via useRef (no React re-renders), invalidates only while moving
+ * Used By: ProductCover, ProductFrame, ProductSoft components
+ */
 'use client'
 
 import { useEffect, useRef } from 'react'

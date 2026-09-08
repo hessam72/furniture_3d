@@ -6,9 +6,9 @@ import Link from 'next/link'
 import type * as THREE from 'three'
 import { usePresentation } from '@/stores/presentationStore'
 import { useAssetProbe } from '@/hooks/useAssetProbe'
-import { isARCapable, supportsBlobAR } from '@/lib/device-utils'
-import { exportSignature, exportSinglePieceGLB } from '@/lib/three/exportConfigured'
+import { isARCapable } from '@/lib/device-utils'
 import {
+  arModelPath,
   defaultPaint,
   findCoverVariant,
   type ResolvedPresentation,
@@ -40,9 +40,8 @@ const FRAME = '__frame__'
  *    finish picked here is the finish /product/[id] opens on.
  *  - **Layer** swaps which GLB the viewer mounts — a cover variant, or the
  *    frame. The frame is wood, so the palette swaps with it.
- *  - **AR** serialises what is on screen (`exportSinglePieceGLB`) and hands
- *    model-viewer the blob, exactly as the presentation page does; with no
- *    `ios-src` beside it, Quick Look builds the USDZ from that same file.
+ *  - **AR** hands model-viewer the selected cover's own GLB — the same static
+ *    file the canvas is drawing — so the overlay opens with nothing to build.
  */
 export default function ShowroomFeatured({
   featured,
@@ -60,20 +59,14 @@ export default function ShowroomFeatured({
   const [failed, setFailed] = useState(false)
 
   const [arSupported, setArSupported] = useState(false)
-  const [liveAR, setLiveAR] = useState(true)
   const [arOpen, setArOpen] = useState(false)
-  const [arBusy, setArBusy] = useState(false)
-  const [arUrl, setArUrl] = useState<string | null>(null)
-  const [arFailed, setArFailed] = useState(false)
 
   const setPaint = usePresentation((s) => s.setPaint)
   const initProduct = usePresentation((s) => s.initProduct)
   const activeColor = usePresentation((s) => s.paint.cover.color)
 
-  /** The raw cached GLB behind the canvas, published by SimpleViewer. The AR
-   *  export lives out here, outside the Canvas, and has no other way to it. */
+  /** The raw cached GLB behind the canvas, published by SimpleViewer. */
   const source = useRef<THREE.Object3D | null>(null)
-  const arCache = useRef<{ signature: string; url: string } | null>(null)
 
   const showingFrame = layer === FRAME
   const variant = useMemo(
@@ -103,10 +96,7 @@ export default function ShowroomFeatured({
     setPaint({ color: first.hex, roughness: first.roughness ?? 0.6 }, 'cover')
   }, [swatches, setPaint])
 
-  useEffect(() => {
-    setArSupported(isARCapable())
-    supportsBlobAR().then(setLiveAR)
-  }, [])
+  useEffect(() => setArSupported(isARCapable()), [])
 
   // The overlay is fixed and full-screen; the page behind it must not scroll
   // under the customer's drag while they are placing the piece.
@@ -119,61 +109,33 @@ export default function ShowroomFeatured({
     }
   }, [arOpen])
 
-  useEffect(
-    () => () => {
-      if (arCache.current) URL.revokeObjectURL(arCache.current.url)
-      arCache.current = null
-    },
-    []
-  )
-
   const probe = useAssetProbe(useMemo(() => (modelPath ? [modelPath] : []), [modelPath]))
   const canRender = !!config && !!modelPath && probe.state === 'ready' && !failed
-
-  /** What AR falls back to when the live export cannot be used. Without either
-   *  this or a loaded piece there is nothing to show, and the button hides. */
-  const fallbackGlb = presentation?.product.glbPath ?? null
 
   const handleError = useCallback(() => setFailed(true), [])
   const handleReady = useCallback(() => setReady(true), [])
 
-  const openAR = useCallback(async () => {
-    // No live model, or a device whose AR path refuses blob URLs (Android
-    // without WebXR): the product's published GLB stands in.
-    if (!source.current || !liveAR) {
-      if (!fallbackGlb) return
-      setArUrl(null)
-      setArOpen(true)
-      return
-    }
+  /**
+   * The file AR shows: the selected cover's own GLB, served as-is.
+   *
+   * The section used to serialise the live scene to a GLB on tap, colours baked
+   * in. That is what crashed real devices: the scene walked and cloned, the
+   * result held as an ArrayBuffer *and* a Blob, all while model-viewer starts a
+   * second WebGL context. A static URL is instant and works on every AR path —
+   * Scene Viewer refuses blob URLs outright — so the button opens straight into
+   * the overlay with nothing to prepare. On the structure toggle it is still
+   * the upholstered piece: nobody places a bare frame in their living room.
+   */
+  const arPath = useMemo(() => {
+    if (!config) return presentation?.product.glbPath ?? null
+    return arModelPath(config, showingFrame ? config.layers.cover.default : layer)
+      ?? presentation?.product.glbPath
+      ?? null
+  }, [config, layer, showingFrame, presentation?.product.glbPath])
 
-    const { paint } = usePresentation.getState()
-    const signature = exportSignature(paint, layer)
-    if (arCache.current?.signature === signature) {
-      setArUrl(arCache.current.url)
-      setArOpen(true)
-      return
-    }
-
-    setArBusy(true)
-    try {
-      const blob = await exportSinglePieceGLB(source.current, paint, variant)
-      const url = URL.createObjectURL(blob)
-      if (arCache.current) URL.revokeObjectURL(arCache.current.url)
-      arCache.current = { signature, url }
-      setArUrl(url)
-      setArOpen(true)
-    } catch (error) {
-      // Never a dead end: fall back to the published GLB rather than leaving
-      // the button spinning on a piece the customer can already see.
-      console.error('[showroom] AR export failed', error)
-      setArFailed(true)
-      setArUrl(null)
-      if (fallbackGlb) setArOpen(true)
-    } finally {
-      setArBusy(false)
-    }
-  }, [layer, liveAR, variant, fallbackGlb])
+  const openAR = useCallback(() => {
+    if (arPath) setArOpen(true)
+  }, [arPath])
 
   const productName = presentation?.product.name ?? featured.title
 
@@ -267,28 +229,19 @@ export default function ShowroomFeatured({
                   <ArrowIcon className="sr-arrow" size={17} />
                 </Link>
               )}
-              {(canRender || fallbackGlb) && (
-                <button
-                  type="button"
-                  className="sr-btn sr-btn-outline"
-                  onClick={openAR}
-                  disabled={arBusy}
-                >
+              {arPath && (
+                <button type="button" className="sr-btn sr-btn-outline" onClick={openAR}>
                   <ArIcon size={18} />
-                  {arBusy
-                    ? 'در حال آماده‌سازی…'
-                    : arSupported
-                      ? featured.arLabel ?? 'نمایش در خانه (AR)'
-                      : featured.arPreviewLabel ?? 'پیش‌نمایش سه‌بعدی'}
+                  {arSupported
+                    ? featured.arLabel ?? 'نمایش در خانه (AR)'
+                    : featured.arPreviewLabel ?? 'پیش‌نمایش سه‌بعدی'}
                 </button>
               )}
             </div>
 
-            {(arFailed || !arSupported) && (
+            {!arSupported && (
               <p className="sr-ar-note">
-                {arFailed
-                  ? 'ساخت مدل واقعیت افزوده ناموفق بود؛ مدل پیش‌فرض محصول نمایش داده می‌شود.'
-                  : 'برای قرار دادن مبل در فضای واقعی، این صفحه را روی گوشی یا تبلت باز کنید.'}
+                برای قرار دادن مبل در فضای واقعی، این صفحه را روی گوشی یا تبلت باز کنید.
               </p>
             )}
 
@@ -330,6 +283,7 @@ export default function ShowroomFeatured({
                   modelPath={modelPath}
                   sourceRef={source}
                   plinth={featured.stage}
+                  background={featured.viewer?.background}
                   onReady={handleReady}
                   onError={handleError}
                 />
@@ -357,17 +311,16 @@ export default function ShowroomFeatured({
         </div>
       </div>
 
-      {arOpen && (
+      {arOpen && arPath && (
         <div className="sr-ar-host">
           <ARProductViewer
-            glbPath={arUrl ?? fallbackGlb ?? ''}
-            usdzPath={arUrl ? undefined : presentation?.product.usdzPath}
+            glbPath={arPath}
+            // Only for the catalogue model the USDZ was authored from; for a
+            // cover variant, model-viewer builds Quick Look's USDZ from the GLB.
+            usdzPath={arPath === presentation?.product.glbPath ? presentation?.product.usdzPath : undefined}
             productName={productName}
             arScale="fixed"
-            onClose={() => {
-              setArOpen(false)
-              setArFailed(false)
-            }}
+            onClose={() => setArOpen(false)}
           />
         </div>
       )}

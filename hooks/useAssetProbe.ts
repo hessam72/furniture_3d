@@ -1,3 +1,11 @@
+/**
+ * Custom Hook: Asset Pre-flight Check
+ *
+ * Purpose: Prevents white screen crashes by checking if 3D model files exist before mounting Canvas
+ * Pattern: Pre-flight HEAD requests → warm cache → mount scene
+ * Why Hook: Encapsulates async loading/error states, keeps components clean
+ * Used By: Product viewer, store scenes, AR page
+ */
 'use client'
 
 import { useEffect, useState } from 'react'

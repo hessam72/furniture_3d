@@ -1,3 +1,11 @@
+/**
+ * Zustand Store: Scene Lighting Configuration
+ *
+ * Purpose: Manages lighting presets and manual adjustments (HDRI, intensity, rotation)
+ * Why Zustand: Lighting state shared between 3D scene and lighting controls UI
+ * Pattern: Preset system + granular manual overrides
+ * Used By: Car configurator lighting controls
+ */
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 

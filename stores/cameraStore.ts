@@ -1,3 +1,11 @@
+/**
+ * Zustand Store: Camera Rig State
+ *
+ * Purpose: Manages camera presets and smooth transitions between views
+ * Why Zustand: Camera state accessed by both UI buttons and scroll handlers
+ * Pattern: Preset-based positioning + spring transitions + auto-rotate
+ * Used By: Car configurator, homepage showcase, camera control buttons
+ */
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import * as THREE from 'three'

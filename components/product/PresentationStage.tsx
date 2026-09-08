@@ -18,9 +18,9 @@ import type { StageMeta } from '@/lib/product/presentation'
  *
  * What it deliberately does not do is as important as what it does. It runs no
  * `collectZoneTargets`, so no mesh of its can be picked up as a paint target
- * however it is named or tagged in Blender, and it is never written to
- * `ExportSources`, so the AR build has no way to include it. Both exclusions
- * are structural: there is no flag to get wrong.
+ * however it is named or tagged in Blender, and AR shows the cover variant's
+ * own file, which the stage is not part of. Both exclusions are structural:
+ * there is no flag to get wrong.
  *
  * It is not matted either. `matte` exists to stop the environment tinting the
  * colours a customer picks; the stage has none, so it keeps its authored look.

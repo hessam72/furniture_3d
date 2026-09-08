@@ -17,7 +17,6 @@ import {
   type PresentationConfig,
   type PresentationZone,
 } from '@/lib/product/presentation'
-import type { ExportSources } from '@/lib/three/exportConfigured'
 import CoverLayer from './CoverLayer'
 import PresentationStage from './PresentationStage'
 import type { WipeDirection } from '@/hooks/useClipWipe'
@@ -46,9 +45,6 @@ interface FurnitureStackProps {
   /** `?debug=1` — draws the piece's ground plane so it can be lined up against
    *  the floor in the backdrop photograph. */
   debug?: boolean
-  /** Filled in with the raw cached GLTFs so the AR export can rebuild the piece
-   *  from the sources rather than from this live, half-animated subtree. */
-  sources?: React.MutableRefObject<ExportSources>
 }
 
 /** One GLB layer: cloned, prepared, its colourable subset tagged with a zone. */
@@ -86,49 +82,21 @@ function useLayer(path: string, zone: PresentationZone, matte: boolean, shadows:
  *
  * It reads the same drei cache CoverLayer does, so this costs no extra fetch.
  */
-function CoverSource({
-  path,
-  sources,
-  onBounds,
-}: {
-  path: string
-  sources?: React.MutableRefObject<ExportSources>
-  onBounds: (box: THREE.Box3) => void
-}) {
+function CoverSource({ path, onBounds }: { path: string; onBounds: (box: THREE.Box3) => void }) {
   const { scene } = useGLTF(path)
   useEffect(() => {
-    if (sources) sources.current.cover = scene
     onBounds(new THREE.Box3().setFromObject(scene))
-  }, [scene, sources, onBounds])
+  }, [scene, onBounds])
   return null
 }
 
 /** The soft layer is optional — a product can ship as frame + cover alone. */
-function SoftLayer({
-  meta,
-  matte,
-  shadows,
-  sources,
-}: {
-  meta: LayerMeta
-  matte: boolean
-  shadows: boolean
-  sources?: React.MutableRefObject<ExportSources>
-}) {
+function SoftLayer({ meta, matte, shadows }: { meta: LayerMeta; matte: boolean; shadows: boolean }) {
   const soft = useLayer(meta.path, 'cushion', matte, shadows, meta.zoneMatch)
-  useEffect(() => {
-    if (!sources) return
-    sources.current.soft = soft.source
-    // Cleared on unmount, or the AR export would keep shipping a layer the
-    // page has stopped showing.
-    return () => {
-      sources.current.soft = null
-    }
-  }, [sources, soft.source])
   return <primitive object={soft.scene} />
 }
 
-export default function FurnitureStack({ config, controls, framing, sources, debug }: FurnitureStackProps) {
+export default function FurnitureStack({ config, controls, framing, debug }: FurnitureStackProps) {
   const invalidate = useThree((s) => s.invalidate)
 
   const layerStep = usePresentation((s) => s.layerStep)
@@ -197,12 +165,6 @@ export default function FurnitureStack({ config, controls, framing, sources, deb
       baseSize: size,
     }
   }, [frame.scene, coverBox, deckY, config.layers.frame.path])
-
-  useEffect(() => {
-    if (!sources) return
-    sources.current.frame = frame.source
-    sources.current.centerOffset = centerOffset
-  }, [sources, frame.source, centerOffset])
 
   // Publish the bounds the camera should frame. Exploding raises the top layer
   // by two gaps, so the rig has to re-frame or the fanned stack runs off-screen.
@@ -335,7 +297,7 @@ export default function FurnitureStack({ config, controls, framing, sources, deb
               <group ref={softSlot} visible={softVisible}>
                 <Suspense fallback={null}>
                   <PartErrorBoundary category="soft">
-                    <SoftLayer meta={softMeta} matte={matte} shadows={shadows} sources={sources} />
+                    <SoftLayer meta={softMeta} matte={matte} shadows={shadows} />
                   </PartErrorBoundary>
                 </Suspense>
                 {exploded && <LayerLabel text={softMeta.label} />}
@@ -372,7 +334,7 @@ export default function FurnitureStack({ config, controls, framing, sources, deb
             {variant && (
               <Suspense fallback={null}>
                 <PartErrorBoundary category="cover-source">
-                  <CoverSource path={variant.path} sources={sources} onBounds={handleCoverBounds} />
+                  <CoverSource path={variant.path} onBounds={handleCoverBounds} />
                 </PartErrorBoundary>
               </Suspense>
             )}

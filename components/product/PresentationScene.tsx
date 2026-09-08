@@ -16,7 +16,6 @@ import {
   sunEnabled,
   type PresentationConfig,
 } from '@/lib/product/presentation'
-import type { ExportSources } from '@/lib/three/exportConfigured'
 import PresentationEnvironment from './PresentationEnvironment'
 import PresentationLighting from './PresentationLighting'
 import PresentationRoom, { type RoomBounds } from './PresentationRoom'
@@ -40,7 +39,6 @@ interface Props {
   onContextLost?: () => void
   /** Owned by the page so the AR export, which lives outside the Canvas, can
    *  reach the loaded GLTFs. Same ref-passing idiom as `controls`/`framing`. */
-  sources?: React.MutableRefObject<ExportSources>
 }
 
 /**
@@ -63,7 +61,7 @@ interface Props {
  * things that genuinely concern them: a quality-tier change through
  * `useQuality`, `roomBox` arriving, the store for the ones that read it.
  */
-export default function PresentationScene({ config, onLayerError, onReady, onContextLost, sources }: Props) {
+export default function PresentationScene({ config, onLayerError, onReady, onContextLost }: Props) {
   const { settings } = useQuality()
   const backdrop = roomMode(config)
   const needsIBL = needsEnvironment(config)
@@ -209,7 +207,6 @@ export default function PresentationScene({ config, onLayerError, onReady, onCon
               config={config}
               controls={controls}
               framing={framing}
-              sources={sources}
               debug={debug}
             />
           </PartErrorBoundary>

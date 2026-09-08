@@ -1,3 +1,11 @@
+/**
+ * Zustand Store: Car Configurator State
+ *
+ * Purpose: Manages car customization (parts selection, multi-zone paint, suspension)
+ * Why Zustand: Complex state shared between 3D scene and UI controls (sidebar, color picker)
+ * Pattern: Multi-zone paint config + part swapping + presets system
+ * Used By: /car/[id] page and homepage car showcase
+ */
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 

@@ -28,26 +28,27 @@
         "desc": "پارچه یا چرم نهایی روی بدنه",
         "default": "leather",
         "variants": [
-          {
-            "id": "leather",
-            "name": "چرم طبیعی",
-            "path": "/models/presentation/test/final curve-optimized.glb",
-            "thumbnail": "/images/covers/leather.png",
-            "priceDelta": 4500000,
-            "material": {
-              "roughness": 0.8,
-              "metalness": 0,
-              "clearcoat": 0
-            }
-          },
+         
           {
             "id": "velvet",
             "name": "مخمل",
-            "path": "/models/presentation/test/cover-velvet.glb",
+            "path": "/models/presentation/test/Furniture high Test3-optimized.glb",
             "thumbnail": "/images/covers/velvet.jpeg",
             "priceDelta": 0,
             "material": {
               "roughness": 0.95,
+              "metalness": 0,
+              "clearcoat": 0
+            }
+          },
+           {
+            "id": "leather",
+            "name": "چرم طبیعی",
+            "path": "/models/presentation/test/Furniture high Test2-optimized.glb",
+            "thumbnail": "/images/covers/leather.png",
+            "priceDelta": 4500000,
+            "material": {
+              "roughness": 0.8,
               "metalness": 0,
               "clearcoat": 0
             }
@@ -87,6 +88,11 @@
         }
       ],
       "cover": [
+         {
+          "id": "white",
+          "name": "کرم",
+          "hex": "#ffffff"
+        },
         {
           "id": "charcoal",
           "name": "خاکستری ذغالی",
@@ -112,6 +118,7 @@
           "name": "زرشکی",
           "hex": "#5e2129"
         }
+       
       ],
       "cushion": [
         {
@@ -133,14 +140,14 @@
     },
     "camera": {
       "azimuthDeg": 0,
-      "elevationDeg": 8,
+      "elevationDeg": 5,
       "fov": 50,
       "near": 0.1,
-      "far": 150,
+      "far": 130,
       "padding": 1.55,
       "minZoom": 0.3,
-      "maxZoom": 2.3,
-      "startZoom": 0.9,
+      "maxZoom": 2,
+      "startZoom": 0.8,
       "tiltLimitDeg": 0,
       "aimHeight": 0.8,
       "screenLift": -0.05
@@ -185,10 +192,10 @@
       "mobile": "low"
     },
     "simple": {
-      "model": "/models/presentation/test/final curve-optimized.glb",
-      "hdr": "/hdr/simple_hdr.exr",
+      "model": "/models/presentation/test/new-single-fur.glb",
+      "hdr": "/hdr/200_hdrmaps_com_free_1kk.exr",
       "envIntensity": 1,
-      "background": "#ffffff",
+      "background": "#000000",
       "fov": 35,
       "padding": 1.1,
       "minZoom": 0.1,

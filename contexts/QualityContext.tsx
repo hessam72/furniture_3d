@@ -1,3 +1,12 @@
+/**
+ * React Context: Quality Tier Management
+ *
+ * Purpose: Global 3D rendering quality settings (desktop/tablet/phone tiers)
+ * Why Context: Infrastructure state needed by entire app, set once at root layout
+ * Pattern: Provider at root → consumed by Canvas components → controls DPR, effects, shadows
+ * Features: localStorage persistence, automatic mobile downgrade, context loss recovery
+ * Used By: All 3D scenes - product viewer, car configurator, store
+ */
 'use client';
 
 import React, { createContext, useCallback, useContext, useMemo, useState, useEffect, ReactNode } from 'react';

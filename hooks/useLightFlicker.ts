@@ -1,3 +1,12 @@
+/**
+ * Custom Hook: Realistic Light Flicker Animation
+ *
+ * Purpose: Simulates fluorescent light startup sequence (strike → sputter → stabilize)
+ * Pattern: Time-based keyframes + per-light offsets + high-frequency shimmer
+ * Why Hook: Complex animation state isolated from scene components, supports reduced-motion
+ * Performance: useFrame with early returns when complete, invalidates only during animation
+ * Used By: Store 3D scene lighting rig
+ */
 import { useState, useEffect, useRef } from 'react'
 import { MotionValue } from 'framer-motion'
 import { useFrame, useThree } from '@react-three/fiber'

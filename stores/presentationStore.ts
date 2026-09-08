@@ -1,3 +1,11 @@
+/**
+ * Zustand Store: Product Presentation State
+ *
+ * Purpose: Manages 3D furniture viewer state (colors, layers, cover variants, explode)
+ * Why Zustand: Shared state across multiple components (PresentationSheet, ProductCover, ProductFrame, ProductSoft)
+ * Pattern: Central state + actions, DevTools middleware for debugging
+ * Used By: /product/[id] page - entire presentation viewer
+ */
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import type { PresentationZone } from '@/lib/product/presentation'
