@@ -15,7 +15,7 @@
       ],
       "floorY": 0,
       "lightingMode": "store",
-      "hdr": "/hdr/200_hdrmaps_com_free_1kk.exr"
+      "hdr": "/hdr/main_hdr.exr"
     },
     "layers": {
       "frame": {
