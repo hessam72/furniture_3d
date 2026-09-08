@@ -73,7 +73,7 @@ export default function ManageClient({ initial }: { initial: UploadedAsset[] }) 
   }, [])
 
   return (
-    <main dir="rtl" className="font-persian mx-auto min-h-screen max-w-2xl px-5 py-10 text-neutral-900">
+    <main dir="rtl" style={{background:'#fff'}} className=" mx-auto min-h-screen max-w-2xl px-5 py-10 text-neutral-900">
       <h1 className="text-[17px] font-semibold">مدیریت مدل‌های سه‌بعدی</h1>
       <p className="mt-1 text-[13px] text-neutral-500">
         فایل GLB را بارگذاری کنید تا لینک نمایش آن ساخته شود.
