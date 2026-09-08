@@ -49,3 +49,6 @@ next-env.d.ts
 Archive 2.zip
 node_modules.zip
 Archive.zip
+
+# runtime model uploads (/manage)
+data/uploads
