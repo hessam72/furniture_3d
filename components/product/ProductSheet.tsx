@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, type PanInfo } from 'framer-motion'
-import { Box, ChevronDown, ShoppingBag, Smartphone } from 'lucide-react'
+import { Box, ChevronDown, Loader2, ShoppingBag, Smartphone } from 'lucide-react'
 import { faPrice } from '@/lib/store/catalog'
 import { SpecDetails, SpecDimensions, SpecFabric } from '@/components/store/productSpecTabs'
 import { usePresentation } from '@/stores/presentationStore'
@@ -42,6 +42,17 @@ interface Props {
   arAvailable: boolean
   /** Whether this device can enter AR at all — steers the copy, not the button. */
   arCapable?: boolean
+  /**
+   * Whether AR will carry the customer's own configuration into the room.
+   *
+   * Left undefined by the surfaces that serve the authored file as-is, which
+   * promise the chosen cover and nothing more. `/simple` builds its model
+   * server-side, so it sets this true and flips it false once a real attempt has
+   * fallen back to the product's published GLB. @see arModelUrl
+   */
+  arLive?: boolean
+  /** The configured model is being weighed before AR opens. */
+  arBuilding?: boolean
   /** False where there is no layer stack to pull apart — the plain viewer
    *  mounts one file at a time. @see LayerStepper */
   explodable?: boolean
@@ -60,6 +71,8 @@ export default function ProductSheet({
   onAddToCart,
   arAvailable,
   arCapable = false,
+  arLive,
+  arBuilding = false,
   explodable = true,
   zoneNote,
   hidden = false,
@@ -282,19 +295,28 @@ export default function ProductSheet({
               {activeTab === 'ar' && (
                 <div className="space-y-3">
                   <p className="text-[13px] leading-7 text-[var(--text-secondary)]">
-                    {arCapable
-                      ? 'رویه‌ای که انتخاب کرده‌اید، در اندازه واقعی در فضای اتاق شما قرار می‌گیرد.'
-                      : 'پیش‌نمایش سه‌بعدی رویه انتخابی شما باز می‌شود. برای قرار دادن آن در فضای واقعی، صفحه را روی گوشی یا تبلت باز کنید.'}
+                    {!arCapable
+                      ? 'پیش‌نمایش سه‌بعدی رویه انتخابی شما باز می‌شود. برای قرار دادن آن در فضای واقعی، صفحه را روی گوشی یا تبلت باز کنید.'
+                      : arLive === true
+                        ? 'همین چیدمان — جنس رویه و هر سه رنگ انتخابی شما — در اندازه واقعی در فضای اتاق شما قرار می‌گیرد.'
+                        : arLive === false
+                          ? 'ساخت مدل سفارشی ممکن نشد؛ مدل پیش‌فرض محصول نمایش داده می‌شود.'
+                          : 'رویه‌ای که انتخاب کرده‌اید، در اندازه واقعی در فضای اتاق شما قرار می‌گیرد.'}
                   </p>
                   <button
                     onClick={onViewAR}
-                    disabled={!arAvailable}
+                    disabled={!arAvailable || arBuilding}
                     className="flex w-full items-center justify-center gap-2 rounded-xl border
                                border-[var(--border-default)] py-2.5 text-[13px]
                                text-[var(--gold-primary)] transition-colors
                                hover:bg-[var(--gold-primary)]/10 disabled:opacity-40"
                   >
-                    {arCapable ? (
+                    {arBuilding ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        در حال آماده‌سازی مدل…
+                      </>
+                    ) : arCapable ? (
                       <>
                         <Smartphone className="h-4 w-4" />
                         مشاهده در واقعیت افزوده

@@ -22,6 +22,8 @@ export interface CoverVariant {
   id: string
   name: string
   path: string
+  /** A lighter stand-in for AR only. @see arModelPath */
+  arPath?: string
   thumbnail?: string
   priceDelta?: number
   material?: { roughness?: number; metalness?: number; clearcoat?: number }
@@ -29,6 +31,8 @@ export interface CoverVariant {
 
 export interface LayerMeta {
   path: string
+  /** A lighter stand-in for AR only. @see arModelPath */
+  arPath?: string
   label: string
   desc?: string
   /** Substring tested against mesh.name to pick the colourable subset of this layer */
@@ -359,26 +363,39 @@ export function finishedPiecePath(config: PresentationConfig): string {
 }
 
 /**
- * The file every AR button hands to model-viewer: the selected cover's own GLB,
- * straight from `public/models`.
+ * The file AR should place in the room, for the layer the viewer is showing.
  *
- * Shared by all three surfaces so "view in your room" means the same file
- * wherever it is tapped, and deliberately a *static path* rather than a model
- * built in the browser. The runtime export baked the chosen colours in, but
- * building it — walking the scene, cloning every material, holding the GLB as
- * both an ArrayBuffer and a Blob while model-viewer starts a second WebGL
- * context — is what crashed real phones mid-"preparing". A URL the browser has
- * already cached costs nothing, works on every AR path (Scene Viewer refuses
- * blob URLs outright), and still carries the choice that matters most: the
- * upholstery the customer picked.
+ * Falls through to the displayed model wherever no `arPath`/`arModel` is
+ * authored, so declaring nothing changes nothing. What it buys where it *is*
+ * authored is the one thing no amount of code can do at runtime: fewer
+ * triangles. iOS Quick Look is reached through three's USDZ exporter, which
+ * writes geometry as decimal text into a zip it does not compress — so a
+ * high-poly piece is tens of megabytes of ASCII whatever its textures weigh,
+ * and the only cure is a decimated file.
  *
- * Never the frame: what goes in the room is the finished piece.
+ * `layer` is the same string the page and the API route both key on: `frame`
+ * for the bare frame, a cover variant id, or anything else — `null` included —
+ * for the finished piece.
+ *
+ * Deliberately a *static path* rather than a model built in the browser: the
+ * runtime export crashed real phones mid-"preparing", and Scene Viewer refuses
+ * blob URLs outright. `/simple` layers colour on top of this file server-side
+ * (@see app/api/ar/[key]/model.glb); the other surfaces serve it as authored.
  */
-export function arModelPath(config: PresentationConfig, coverId: string | null): string | null {
-  const path = findCoverVariant(config, coverId)?.path ?? finishedPiecePath(config)
+export function arModelPath(config: PresentationConfig, layer: string | null): string | null {
+  // `""` counts as unset, not as a path. The fields sit in the manifest empty,
+  // waiting for a file that may never be authored, and `??` alone would hand an
+  // empty string to the route as a real answer.
+  const authored = (path: string | undefined) => (path && path.trim() ? path : null)
+
+  if (layer === 'frame') return authored(config.layers.frame.arPath) ?? config.layers.frame.path
+  const variant = findCoverVariant(config, layer)
+  if (variant) return authored(variant.arPath) ?? variant.path
+
+  const finished = authored(config.simple?.arModel) ?? finishedPiecePath(config)
   // A product with no cover variants falls back to the frame, which is not a
   // product to place in a room — the caller's published GLB stands in instead.
-  return path === config.layers.frame.path ? null : path
+  return finished === config.layers.frame.path ? null : finished
 }
 
 /**
@@ -394,6 +411,9 @@ export function arModelPath(config: PresentationConfig, coverId: string | null):
 export interface SimpleViewerMeta {
   /** The GLB to show. Omitted → the finished piece. @see finishedPiecePath */
   model?: string
+  /** A lighter stand-in for AR only, used when no cover variant is showing.
+   *  @see arModelPath */
+  arModel?: string
   /** Image-based light. Omitted → `room.hdr`; `null` to render with the studio
    *  fill alone, for a product whose materials are meant to be read flat. */
   hdr?: string | null

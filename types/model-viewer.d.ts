@@ -22,6 +22,9 @@ interface ModelViewerJSX {
   'ar-modes'?: string
   'ar-scale'?: 'auto' | 'fixed'
   'ar-placement'?: 'floor' | 'wall'
+  /** Longest edge of any texture baked into a generated USDZ. Unset means
+   *  `auto`, which model-viewer reads as *no limit*. */
+  'ar-usdz-max-texture-size'?: number | string
   'xr-environment'?: boolean
 
   // Camera controls

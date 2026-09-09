@@ -13,6 +13,8 @@ import { useShop } from '@/stores/storeShopStore'
 import { findCatalogItemBySceneObject, type Catalog } from '@/lib/store/catalog'
 import catalog from '@/public/config/catalog.json'
 import { isARCapable } from '@/lib/device-utils'
+import { arModelUrl } from '@/lib/ar/arSource'
+import { AR_GLB_MAX_BYTES, AR_GLB_WARN_BYTES, AR_TRIANGLE_WARN, countTriangles } from '@/lib/ar/budget'
 import {
   arModelPath,
   defaultPaint,
@@ -197,30 +199,83 @@ function Viewer({
   // ── AR ────────────────────────────────────────────────────────────────
   const [showAR, setShowAR] = useState(false)
   const [arSupported, setArSupported] = useState(false)
+  const [arBuilding, setArBuilding] = useState(false)
+  /** Set when AR fell back to the product's published file, so the sheet can say
+   *  the picked colour is not the one about to appear in the room. */
+  const [arStale, setArStale] = useState(false)
+  const [arUrl, setArUrl] = useState<string | null>(null)
 
-  /**
-   * The file AR shows: the selected cover's own GLB, served as-is.
-   *
-   * Nothing is built at tap time any more. The old path serialised the live
-   * scene to a GLB in the browser — colours baked in — and that is what fell
-   * over on real devices: the whole scene walked and cloned, the result held as
-   * an ArrayBuffer *and* a Blob, while model-viewer spins up a second WebGL
-   * context on a phone that was already rendering. A static URL is instant,
-   * needs no memory of ours, and every AR path accepts it, Scene Viewer
-   * included — it refuses blob URLs outright.
-   */
-  const arPath = useMemo(
-    () => arModelPath(config, coverId) ?? product.glbPath ?? null,
-    [config, coverId, product.glbPath]
-  )
-
-  /** The raw cached GLB behind the canvas, published by the viewer. Kept for
-   *  the viewer's own use — AR no longer reads it. */
+  /** The raw cached GLB behind the canvas, published by the viewer. Nothing is
+   *  serialised from it any more — it is read only to weigh the piece before
+   *  handing it to Quick Look. @see AR_TRIANGLE_WARN */
   const source = useRef<THREE.Object3D | null>(null)
 
-  useEffect(() => setArSupported(isARCapable()), [])
+  useEffect(() => {
+    setArSupported(isARCapable())
+  }, [])
 
-  const openAR = useCallback(() => setShowAR(true), [])
+  /**
+   * Open AR on the configured piece.
+   *
+   * There is no export here any more, and that is the fix. `/api/ar/...` is a
+   * pure function of the product, the layer and the paint, so opening AR is a
+   * URL to build rather than a 40MB GLB to serialise, hold in memory, and hand
+   * to a second copy of three.js. The `HEAD` is what makes the fallback honest:
+   * it proves the file exists on this deploy — `public/models` is gitignored —
+   * and reports what it weighs before a phone has to carry it.
+   */
+  const openAR = useCallback(async () => {
+    const layer = showingFrame ? 'frame' : coverId ?? 'default'
+    const { paint } = usePresentation.getState()
+    const url = arModelUrl(productKey, layer, zone, paint)
+    const debug = new URLSearchParams(window.location.search).has('debug')
+
+    setArBuilding(true)
+    setArStale(false)
+    try {
+      const head = await fetch(url, { method: 'HEAD' })
+      const size = Number(head.headers.get('content-length') ?? 0)
+      const triangles = source.current ? countTriangles(source.current) : 0
+
+      if (debug) {
+        console.log(
+          `[AR] ${arModelPath(config, layer)} → ${(size / 1048576).toFixed(1)} MB, ` +
+            `${triangles ? triangles.toLocaleString() : '?'} triangles`
+        )
+      }
+      if (!head.ok) throw new Error(`configured model unavailable (${head.status})`)
+      if (size > AR_GLB_MAX_BYTES) throw new Error(`configured model is ${size} bytes`)
+      if (size > AR_GLB_WARN_BYTES) console.warn('[AR] configured GLB is large for a phone', size)
+      if (triangles > AR_TRIANGLE_WARN) {
+        // Textures are capped for the USDZ, geometry cannot be: three writes it
+        // as decimal text into a zip it does not compress. Past this the product
+        // needs an authored `arPath`. @see arModelPath
+        console.warn('[AR] piece is dense for Quick Look — author an arPath for it')
+      }
+
+      // Hand back what the sheet warmed but is not showing. The canvas is about
+      // to unmount and model-viewer is about to build a second scene; on a phone
+      // those two do not both fit alongside three parsed GLBs.
+      if (device === 'phone') {
+        config.layers.cover.variants
+          .filter((v) => v.path !== modelPath)
+          .forEach((v) => useGLTF.clear(v.path))
+      }
+
+      setArUrl(url)
+      setShowAR(true)
+    } catch (err) {
+      // The published GLB stands in, and the sheet says the colour will not be
+      // the picked one. With no published GLB either there is nothing to show,
+      // so stay on the page rather than opening an empty viewer.
+      console.error('[simple] AR source unavailable', err)
+      setArStale(true)
+      setArUrl(null)
+      setShowAR(!!product.glbPath)
+    } finally {
+      setArBuilding(false)
+    }
+  }, [config, coverId, device, modelPath, product.glbPath, productKey, showingFrame, zone])
 
   /**
    * Leaving AR remounts the canvas: it was unmounted to give the overlay the
@@ -230,6 +285,7 @@ function Viewer({
    */
   const closeAR = useCallback(() => {
     setShowAR(false)
+    setArStale(false)
     setCanvasKey((n) => n + 1)
   }, [])
 
@@ -284,8 +340,13 @@ function Viewer({
           presentation={presentation}
           onViewAR={openAR}
           onAddToCart={() => catalogId && addToCart(catalogId)}
-          arAvailable={!!arPath}
+          // Always: the configured model is a URL, not something that has to be
+          // built first and can fail to be. `arLive` goes false only once a real
+          // attempt has fallen back to the published file.
+          arAvailable
           arCapable={arSupported}
+          arLive={!arStale}
+          arBuilding={arBuilding}
           // One file on screen at a time — there is no stack to pull apart,
           // and each palette shows on the layer it belongs to.
           explodable={false}
@@ -318,13 +379,20 @@ function Viewer({
         </div>
       )}
 
-      {showAR && arPath && (
+      {showAR && (
         <ARProductViewer
-          glbPath={arPath}
-          // Only for the catalogue model the USDZ was authored from; for a
-          // cover variant, model-viewer builds Quick Look's USDZ from the GLB.
-          usdzPath={arPath === product.glbPath ? product.usdzPath : undefined}
+          glbPath={arUrl ?? product.glbPath ?? ''}
+          // Omitted for the configured model: with no `ios-src`, model-viewer
+          // generates the USDZ from the file it loaded, so Quick Look shows the
+          // live configuration. It is safe to let it now that its texture cap is
+          // set — left at model-viewer's `auto` default it bakes full-resolution
+          // PNGs into an uncompressed zip. @see AR_USDZ_MAX_TEXTURE_SIZE
+          usdzPath={arUrl ? undefined : product.usdzPath}
           productName={product.name}
+          // Explicit rather than inherited: WebXR first so a capable Android
+          // stays in the page, then Scene Viewer, which can now fetch the model
+          // because it is a real URL and not a blob.
+          arModes="webxr scene-viewer quick-look"
           arScale="fixed"
           onClose={closeAR}
         />

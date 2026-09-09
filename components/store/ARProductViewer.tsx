@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { getARModeName } from '@/lib/device-utils'
+import { AR_USDZ_MAX_TEXTURE_SIZE } from '@/lib/ar/budget'
 import "@google/model-viewer/dist/model-viewer.min.js"
 
 interface ARProductViewerProps {
@@ -16,6 +17,12 @@ interface ARProductViewerProps {
    *  furniture. Defaults to 'auto' so existing callers are unchanged. */
   arScale?: 'auto' | 'fixed'
   arModes?: string
+  /**
+   * The cap on textures baked into the USDZ model-viewer generates for Quick
+   * Look. @see AR_USDZ_MAX_TEXTURE_SIZE — the default is the fix for the iOS
+   * crash, not a tuning knob, so raise it only with a device to test on.
+   */
+  arUsdzMaxTextureSize?: number
   onClose?: () => void
 }
 
@@ -26,6 +33,7 @@ export default function ARProductViewer({
   poster,
   arScale = 'auto',
   arModes = 'webxr scene-viewer quick-look',
+  arUsdzMaxTextureSize = AR_USDZ_MAX_TEXTURE_SIZE,
   onClose
 }: ARProductViewerProps) {
   const modelViewerRef = useRef<HTMLElement & ModelViewerElement>(null)
@@ -120,6 +128,10 @@ export default function ARProductViewer({
         ar-modes={arModes}
         ar-scale={arScale}
         ar-placement="floor"
+        // Without this model-viewer passes `Infinity` to three's USDZ exporter
+        // and re-encodes every texture at full size as PNG into an uncompressed
+        // zip — which is what crashes Quick Look. @see AR_USDZ_MAX_TEXTURE_SIZE
+        ar-usdz-max-texture-size={arUsdzMaxTextureSize}
         xr-environment
 
         // Visual enhancements
