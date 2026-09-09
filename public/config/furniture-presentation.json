@@ -33,7 +33,7 @@
           {
             "id": "velvet",
             "name": "مخمل",
-            "path": "/models/presentation/test/Furniture high Test3-optimized.glb",
+            "path": "/models/presentation/test/single-sofa.glb",
             "arPath": "",
             "thumbnail": "/images/covers/velvet.jpeg",
             "priceDelta": 0,
@@ -46,7 +46,7 @@
            {
             "id": "leather",
             "name": "چرم طبیعی",
-            "path": "/models/presentation/test/Furniture high Test2-optimized.glb",
+            "path": "/models/presentation/test/single-sofa.glb",
             "arPath": "",
             "thumbnail": "/images/covers/leather.png",
             "priceDelta": 4500000,

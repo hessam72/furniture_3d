@@ -187,7 +187,7 @@
             {
               "id": "velvet",
               "name": "مخمل",
-              "path": "/models/presentation/test/Furniture high Test3-optimized.glb",
+              "path": "/models/presentation/test/single-sofa.glb",
               "material": {
                 "roughness": 0.95,
                 "metalness": 0,
@@ -197,7 +197,7 @@
             {
               "id": "leather",
               "name": "چرم طبیعی",
-              "path": "/models/presentation/test/Furniture high Test2-optimized.glb",
+              "path": "/models/presentation/test/single-sofa.glb",
               "material": {
                 "roughness": 0.8,
                 "metalness": 0,
@@ -206,7 +206,7 @@
             }
           ],
           "defaultCover": "leather",
-          "hdr": "/hdr/200_hdrmaps_com_free_1kk.exr",
+          "hdr": "/hdr/main_hdr.exr",
           "envIntensity": 1,
           "background": "#ececef",
           "fov": 35,
