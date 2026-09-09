@@ -5,9 +5,14 @@
 // browsers will not revalidate these for a year.
 const IMMUTABLE_ASSET_PATHS = [
   '/models/:path*',
+  '/store-models/:path*',
   '/home_models/:path*',
   '/hdr/:path*',
   '/draco/:path*',
+  // The Basis transcoder, fetched once per session before the first KTX2
+  // texture can be read. @see lib/three/gltfLoaders.ts
+  '/basis/:path*',
+  '/textures/:path*',
   '/audio/:path*',
   '/images/:path*',
   '/fonts/:path*',

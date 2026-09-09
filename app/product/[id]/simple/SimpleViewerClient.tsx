@@ -30,6 +30,7 @@ import {
   type ResolvedPresentation,
 } from '@/lib/product/presentation'
 import { RendererStatsOverlay } from '@/components/three/RendererStats'
+import { preloadGltf } from '@/lib/three/gltfLoaders'
 import ProductSheet from '@/components/product/ProductSheet'
 import QualityChips from '@/components/product/QualityChips'
 
@@ -185,7 +186,11 @@ function Viewer({
       ...config.layers.cover.variants.map((v) => v.path),
     ].filter((path) => path !== modelPath)
 
-    const warm = () => rest.forEach((path) => useGLTF.preload(path))
+    // Behind the transcoder, not racing it. @see preloadGltf
+    let stopWarm = () => {}
+    const warm = () => {
+      stopWarm = preloadGltf(rest, useGLTF.preload)
+    }
     const idle = (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
       .requestIdleCallback
     const handle = idle ? idle(warm) : window.setTimeout(warm, 1500)
@@ -194,6 +199,7 @@ function Viewer({
         .cancelIdleCallback
       if (idle && cancel) cancel(handle as number)
       else window.clearTimeout(handle as number)
+      stopWarm()
     }
   }, [state, device, config, modelPath])
 

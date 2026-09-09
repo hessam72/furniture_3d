@@ -8,6 +8,7 @@ import { NeutralToneMapping } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { PerfLadder } from '@/components/three/PerfLadder'
 import { RendererStatsProbe, isDebug } from '@/components/three/RendererStats'
+import { extendGltfLoader, primeGltfLoaders } from '@/lib/three/gltfLoaders'
 import { PartErrorBoundary } from '@/components/car/PartErrorBoundary'
 import { clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
@@ -22,9 +23,8 @@ import {
 } from '@/lib/product/presentation'
 import ViewerPlinth, { type PlinthSpec } from './ViewerPlinth'
 
-// Must run before any preload in this chunk — drei otherwise reaches for its
-// CDN decoder. Same reason CarPageClient and ProductPageClient set it.
-useGLTF.setDecoderPath('/draco/')
+// DRACO's path, the KTX2 transcoder's path and the one-instance-each rule all
+// live in lib/three/gltfLoaders now. @see extendGltfLoader
 
 /** Never let the control panel claim more than this much of the height, however
  *  tall it measures — past it the piece has no frame left to be judged in. */
@@ -77,7 +77,7 @@ function Piece({
   /** False leaves the GLB's own materials alone. @see Props.paintable */
   paintable?: boolean
 }) {
-  const gltf = useGLTF(path)
+  const gltf = useGLTF(path, false, true, extendGltfLoader)
   const { settings } = useQuality()
 
   const { scene, targets, radius, bottom, footprint } = useMemo(() => {
@@ -333,6 +333,9 @@ export default function SimpleViewer({
   // Nothing here allocates enough to lose a context, but a page that cannot
   // report one leaves the viewer staring at a frozen frame.
   const handleCreated = useCallback(({ gl }: RootState) => {
+    // The KTX2 transcoder cannot pick a target format without a renderer to
+    // ask. @see primeGltfLoaders
+    primeGltfLoaders(gl)
     const canvas = gl.domElement
     const lost = (event: Event) => event.preventDefault()
     canvas.addEventListener('webglcontextlost', lost, false)

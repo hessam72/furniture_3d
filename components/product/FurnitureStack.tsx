@@ -9,6 +9,7 @@ import { applyFirstCoat, useZonePaint } from '@/hooks/useZonePaint'
 import { usePresentation } from '@/stores/presentationStore'
 import { useQuality } from '@/contexts/QualityContext'
 import { PartErrorBoundary } from '@/components/car/PartErrorBoundary'
+import { extendGltfLoader } from '@/lib/three/gltfLoaders'
 import {
   findCoverVariant,
   isMatte,
@@ -49,7 +50,7 @@ interface FurnitureStackProps {
 
 /** One GLB layer: cloned, prepared, its colourable subset tagged with a zone. */
 function useLayer(path: string, zone: PresentationZone, matte: boolean, shadows: boolean, match?: string) {
-  const gltf = useGLTF(path)
+  const gltf = useGLTF(path, false, true, extendGltfLoader)
   const { settings } = useQuality()
 
   const { scene, targets } = useMemo(() => {
@@ -83,7 +84,7 @@ function useLayer(path: string, zone: PresentationZone, matte: boolean, shadows:
  * It reads the same drei cache CoverLayer does, so this costs no extra fetch.
  */
 function CoverSource({ path, onBounds }: { path: string; onBounds: (box: THREE.Box3) => void }) {
-  const { scene } = useGLTF(path)
+  const { scene } = useGLTF(path, false, true, extendGltfLoader)
   useEffect(() => {
     onBounds(new THREE.Box3().setFromObject(scene))
   }, [scene, onBounds])

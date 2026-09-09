@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { useGLTF } from '@react-three/drei'
+import { extendGltfLoader } from '@/lib/three/gltfLoaders'
 import { preparePresentationObject } from '@/lib/three/layerMaterials'
 import { useQuality } from '@/contexts/QualityContext'
 
@@ -45,7 +46,7 @@ function GlbStage({
   bottom: number
   radius: number
 }) {
-  const gltf = useGLTF(spec.path as string)
+  const gltf = useGLTF(spec.path as string, false, true, extendGltfLoader)
   const { settings } = useQuality()
 
   const object = useMemo(() => {

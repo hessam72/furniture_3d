@@ -1,24 +1,17 @@
 'use client'
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import * as THREE from 'three'
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { GLTFLoader } from 'three-stdlib'
 import { useLoader } from '@react-three/fiber'
 import { RigidBody } from '@react-three/rapier'
 import { useQuality } from '@/contexts/QualityContext'
 import { applyAnisotropy } from '@/lib/three/prepareCarMaterial'
+import { extendGltfLoader } from '@/lib/three/gltfLoaders'
 import type { ModelFile } from './hooks/useStoreConfig'
 
-// One shared DRACO decoder (each instance spins up its own wasm worker pool —
-// a new one per model was pure waste)
-let sharedDracoLoader: DRACOLoader | null = null
-const configureDracoLoader = () => {
-  if (!sharedDracoLoader) {
-    sharedDracoLoader = new DRACOLoader()
-    sharedDracoLoader.setDecoderPath('/draco/')
-  }
-  return sharedDracoLoader
-}
+// DRACO and KTX2 both live in lib/three/gltfLoaders — the one-shared-decoder
+// rule this file introduced, now applied app-wide and extended to the
+// transcoder. @see extendGltfLoader
 
 type ModelLoaderProps = {
   files: ModelFile[]
@@ -74,11 +67,8 @@ function Model({ url, isWireframe, onLoaded }: ModelProps) {
   // Texture sharpening follows the shared quality tier (4/4/8/16)
   const { settings } = useQuality()
 
-  // Use custom loader with DRACO support
-  const gltf = useLoader(GLTFLoader, url, (loader) => {
-    const dracoLoader = configureDracoLoader()
-    loader.setDRACOLoader(dracoLoader)
-  })
+  // Draco for geometry, KTX2 for textures — the store's room GLB carries both.
+  const gltf = useLoader(GLTFLoader, url, extendGltfLoader)
 
   useEffect(() => {
     if (gltf && onLoaded) {
@@ -205,15 +195,4 @@ function Model({ url, isWireframe, onLoaded }: ModelProps) {
   }
 
   return <primitive object={clonedScene} />
-}
-
-// Preload function with DRACO support
-export function preloadModel(url: string) {
-  const loader = new GLTFLoader()
-  const dracoLoader = configureDracoLoader()
-  loader.setDRACOLoader(dracoLoader)
-
-  return new Promise((resolve, reject) => {
-    loader.load(url, resolve, undefined, reject)
-  })
 }

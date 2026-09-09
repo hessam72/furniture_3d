@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef } from 'react'
 import { useGLTF } from '@react-three/drei'
+import { extendGltfLoader } from '@/lib/three/gltfLoaders'
 import * as THREE from 'three'
 import { applyMatte, collectZoneTargets, disposeTargets, preparePresentationObject } from '@/lib/three/layerMaterials'
 import { localBoundsY } from '@/lib/three/clipWipe'
@@ -29,7 +30,7 @@ interface CoverLayerProps {
  * never flashes at full size before its reveal begins.
  */
 export default function CoverLayer({ variant, direction, durationMs, matte, shadows, onWipeComplete }: CoverLayerProps) {
-  const gltf = useGLTF(variant.path)
+  const gltf = useGLTF(variant.path, false, true, extendGltfLoader)
   const groupRef = useRef<THREE.Group>(null)
   const { settings } = useQuality()
 

@@ -98,9 +98,21 @@ function imageSize(bytes) {
     }
   }
 
-  // Already compressed for the GPU — the file *is* the resident form.
-  if (bytes.length >= 12 && bytes[0] === 0xab && bytes.toString('ascii', 1, 7) === 'KTX 20') {
-    return { format: 'ktx2', width: bytes.readUInt32LE(20), height: bytes.readUInt32LE(24) }
+  // KTX2: already in a GPU-native block format, so the resident size is the
+  // block size — not the file size, which may be Zstd'd on top, and not
+  // width*height*4, which is the thing we are escaping.
+  if (bytes.length >= 48 && bytes[0] === 0xab && bytes.toString('ascii', 1, 7) === 'KTX 20') {
+    const supercompression = bytes.readUInt32LE(44)
+    // BasisLZ (scheme 1) is ETC1S: 64 bits per 4x4 block once transcoded to
+    // ETC2/BC1. Anything else here is UASTC, which lands on ASTC 4x4 or BC7 at
+    // 128 bits per block. @see lib/three/textureBudget.ts, same two numbers.
+    return {
+      format: 'ktx2',
+      width: bytes.readUInt32LE(20),
+      height: bytes.readUInt32LE(24),
+      bytesPerPixel: supercompression === 1 ? 0.5 : 1,
+      levels: bytes.readUInt32LE(40),
+    }
   }
 
   return { format: '?', width: 0, height: 0 }
@@ -128,9 +140,17 @@ function inspect(json, bin) {
   return { triangles, images }
 }
 
-/** RGBA8 plus the mip chain, which converges on a third again. */
-const residentBytes = (image) =>
-  image.format === 'ktx2' ? image.fileBytes : Math.round(image.width * image.height * 4 * (4 / 3))
+/**
+ * What the driver holds, once the file is decoded.
+ *
+ * PNG/JPEG/WebP all unpack to RGBA8 whatever they weighed on disk — that is the
+ * whole trap. The mip chain adds a third: 1 + 1/4 + 1/16 + ... converges on 4/3.
+ */
+const residentBytes = (image) => {
+  const perPixel = image.bytesPerPixel ?? 4
+  const mips = (image.levels ?? 0) > 1 || image.format !== 'ktx2' ? 4 / 3 : 1
+  return Math.round(image.width * image.height * perPixel * mips)
+}
 
 async function report(path) {
   const buffer = await readFile(path)

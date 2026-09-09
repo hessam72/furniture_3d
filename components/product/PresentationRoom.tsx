@@ -3,6 +3,7 @@
 import { memo, useEffect, useMemo } from 'react'
 import { useThree } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
+import { extendGltfLoader } from '@/lib/three/gltfLoaders'
 import * as THREE from 'three'
 import { preparePresentationObject } from '@/lib/three/layerMaterials'
 import { useQuality } from '@/contexts/QualityContext'
@@ -36,7 +37,7 @@ function PresentationRoom({
    *  gallery rig is JSX and cannot read a ref that mutates silently. */
   onBounds?: (box: THREE.Box3 | null) => void
 }) {
-  const gltf = useGLTF(config.room.path)
+  const gltf = useGLTF(config.room.path, false, true, extendGltfLoader)
   const invalidate = useThree((s) => s.invalidate)
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
   const { settings } = useQuality()

@@ -26,6 +26,7 @@ import { PresentationPostProcessing } from './PresentationPostProcessing'
 import FurnitureStack, { type StackControls, type StackFraming } from './FurnitureStack'
 import PresentationDiagnostics from './PresentationDiagnostics'
 import { RendererStatsProbe } from '@/components/three/RendererStats'
+import { primeGltfLoaders } from '@/lib/three/gltfLoaders'
 import { SceneReady } from './PresentationLoading'
 
 interface Props {
@@ -111,6 +112,9 @@ export default function PresentationScene({ config, onLayerError, onReady, onCon
   const handleCreated = useCallback(
     ({ gl, invalidate }: RootState) => {
       gl.localClippingEnabled = true
+      // The KTX2 transcoder cannot pick a target format without a renderer to
+      // ask. @see primeGltfLoaders
+      primeGltfLoaders(gl)
 
       const canvas = gl.domElement
       const lost = (event: Event) => {

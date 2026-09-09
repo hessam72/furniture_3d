@@ -29,12 +29,12 @@ import ProductSheet from '@/components/product/ProductSheet'
 import PresentationTopBar from '@/components/product/PresentationTopBar'
 import MissingAssetsNotice from '@/components/product/MissingAssetsNotice'
 import { RendererStatsOverlay } from '@/components/three/RendererStats'
+import { preloadGltf } from '@/lib/three/gltfLoaders'
 import PresentationLoading from '@/components/product/PresentationLoading'
 import type { Catalog } from '@/lib/store/catalog'
 
-// Must run before any preload in this chunk — drei otherwise reaches for its
-// CDN decoder. Same reason CarPageClient sets it at module scope.
-useGLTF.setDecoderPath('/draco/')
+// DRACO's path, the KTX2 transcoder's path and the one-instance-each rule all
+// live in lib/three/gltfLoaders now. @see extendGltfLoader
 
 const PresentationScene = dynamic(() => import('@/components/product/PresentationScene'), {
   ssr: false,
@@ -156,9 +156,13 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
     if (state !== 'ready') return
     // Only the GLBs go through drei's loader cache; the backdrop image is a
     // plain texture and the HDR has its own loader.
-    assets
-      .filter((path) => path.endsWith('.glb'))
-      .forEach((path) => useGLTF.preload(path))
+    // Waits on the transcoder rather than racing it: a KTX2 texture parsed
+    // before `detectSupport` throws, and it throws into a Suspense boundary,
+    // where it reads as a model that simply never arrives. @see preloadGltf
+    const stopPreload = preloadGltf(
+      assets.filter((path) => path.endsWith('.glb')),
+      useGLTF.preload
+    )
     if (needsEnvironment(config) && config.room.hdr) {
       useEnvironment.preload({ files: config.room.hdr })
     }
@@ -176,7 +180,10 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
     const rest = config.layers.cover.variants
       .filter((v) => v.id !== config.layers.cover.default)
       .map((v) => v.path)
-    const warm = () => rest.forEach((path) => useGLTF.preload(path))
+    let stopWarm = () => {}
+    const warm = () => {
+      stopWarm = preloadGltf(rest, useGLTF.preload)
+    }
 
     const idle = (window as any).requestIdleCallback
     const handle = idle ? idle(warm) : window.setTimeout(warm, 1500)
@@ -184,6 +191,8 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
       const cancel = (window as any).cancelIdleCallback
       if (idle && cancel) cancel(handle)
       else window.clearTimeout(handle as number)
+      stopWarm()
+      stopPreload()
     }
   }, [state, assets, config, phone])
 

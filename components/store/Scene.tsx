@@ -3,7 +3,7 @@ import { Canvas, useLoader, useFrame } from '@react-three/fiber'
 import type { RootState } from '@react-three/fiber'
 import { Environment } from '@react-three/drei'
 import * as THREE from 'three'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { GLTFLoader } from 'three-stdlib'
 import { Suspense, useMemo } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { Physics } from '@react-three/rapier'
@@ -49,6 +49,7 @@ import { PerfLadder } from '@/components/three/PerfLadder'
 import { clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
 import { RendererStatsOverlay, RendererStatsProbe, isDebug } from '@/components/three/RendererStats'
+import { primeGltfLoaders } from '@/lib/three/gltfLoaders'
 import { PartErrorBoundary } from '@/components/car/PartErrorBoundary'
 
 // Demand frameloop with idle physics pause — the /car performance model
@@ -436,6 +437,8 @@ export default function Scene() {
         }}
         camera={{ position: config.camera?.playerStart ?? [0, 2, 5], fov: 60, near: 0.1, far: 200 }}
         onCreated={(state) => {
+          // @see primeGltfLoaders — the KTX2 transcoder needs a live renderer.
+          primeGltfLoaders(state.gl)
           r3fRef.current = state
         }}
       >
