@@ -15,7 +15,7 @@ import {
   type ZoneSwatch,
 } from '@/lib/product/presentation'
 import type { ShowroomConfig } from '@/lib/showroom/config'
-import { RendererStatsOverlay } from '@/components/three/RendererStats'
+import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
 import { useContextRecovery } from '@/hooks/useContextRecovery'
 import { useGltfCacheEviction } from '@/hooks/useGltfCacheEviction'
 import Reveal from './Reveal'

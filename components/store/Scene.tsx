@@ -52,11 +52,13 @@ import { ActivityGovernor, markStoreActivity } from './activityGovernor'
 import { PerfLadder } from '@/components/three/PerfLadder'
 import { clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
-import { RendererStatsOverlay, RendererStatsProbe, isDebug } from '@/components/three/RendererStats'
+import { RendererStatsProbe } from '@/components/three/RendererStatsProbe'
+import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
+import { isDebug } from '@/components/three/rendererStatsStore'
 import { useCanvasLifecycle } from '@/hooks/useCanvasLifecycle'
 import type { ContextRecovery } from '@/hooks/useContextRecovery'
 import { SHADOW_BUDGET } from '@/lib/config/deviceTier'
-import { PartErrorBoundary } from '@/components/car/PartErrorBoundary'
+import { PartErrorBoundary } from '@/components/three/PartErrorBoundary'
 
 // Demand frameloop with idle physics pause — the /car performance model
 // adapted for a walkable scene. Kill-switch: set to false to restore

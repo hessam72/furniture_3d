@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { Canvas, type RootState } from '@react-three/fiber'
 import { ACESFilmicToneMapping, NeutralToneMapping, type Box3 } from 'three'
 import { PerfLadder } from '@/components/three/PerfLadder'
-import { PartErrorBoundary } from '@/components/car/PartErrorBoundary'
+import { PartErrorBoundary } from '@/components/three/PartErrorBoundary'
 import { clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
 import {
@@ -24,7 +24,7 @@ import PresentationGestures from './PresentationGestures'
 import { PresentationPostProcessing } from './PresentationPostProcessing'
 import FurnitureStack, { type StackControls, type StackFraming } from './FurnitureStack'
 import PresentationDiagnostics from './PresentationDiagnostics'
-import { RendererStatsProbe } from '@/components/three/RendererStats'
+import { RendererStatsProbe } from '@/components/three/RendererStatsProbe'
 import { useCanvasLifecycle } from '@/hooks/useCanvasLifecycle'
 import { SceneReady } from './PresentationLoading'
 

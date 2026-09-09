@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import type { RootState } from '@react-three/fiber'
 import { releaseRenderer } from '@/lib/three/releaseRenderer'
 import { primeGltfLoaders } from '@/lib/three/gltfLoaders'
-import { isDebug } from '@/components/three/RendererStats'
+import { isDebug } from '@/components/three/rendererStatsStore'
 
 /**
  * Everything a `<Canvas>` has to do at both ends of its life, in one place.

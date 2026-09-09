@@ -27,7 +27,7 @@ import {
   type PresentationZone,
   type ResolvedPresentation,
 } from '@/lib/product/presentation'
-import { RendererStatsOverlay } from '@/components/three/RendererStats'
+import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
 import { useContextRecovery, type ContextRecovery } from '@/hooks/useContextRecovery'
 import { useGltfCacheEviction } from '@/hooks/useGltfCacheEviction'
 import { preloadGltf } from '@/lib/three/gltfLoaders'

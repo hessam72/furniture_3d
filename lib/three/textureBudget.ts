@@ -156,12 +156,7 @@ export function estimateTextureVram(root: THREE.Object3D): number {
  */
 export const TEXTURE_MAX_EDGE_PHONE = 1024
 
-/** Where a single scene's texture set stops being affordable on a phone. */
-export const TEXTURE_VRAM_WARN_BYTES = 96 * 1048576
-/** Past this a phone is being asked for more than iOS will give the whole tab. */
-export const TEXTURE_VRAM_MAX_BYTES = 256 * 1048576
-
-export function formatBytes(bytes: number): string {
-  if (bytes < 1048576) return `${Math.round(bytes / 1024)}KB`
-  return `${(bytes / 1048576).toFixed(bytes < 10485760 ? 1 : 0)}MB`
-}
+/** The budgets and the byte formatter live in components/three/rendererStatsStore,
+ *  which imports nothing — so the DOM overlay can read them without dragging
+ *  `three` into a marketing page's bundle. */
+export { TEXTURE_VRAM_MAX_BYTES, TEXTURE_VRAM_WARN_BYTES, formatBytes } from '@/components/three/rendererStatsStore'

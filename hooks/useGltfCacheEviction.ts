@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { useGLTF } from '@react-three/drei'
 
 /**
  * Let go of a page's GLBs when the visitor leaves it.
@@ -31,15 +30,27 @@ export function useGltfCacheEviction(paths: string[]): void {
   useEffect(() => {
     const set = held.current
     return () => {
-      set.forEach((path) => {
-        try {
-          useGLTF.clear(path)
-        } catch {
-          // A path that was never actually loaded — a probe that failed, a
-          // layer nobody opened. Nothing to release.
-        }
-      })
+      if (!set.size) return
+      const paths = [...set]
       set.clear()
+      /**
+       * drei is imported here rather than at the top of the file, and the
+       * reason is a measured one: /showroom is a marketing page whose canvas is
+       * already `dynamic(ssr: false)`, and a static import of `useGLTF` put the
+       * whole of drei and three back into its first-load bundle — 160KB to
+       * 405KB. By the time this cleanup runs the module is loaded anyway (the
+       * canvas mounted, or there is nothing cached to clear).
+       */
+      void import('@react-three/drei').then(({ useGLTF }) => {
+        paths.forEach((path) => {
+          try {
+            useGLTF.clear(path)
+          } catch {
+            // A path that was never actually loaded — a probe that failed, a
+            // layer nobody opened. Nothing to release.
+          }
+        })
+      })
     }
   }, [])
 }

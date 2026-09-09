@@ -8,7 +8,7 @@ import { applyMatte, collectZoneTargets, disposeTargets, preparePresentationObje
 import { applyFirstCoat, useZonePaint } from '@/hooks/useZonePaint'
 import { usePresentation } from '@/stores/presentationStore'
 import { useQuality } from '@/contexts/QualityContext'
-import { PartErrorBoundary } from '@/components/car/PartErrorBoundary'
+import { PartErrorBoundary } from '@/components/three/PartErrorBoundary'
 import { extendGltfLoader } from '@/lib/three/gltfLoaders'
 import {
   findCoverVariant,

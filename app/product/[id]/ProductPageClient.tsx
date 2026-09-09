@@ -26,7 +26,7 @@ import {
 import ProductSheet from '@/components/product/ProductSheet'
 import PresentationTopBar from '@/components/product/PresentationTopBar'
 import MissingAssetsNotice from '@/components/product/MissingAssetsNotice'
-import { RendererStatsOverlay } from '@/components/three/RendererStats'
+import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
 import { useContextRecovery } from '@/hooks/useContextRecovery'
 import { useGltfCacheEviction } from '@/hooks/useGltfCacheEviction'
 import { preloadGltf } from '@/lib/three/gltfLoaders'

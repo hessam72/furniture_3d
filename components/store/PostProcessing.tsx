@@ -1,22 +1,18 @@
-import { type ReactElement, Suspense, lazy } from 'react'
+import { type ReactElement } from 'react'
 import { EffectComposer, Bloom, N8AO, SMAA, Vignette } from '@react-three/postprocessing'
 import { useQuality } from '@/contexts/QualityContext'
 
-// realism-effects is only needed for the ultra-tier opt-in SSGI mode — it
-// lives in its own chunk and downloads on first toggle. The standard stack
-// keeps rendering as the Suspense fallback while the chunk streams in.
-const SSGIComposer = lazy(() => import('./SSGIComposer'))
-
+/**
+ * The opt-in SSGI/TRAA composer is gone, and with it `realism-effects`.
+ *
+ * It was gated on `settings.experimentalSSGI`, which is `false` on all four
+ * presets — including `ultra` — so the branch was unreachable at runtime and
+ * had been for as long as the current preset table has existed. It was also the
+ * only thing holding three at 0.170: realism-effects needs
+ * `WebGLMultipleRenderTargets`, removed in r172, and r172 is where the Safari
+ * WebGL2 context-retention work landed. Dead code with a real cost.
+ */
 export function PostProcessing() {
-  const { settings, ssgiEnabled } = useQuality()
-  const ssgiActive = settings.experimentalSSGI && ssgiEnabled
-  if (ssgiActive) {
-    return (
-      <Suspense fallback={<StandardComposer />}>
-        <SSGIComposer />
-      </Suspense>
-    )
-  }
   return <StandardComposer />
 }
 
