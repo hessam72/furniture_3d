@@ -27,6 +27,7 @@ import ProductSheet from '@/components/product/ProductSheet'
 import PresentationTopBar from '@/components/product/PresentationTopBar'
 import MissingAssetsNotice from '@/components/product/MissingAssetsNotice'
 import { RendererStatsOverlay } from '@/components/three/RendererStats'
+import { useContextRecovery } from '@/hooks/useContextRecovery'
 import { preloadGltf } from '@/lib/three/gltfLoaders'
 import PresentationLoading from '@/components/product/PresentationLoading'
 import type { Catalog } from '@/lib/store/catalog'
@@ -46,27 +47,19 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
   const [showAR, setShowAR] = useState(false)
   const [arSupported, setArSupported] = useState(false)
   const [probeKey, setProbeKey] = useState(0)
-  /** Bumped by `retry` to force a fresh WebGL context — a Canvas whose context
-   *  died has to be remounted, not re-rendered. */
-  const [canvasKey, setCanvasKey] = useState(0)
-  /** Set the instant the GPU drops the context; gates the Canvas out of the
-   *  tree. @see handleContextLost */
-  const [contextLost, setContextLost] = useState(false)
   /** A GLB that exists but fails to parse never reaches the probe — the error
    *  boundaries in the scene report it here so it still gets a way out. */
   const [layerError, setLayerError] = useState<string | null>(null)
   /** Raised by the scene once the piece and room are actually drawn — the probe
    *  below only proves the files exist. */
   const [sceneReady, setSceneReady] = useState(false)
-  /**
-   * How many rungs the tier has been dropped by lost contexts this session.
-   *
-   * A context is lost because the device ran out of room for what we asked it
-   * to draw, so coming back at the same tier asks for it again — which is the
-   * loop the page was stuck in on iPhones: crash, reload, crash. Each loss
-   * costs a rung, permanently for this page view.
-   */
-  const [downgrades, setDowngrades] = useState(0)
+  /** The lost-context ladder — unmount, drop a rung, offer a retry. Shared
+   *  with /simple, /showroom, /view and /store. @see useContextRecovery */
+  const recovery = useContextRecovery({
+    surface: 'presentation',
+    onLost: () => setLayerError('نمایش سه‌بعدی متوقف شد — حافظه گرافیکی دستگاه پر شد'),
+  })
+  const { lost: contextLost, canvasKey } = recovery
 
   const initProduct = usePresentation((s) => s.initProduct)
   const reset = usePresentation((s) => s.reset)
@@ -84,10 +77,9 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
    */
   const device = useDeviceClass()
   const phone = device === 'phone'
-  const qualityPreset = useMemo(
-    () => lowerTier(presentationQuality(config, device), downgrades),
-    [config, device, downgrades]
-  )
+  /** What the manifest asks for, capped to the device. The rungs a lost context
+   *  has cost are applied by the provider. @see resolveTier */
+  const qualityPreset = useMemo(() => presentationQuality(config, device), [config, device])
 
   const assets = useMemo(() => requiredAssets(config), [config])
   const { state, missing } = useAssetProbe(useMemo(() => assets, [assets, probeKey]))
@@ -184,25 +176,24 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
   }, [state, assets, config, phone])
 
   const retry = useCallback(() => {
-    // Purge the cache only when the *files* are the problem — a 404, or a GLB
-    // that would not parse. A lost context is the opposite case: the files are
-    // fine and only the GPU's copy of them is gone, so a remount re-uploads
-    // them. Clearing there re-suspends every layer and the stack never
-    // republishes `framing`, which leaves the camera rig with nothing to solve
-    // from — an unsolved camera and a black stage.
-    if (!contextLost) {
-      assets.filter((path) => path.endsWith('.glb')).forEach((path) => useGLTF.clear(path))
-      setProbeKey((n) => n + 1)
-    }
     setLayerError(null)
-    setContextLost(false)
-    setCanvasKey((n) => n + 1)
+    // The purge runs only when the *files* are the problem — a 404, or a GLB
+    // that would not parse. @see the note on `retry` in useContextRecovery for
+    // what clearing on a lost context costs.
+    recovery.retry(
+      contextLost
+        ? undefined
+        : () => {
+            assets.filter((path) => path.endsWith('.glb')).forEach((path) => useGLTF.clear(path))
+            setProbeKey((n) => n + 1)
+          }
+    )
     // `sceneReady` is deliberately left true. The splash exists to hide the
     // first load's pop-in; here the assets are warm and the error notice was
     // already covering the canvas. Clearing it made the page wait on a fresh
     // SceneReady signal that a rebuilt scene does not always send, which parked
     // the splash until the 20s failsafe.
-  }, [assets, contextLost])
+  }, [assets, contextLost, recovery])
 
   const handleLayerError = useCallback((category: string, error: Error) => {
     setLayerError(`${category}: ${error.message}`)
@@ -223,23 +214,6 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
     initProduct(key, defaultPaint(config), config.layers.cover.default, config.layers.startStep ?? 1)
   }, [initProduct, key, config])
 
-  /**
-   * A lost context is not a React error, so no error boundary sees it — and
-   * drawing a notice over the live Canvas is not enough. The next render of the
-   * R3F tree calls into EffectComposer against the dead context, which throws
-   * out of React and replaces the whole page with "Application error: a
-   * client-side exception". That was the visible crash. Unmounting the Canvas
-   * in the same state update means React tears the subtree down instead of
-   * re-rendering it, and `retry` builds a new one.
-   */
-  const handleContextLost = useCallback(() => {
-    setContextLost(true)
-    // Whatever we asked for was too much for this GPU, so `retry` must not ask
-    // for it again. @see downgrades
-    setDowngrades((n) => n + 1)
-    setLayerError('نمایش سه‌بعدی متوقف شد — حافظه گرافیکی دستگاه پر شد')
-  }, [])
-
   // Failsafe. The splash is dismissed by the scene reporting itself drawn, and
   // an asset that resolves but never measures — a frame GLB with no geometry,
   // say — would otherwise leave it up for good. A half-dressed scene beats a
@@ -254,7 +228,7 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
   }, [state, sceneReady])
 
   return (
-    <QualityProvider surface="presentation" preset={qualityPreset}>
+    <QualityProvider surface="presentation" preset={qualityPreset} downgrades={recovery.downgrades}>
       {/* `viewport-fill`, not `h-screen`: iOS reads `100vh` as the height with
           the address bar retracted, so a full-screen container is taller than
           the screen. Here that only cost the canvas ~13% of its pixels to draw
@@ -270,7 +244,7 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
             config={config}
             onLayerError={handleLayerError}
             onReady={() => setSceneReady(true)}
-            onContextLost={handleContextLost}
+            onContextLost={recovery.handleContextLost}
           />
         )}
 
@@ -321,7 +295,7 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
           />
         )}
 
-        <RendererStatsOverlay tier={qualityPreset} />
+        <RendererStatsOverlay tier={lowerTier(qualityPreset, recovery.downgrades)} />
       </div>
     </QualityProvider>
   )

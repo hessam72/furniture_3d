@@ -37,6 +37,8 @@ export default function ShowroomStage({
   background = STAGE_BG,
   onReady,
   onError,
+  onContextLost,
+  downgrades,
 }: {
   config: PresentationConfig
   /** Which GLB to show — a cover variant, or the bare frame. */
@@ -49,6 +51,11 @@ export default function ShowroomStage({
   background?: string
   onReady: () => void
   onError: (category: string, error: Error) => void
+  /** The GPU dropped the buffer. The section folds this into its own `failed`
+   *  state, which already draws a fallback plate. */
+  onContextLost?: () => void
+  /** Rungs a lost context has cost this tab. @see useContextRecovery */
+  downgrades?: number
 }) {
   const device = useDeviceClass()
 
@@ -70,12 +77,13 @@ export default function ShowroomStage({
   )
 
   return (
-    <QualityProvider surface="viewer" preset={simpleViewerQuality(config, device)}>
+    <QualityProvider surface="viewer" preset={simpleViewerQuality(config, device)} downgrades={downgrades}>
       <SimpleViewer
         label="showroom"
         config={viewConfig}
         coverage={0}
         onReady={onReady}
+        onContextLost={onContextLost}
         onError={onError}
         sourceRef={sourceRef}
         plinth={plinth}

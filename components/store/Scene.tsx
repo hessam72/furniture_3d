@@ -54,6 +54,7 @@ import { clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
 import { RendererStatsOverlay, RendererStatsProbe, isDebug } from '@/components/three/RendererStats'
 import { useCanvasLifecycle } from '@/hooks/useCanvasLifecycle'
+import type { ContextRecovery } from '@/hooks/useContextRecovery'
 import { SHADOW_BUDGET } from '@/lib/config/deviceTier'
 import { PartErrorBoundary } from '@/components/car/PartErrorBoundary'
 
@@ -217,14 +218,16 @@ type PendingFocus = {
   object?: THREE.Object3D | null
 }
 
-export default function Scene() {
+export default function Scene({ recovery }: { recovery: ContextRecovery }) {
   const { config, loading, error } = useStoreConfig()
   const { settings, preset, device } = useQuality()
+
 
   // Listeners, transcoder priming and — the part R3F skips — a real
   // `gl.dispose()` on unmount. @see useCanvasLifecycle
   const handleCanvasCreated = useCanvasLifecycle({
     label: 'store',
+    onContextLost: recovery.handleContextLost,
     onCreated: useCallback((state: RootState) => {
       r3fRef.current = state
     }, []),
@@ -444,8 +447,9 @@ export default function Scene() {
           their place: `playerStartPosRef` already tracks the body's position
           for the product-focus camera, so the remount starts them where they
           were rather than back at the entrance. */}
-      {!showAR && (
+      {!showAR && !recovery.lost && (
       <Canvas
+        key={recovery.canvasKey}
         shadows
         style={{ touchAction: 'none' }}
         frameloop={IDLE_DEMAND ? 'demand' : 'always'}
@@ -661,19 +665,25 @@ export default function Scene() {
       )}
 
       {/* Gallery model failed — styled recovery instead of a dead black stage */}
-      {galleryError && (
+      {(galleryError || recovery.lost) && (
         <div className="absolute inset-0 z-[60] flex flex-col items-center justify-center gap-4 bg-[#060608]/95 px-6 text-center">
           <p className="text-[10px] uppercase tracking-[0.45em] text-[#d4af37]/70">Gallery</p>
           <h2 className="text-xl font-extralight uppercase tracking-[0.2em] text-white">
-            Gallery could not be loaded
+            {recovery.lost ? 'Graphics memory ran out' : 'Gallery could not be loaded'}
           </h2>
-          <p className="max-w-sm text-sm text-white/40">{galleryError}</p>
-          <button
-            onClick={retryGallery}
-            className="mt-2 rounded-full border border-white/15 px-6 py-2.5 text-xs uppercase tracking-[0.2em] text-white/70 transition-colors hover:border-white/40 hover:text-white"
-          >
-            Try again
-          </button>
+          <p className="max-w-sm text-sm text-white/40">
+            {recovery.lost
+              ? 'The scene will come back at a lighter setting.'
+              : galleryError}
+          </p>
+          {(recovery.lost ? recovery.retryable : true) && (
+            <button
+              onClick={recovery.lost ? () => recovery.retry() : retryGallery}
+              className="mt-2 rounded-full border border-white/15 px-6 py-2.5 text-xs uppercase tracking-[0.2em] text-white/70 transition-colors hover:border-white/40 hover:text-white"
+            >
+              Try again
+            </button>
+          )}
         </div>
       )}
 

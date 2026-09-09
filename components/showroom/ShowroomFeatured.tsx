@@ -16,6 +16,7 @@ import {
 } from '@/lib/product/presentation'
 import type { ShowroomConfig } from '@/lib/showroom/config'
 import { RendererStatsOverlay } from '@/components/three/RendererStats'
+import { useContextRecovery } from '@/hooks/useContextRecovery'
 import Reveal from './Reveal'
 import { ArIcon, ArrowIcon, ChevronIcon, Icon, RotateIcon, SofaGhostIcon } from './icons'
 
@@ -59,6 +60,9 @@ export default function ShowroomFeatured({
   const [specsOpen, setSpecsOpen] = useState(false)
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
+  /** A lost context reuses the section's existing fallback plate; it only ever
+   *  lacked a signal. @see useContextRecovery */
+  const recovery = useContextRecovery({ surface: 'viewer' })
 
   const [arSupported, setArSupported] = useState(false)
   const [arOpen, setArOpen] = useState(false)
@@ -112,7 +116,7 @@ export default function ShowroomFeatured({
   }, [arOpen])
 
   const probe = useAssetProbe(useMemo(() => (modelPath ? [modelPath] : []), [modelPath]))
-  const canRender = !!config && !!modelPath && probe.state === 'ready' && !failed
+  const canRender = !!config && !!modelPath && probe.state === 'ready' && !failed && !recovery.lost
 
   const handleError = useCallback(() => setFailed(true), [])
   const handleReady = useCallback(() => setReady(true), [])
@@ -290,13 +294,17 @@ export default function ShowroomFeatured({
                   plinth={featured.stage}
                   background={featured.viewer?.background}
                   onReady={handleReady}
+                  onContextLost={recovery.handleContextLost}
+                  downgrades={recovery.downgrades}
                   onError={handleError}
                 />
               )}
               {!ready && (
                 <div className="sr-viewer-fallback">
                   <SofaGhostIcon size={64} />
-                  {probe.state === 'missing' || failed ? (
+                  {recovery.lost ? (
+                    <span>نمایش سه‌بعدی متوقف شد — حافظه گرافیکی دستگاه پر شد.</span>
+                  ) : probe.state === 'missing' || failed ? (
                     <span>مدل سه‌بعدی این محصول در دسترس نیست.</span>
                   ) : (
                     <span>در حال بارگذاری مدل سه‌بعدی…</span>

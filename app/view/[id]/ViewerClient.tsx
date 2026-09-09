@@ -14,6 +14,7 @@ import { assetHdrUrl, assetUrl, uploadViewerConfig } from '@/lib/uploads/viewer'
 import type { UploadedAsset } from '@/lib/uploads/store'
 import QualityChips from '@/components/product/QualityChips'
 import { useDeviceClass } from '@/hooks/useDeviceClass'
+import { useContextRecovery } from '@/hooks/useContextRecovery'
 
 const SimpleViewer = dynamic(() => import('@/components/product/SimpleViewer'), {
   ssr: false,
@@ -45,9 +46,10 @@ export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
   const [error, setError] = useState<string | null>(null)
   const [showAR, setShowAR] = useState(false)
   const [arCapable, setArCapable] = useState(false)
-  /** Remounts the canvas after AR: it is unmounted to give the overlay the GPU,
-   *  and a Canvas whose context went with it has to be rebuilt. */
-  const [canvasKey, setCanvasKey] = useState(0)
+  /** Remounts the canvas after AR — it is unmounted to give the overlay the
+   *  GPU — and carries the lost-context ladder. @see useContextRecovery */
+  const recovery = useContextRecovery({ surface: 'viewer' })
+  const canvasKey = recovery.canvasKey
 
   // Same full-screen, non-scrolling shape as the simple page, so it needs the
   // same guard against an iOS swipe becoming a pull-to-refresh.
@@ -77,13 +79,13 @@ export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
   return (
     // The provider wraps the whole page, not just the canvas: the tier picker
     // is chrome over it and reads the same context.
-    <QualityProvider surface="viewer" preset={simpleViewerQuality(config, device)}>
+    <QualityProvider surface="viewer" preset={simpleViewerQuality(config, device)} downgrades={recovery.downgrades}>
     <div
       dir="rtl"
       className="font-persian viewport-fill relative w-screen overflow-hidden"
       style={{ background: view.background }}
     >
-      {!error && !showAR && (
+      {!error && !showAR && !recovery.lost && (
         <SimpleViewer
           label="upload"
           key={canvasKey}
@@ -92,6 +94,7 @@ export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
           paintable={false}
           onReady={handleReady}
           onError={handleError}
+          onContextLost={recovery.handleContextLost}
         />
       )}
 
@@ -134,7 +137,7 @@ export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
           arScale="fixed"
           onClose={() => {
             setShowAR(false)
-            setCanvasKey((n) => n + 1)
+            recovery.remount()
           }}
         />
       )}

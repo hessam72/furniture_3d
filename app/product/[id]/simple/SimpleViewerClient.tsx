@@ -28,6 +28,7 @@ import {
   type ResolvedPresentation,
 } from '@/lib/product/presentation'
 import { RendererStatsOverlay } from '@/components/three/RendererStats'
+import { useContextRecovery, type ContextRecovery } from '@/hooks/useContextRecovery'
 import { preloadGltf } from '@/lib/three/gltfLoaders'
 import ProductSheet from '@/components/product/ProductSheet'
 import QualityChips from '@/components/product/QualityChips'
@@ -64,9 +65,17 @@ export default function SimpleViewerClient({ presentation }: { presentation: Res
    *  from the first tap, up to this device's ceiling. @see SURFACE_POLICY */
   const device = useDeviceClass()
 
+  // Held here rather than in `Viewer` so the rungs a lost context costs reach
+  // the provider that resolves the tier. @see useContextRecovery
+  const recovery = useContextRecovery({ surface: 'viewer' })
+
   return (
-    <QualityProvider surface="viewer" preset={simpleViewerQuality(config, device)}>
-      <Viewer presentation={presentation} device={device} />
+    <QualityProvider
+      surface="viewer"
+      preset={simpleViewerQuality(config, device)}
+      downgrades={recovery.downgrades}
+    >
+      <Viewer presentation={presentation} device={device} recovery={recovery} />
     </QualityProvider>
   )
 }
@@ -74,14 +83,16 @@ export default function SimpleViewerClient({ presentation }: { presentation: Res
 function Viewer({
   presentation,
   device,
+  recovery,
 }: {
   presentation: ResolvedPresentation
   device: DeviceClass
+  recovery: ContextRecovery
 }) {
   const { key: productKey, product, config } = presentation
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [canvasKey, setCanvasKey] = useState(0)
+  const canvasKey = recovery.canvasKey
 
   const initProduct = usePresentation((s) => s.initProduct)
   const reset = usePresentation((s) => s.reset)
@@ -284,8 +295,9 @@ function Viewer({
   const closeAR = useCallback(() => {
     setShowAR(false)
     setArStale(false)
-    setCanvasKey((n) => n + 1)
-  }, [])
+    // A remount, not a failure: nothing was lost, the canvas was given up.
+    recovery.remount()
+  }, [recovery])
 
   const handleReady = useCallback(() => setReady(true), [])
   const handleError = useCallback((_category: string, err: Error) => setError(err.message), [])
@@ -301,7 +313,7 @@ function Viewer({
       className="font-persian viewport-fill relative w-screen overflow-hidden"
       style={{ background: view.background }}
     >
-      {live && !showAR && (
+      {live && !showAR && !recovery.lost && (
         <SimpleViewer
           label="simple"
           key={canvasKey}
@@ -311,6 +323,7 @@ function Viewer({
           sourceRef={source}
           onReady={handleReady}
           onError={handleError}
+          onContextLost={recovery.handleContextLost}
         />
       )}
 
@@ -354,11 +367,16 @@ function Viewer({
         />
       )}
 
-      {(blocked.length > 0 || error) && (
+      {(blocked.length > 0 || error || recovery.lost) && (
         <Notice
           productName={product.name}
-          detail={error ?? `فایل‌های یافت‌نشده: ${blocked.join('، ')}`}
+          detail={
+            recovery.lost
+              ? 'نمایش سه‌بعدی متوقف شد — حافظه گرافیکی دستگاه پر شد'
+              : error ?? `فایل‌های یافت‌نشده: ${blocked.join('، ')}`
+          }
           productKey={productKey}
+          onRetry={recovery.lost && recovery.retryable ? () => recovery.retry() : undefined}
         />
       )}
 
@@ -406,10 +424,14 @@ function Notice({
   productName,
   detail,
   productKey,
+  onRetry,
 }: {
   productName: string
   detail: string
   productKey: string
+  /** Present only for a lost context, and only while the tier has rungs left to
+   *  give up — a retry that comes back at the same tier crashes the same way. */
+  onRetry?: () => void
 }) {
   // Transparent: the page root behind it already carries the ground colour.
   return (
@@ -418,12 +440,22 @@ function Notice({
         <h2 className="text-[15px] font-semibold text-neutral-900">{productName}</h2>
         <p className="text-[13px] leading-7 text-neutral-500">نمایش سه‌بعدی این محصول در دسترس نیست.</p>
         <p className="break-all text-[11px] leading-6 text-neutral-400">{detail}</p>
-        <Link
-          href={`/product/${productKey}`}
-          className="inline-block rounded-lg border border-neutral-300 px-4 py-2 text-[13px] text-neutral-700 transition-colors hover:border-neutral-500"
-        >
-          نمای کامل محصول
-        </Link>
+        <div className="flex items-center justify-center gap-2">
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="rounded-lg border border-neutral-300 px-4 py-2 text-[13px] text-neutral-700 transition-colors hover:border-neutral-500"
+            >
+              تلاش دوباره
+            </button>
+          )}
+          <Link
+            href={`/product/${productKey}`}
+            className="inline-block rounded-lg border border-neutral-300 px-4 py-2 text-[13px] text-neutral-700 transition-colors hover:border-neutral-500"
+          >
+            نمای کامل محصول
+          </Link>
+        </div>
       </div>
     </div>
   )
