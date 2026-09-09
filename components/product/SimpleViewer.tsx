@@ -8,7 +8,8 @@ import { NeutralToneMapping } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { PerfLadder } from '@/components/three/PerfLadder'
 import { RendererStatsProbe, isDebug } from '@/components/three/RendererStats'
-import { extendGltfLoader, primeGltfLoaders } from '@/lib/three/gltfLoaders'
+import { extendGltfLoader } from '@/lib/three/gltfLoaders'
+import { useCanvasLifecycle } from '@/hooks/useCanvasLifecycle'
 import { PartErrorBoundary } from '@/components/car/PartErrorBoundary'
 import { clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
@@ -273,6 +274,8 @@ interface Props {
   /** Names this renderer in the `?debug` readout — three routes mount this
    *  component and the overlay has to tell them apart. */
   label?: string
+  /** The GPU dropped the buffer. The host decides what to show. */
+  onContextLost?: () => void
 }
 
 /**
@@ -308,6 +311,7 @@ export default function SimpleViewer({
   zone = 'cover',
   paintable = true,
   label = 'viewer',
+  onContextLost,
 }: Props) {
   const { settings } = useQuality()
   const [perfScale, setPerfScale] = useState(1)
@@ -330,16 +334,10 @@ export default function SimpleViewer({
     [onReady]
   )
 
-  // Nothing here allocates enough to lose a context, but a page that cannot
-  // report one leaves the viewer staring at a frozen frame.
-  const handleCreated = useCallback(({ gl }: RootState) => {
-    // The KTX2 transcoder cannot pick a target format without a renderer to
-    // ask. @see primeGltfLoaders
-    primeGltfLoaders(gl)
-    const canvas = gl.domElement
-    const lost = (event: Event) => event.preventDefault()
-    canvas.addEventListener('webglcontextlost', lost, false)
-  }, [])
+  // Nothing here allocates enough to lose a context on its own — but this
+  // viewer is also what /showroom and /view mount, and a page that cannot
+  // report a loss leaves the viewer staring at a frozen frame.
+  const handleCreated = useCanvasLifecycle({ label, onContextLost })
 
   return (
     <Canvas

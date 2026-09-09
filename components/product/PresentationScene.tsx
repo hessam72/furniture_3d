@@ -25,7 +25,7 @@ import { PresentationPostProcessing } from './PresentationPostProcessing'
 import FurnitureStack, { type StackControls, type StackFraming } from './FurnitureStack'
 import PresentationDiagnostics from './PresentationDiagnostics'
 import { RendererStatsProbe } from '@/components/three/RendererStats'
-import { primeGltfLoaders } from '@/lib/three/gltfLoaders'
+import { useCanvasLifecycle } from '@/hooks/useCanvasLifecycle'
 import { SceneReady } from './PresentationLoading'
 
 interface Props {
@@ -101,42 +101,19 @@ export default function PresentationScene({ config, onLayerError, onReady, onCon
   // when the room resolves. The ref stays because the camera polls it per frame.
   const [roomBox, setRoomBox] = useState<Box3 | null>(null)
 
-  // Registered in onCreated; R3F disposes the renderer on unmount but leaves
-  // listeners we added to its canvas.
-  const cleanupRef = useRef<(() => void) | null>(null)
-  useEffect(() => () => cleanupRef.current?.(), [])
-
   /**
    * Context loss is what is left once the memory budget is under control: a
-   * backgrounded tab, another page taking a context, a driver reset.
-   * `preventDefault()` is what makes it recoverable at all — without it the
-   * browser never fires `restored`.
+   * backgrounded tab, another page taking a context, a driver reset. The
+   * listeners, the transcoder priming and the teardown all live in the shared
+   * hook now. @see useCanvasLifecycle
    */
-  const handleCreated = useCallback(
-    ({ gl, invalidate }: RootState) => {
+  const handleCreated = useCanvasLifecycle({
+    label: 'presentation',
+    onContextLost,
+    onCreated: useCallback(({ gl }: RootState) => {
       gl.localClippingEnabled = true
-      // The KTX2 transcoder cannot pick a target format without a renderer to
-      // ask. @see primeGltfLoaders
-      primeGltfLoaders(gl)
-
-      const canvas = gl.domElement
-      const lost = (event: Event) => {
-        event.preventDefault()
-        onContextLost?.()
-      }
-      // Repaints where the browser gives us a restore; the page's retry covers
-      // the browsers that never do.
-      const restored = () => invalidate()
-
-      canvas.addEventListener('webglcontextlost', lost, false)
-      canvas.addEventListener('webglcontextrestored', restored, false)
-      cleanupRef.current = () => {
-        canvas.removeEventListener('webglcontextlost', lost)
-        canvas.removeEventListener('webglcontextrestored', restored)
-      }
-    },
-    [onContextLost]
-  )
+    }, []),
+  })
 
   const dpr = useMemo<[number, number]>(() => {
     const [min, max] = clampDprToBudget(settings.dpr)

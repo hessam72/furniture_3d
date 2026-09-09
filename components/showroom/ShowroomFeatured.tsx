@@ -279,7 +279,10 @@ export default function ShowroomFeatured({
                 piece. `-wheel` only: touch is left to the browser, which the
                 viewer's `touch-action: pan-y` already shares correctly. */}
             <div className="sr-stage" data-lenis-prevent-wheel>
-              {canRender && config && modelPath && (
+              {/* `!arOpen`: the AR overlay brings model-viewer's own WebGL
+                  context, and this stage's would otherwise sit live underneath
+                  it. @see the same gate on /product and /store. */}
+              {canRender && !arOpen && config && modelPath && (
                 <ShowroomStage
                   config={config}
                   modelPath={modelPath}

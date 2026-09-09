@@ -1,4 +1,5 @@
 'use client'
+import dynamic from 'next/dynamic'
 import { Canvas, useLoader, useFrame } from '@react-three/fiber'
 import type { RootState } from '@react-three/fiber'
 import { Environment } from '@react-three/drei'
@@ -34,7 +35,10 @@ import {
   type FocusOverride
 } from '@/lib/store/catalog'
 import { useShop } from '@/stores/storeShopStore'
-import ARProductViewer from './ARProductViewer'
+// Lazily, like every other AR call site. A static import puts model-viewer —
+// which inlines its own copy of three — in this page's critical path, for an
+// overlay most visitors never open.
+const ARProductViewer = dynamic(() => import('./ARProductViewer'), { ssr: false })
 import { FurnitureColorApplier } from './FurnitureColorApplier'
 import { useFurnitureConfig } from '@/stores/furnitureConfigStore'
 import { LoadingScreen } from './LoadingScreen'
@@ -49,7 +53,7 @@ import { PerfLadder } from '@/components/three/PerfLadder'
 import { clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
 import { RendererStatsOverlay, RendererStatsProbe, isDebug } from '@/components/three/RendererStats'
-import { primeGltfLoaders } from '@/lib/three/gltfLoaders'
+import { useCanvasLifecycle } from '@/hooks/useCanvasLifecycle'
 import { SHADOW_BUDGET } from '@/lib/config/deviceTier'
 import { PartErrorBoundary } from '@/components/car/PartErrorBoundary'
 
@@ -216,6 +220,15 @@ type PendingFocus = {
 export default function Scene() {
   const { config, loading, error } = useStoreConfig()
   const { settings, preset, device } = useQuality()
+
+  // Listeners, transcoder priming and — the part R3F skips — a real
+  // `gl.dispose()` on unmount. @see useCanvasLifecycle
+  const handleCanvasCreated = useCanvasLifecycle({
+    label: 'store',
+    onCreated: useCallback((state: RootState) => {
+      r3fRef.current = state
+    }, []),
+  })
   const [joystickInputRef, setJoystickInputRef] = useState<React.RefObject<{ x: number; y: number }> | null>(null)
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('loading')
   const [loadedCount, setLoadedCount] = useState(0)
@@ -423,6 +436,15 @@ export default function Scene() {
           if (e.buttons !== 0) wake()
         }}
       >
+      {/* Not mounted while AR is open.
+          model-viewer takes a WebGL context of its own, and this page used to
+          keep its own — plus a rapier world and the room GLB — alive underneath
+          it. Two live contexts on a phone is what /product and /simple fixed
+          long ago by gating the canvas; /store never did. The visitor keeps
+          their place: `playerStartPosRef` already tracks the body's position
+          for the product-focus camera, so the remount starts them where they
+          were rather than back at the entrance. */}
+      {!showAR && (
       <Canvas
         shadows
         style={{ touchAction: 'none' }}
@@ -437,11 +459,7 @@ export default function Scene() {
           toneMappingExposure: 0.3,
         }}
         camera={{ position: config.camera?.playerStart ?? [0, 2, 5], fov: 60, near: 0.1, far: 200 }}
-        onCreated={(state) => {
-          // @see primeGltfLoaders — the KTX2 transcoder needs a live renderer.
-          primeGltfLoaders(state.gl)
-          r3fRef.current = state
-        }}
+        onCreated={handleCanvasCreated}
       >
         <Physics
           gravity={[0, -30, 0]}
@@ -526,7 +544,11 @@ export default function Scene() {
             <PhysicsManager
               onJoystickInputReady={setJoystickInputRef}
               gyroEnabled={gyroEnabled}
-              playerStart={config.camera?.playerStart ?? [0, 2, 5]}
+              playerStart={
+                playerStartPosRef.current
+                  ? [playerStartPosRef.current.x, 2, playerStartPosRef.current.z]
+                  : config.camera?.playerStart ?? [0, 2, 5]
+              }
               cameraHeight={config.camera?.cameraHeight}
               focusTarget={focusTarget}
               focusId={pendingFocus?.id}
@@ -592,6 +614,7 @@ export default function Scene() {
           {isDebug() && <RendererStatsProbe label="store" />}
         </Physics>
       </Canvas>
+      )}
       </div>
 
       <RendererStatsOverlay tier={preset} />
