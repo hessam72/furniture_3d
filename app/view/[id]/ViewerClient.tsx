@@ -5,17 +5,15 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { QualityProvider } from '@/contexts/QualityContext'
 import {
-  PHONE_QUERY,
-  readDeviceClass,
   simpleViewer,
   simpleViewerQuality,
-  TOUCH_QUERY,
   type DeviceClass,
 } from '@/lib/product/presentation'
 import { isARCapable } from '@/lib/device-utils'
 import { assetHdrUrl, assetUrl, uploadViewerConfig } from '@/lib/uploads/viewer'
 import type { UploadedAsset } from '@/lib/uploads/store'
 import QualityChips from '@/components/product/QualityChips'
+import { useDeviceClass } from '@/hooks/useDeviceClass'
 
 const SimpleViewer = dynamic(() => import('@/components/product/SimpleViewer'), {
   ssr: false,
@@ -42,7 +40,7 @@ const ARProductViewer = dynamic(() => import('@/components/store/ARProductViewer
  * tier, which on this viewer only moves DPR and anisotropy. @see QualityChips
  */
 export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
-  const [device, setDevice] = useState<DeviceClass>('desktop')
+  const device = useDeviceClass()
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showAR, setShowAR] = useState(false)
@@ -50,14 +48,6 @@ export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
   /** Remounts the canvas after AR: it is unmounted to give the overlay the GPU,
    *  and a Canvas whose context went with it has to be rebuilt. */
   const [canvasKey, setCanvasKey] = useState(0)
-
-  useEffect(() => {
-    const queries = [window.matchMedia(PHONE_QUERY), window.matchMedia(TOUCH_QUERY)]
-    const apply = () => setDevice(readDeviceClass())
-    apply()
-    queries.forEach((mq) => mq.addEventListener('change', apply))
-    return () => queries.forEach((mq) => mq.removeEventListener('change', apply))
-  }, [])
 
   // Same full-screen, non-scrolling shape as the simple page, so it needs the
   // same guard against an iOS swipe becoming a pull-to-refresh.
@@ -87,7 +77,7 @@ export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
   return (
     // The provider wraps the whole page, not just the canvas: the tier picker
     // is chrome over it and reads the same context.
-    <QualityProvider preset={simpleViewerQuality(config, device)}>
+    <QualityProvider surface="viewer" preset={simpleViewerQuality(config, device)}>
     <div
       dir="rtl"
       className="font-persian viewport-fill relative w-screen overflow-hidden"

@@ -21,7 +21,23 @@ export function PostProcessing() {
 }
 
 function StandardComposer() {
-  const { settings } = useQuality()
+  const { settings, device } = useQuality()
+
+  /**
+   * No MSAA on touch hardware, whatever the tier says.
+   *
+   * The composer's input buffer is HalfFloat — 8 bytes a pixel — and
+   * `multisampling: 4` makes it 32, before the resolve target, SMAA's two
+   * full-res targets and the bloom mip chain. /product worked this out and
+   * fixed it (@see PresentationPostProcessing); /store kept passing the tier's
+   * number straight through, so a phone on `medium` was still paying for 4x.
+   *
+   * SMAA then has to cover for it: with MSAA off, `enableSMAA` alone would
+   * leave `medium` with no edge AA at all, so it follows the MSAA decision
+   * rather than the tier.
+   */
+  const multisampling = device === 'desktop' ? settings.multisampling : 0
+  const smaa = multisampling === 0 || settings.enableSMAA
 
   // EffectComposer types require ReactElement children (no false), so the
   // effect stack is assembled as an array
@@ -57,12 +73,12 @@ function StandardComposer() {
   )
 
   // SMAA - cheap edge AA; the composer bypasses canvas MSAA so this matters
-  if (settings.enableSMAA) {
+  if (smaa) {
     effects.push(<SMAA key="smaa" />)
   }
 
   // Vignette - VERY LIGHT: simple screen overlay
   effects.push(<Vignette key="vignette" eskil={false} offset={0.32} darkness={0.62} />)
 
-  return <EffectComposer multisampling={settings.multisampling}>{effects}</EffectComposer>
+  return <EffectComposer multisampling={multisampling}>{effects}</EffectComposer>
 }

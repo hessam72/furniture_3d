@@ -4,15 +4,13 @@ import { useEffect, useMemo, useState } from 'react'
 import type * as THREE from 'three'
 import { QualityProvider } from '@/contexts/QualityContext'
 import {
-  PHONE_QUERY,
-  readDeviceClass,
   simpleViewerQuality,
-  TOUCH_QUERY,
   type DeviceClass,
   type PresentationConfig,
 } from '@/lib/product/presentation'
 import SimpleViewer from '@/components/product/SimpleViewer'
 import type { PlinthSpec } from '@/components/product/ViewerPlinth'
+import { useDeviceClass } from '@/hooks/useDeviceClass'
 
 /**
  * The canvas half of the featured section: /product/[id]/simple's viewer,
@@ -52,15 +50,7 @@ export default function ShowroomStage({
   onReady: () => void
   onError: (category: string, error: Error) => void
 }) {
-  const [device, setDevice] = useState<DeviceClass>('desktop')
-
-  useEffect(() => {
-    const queries = [window.matchMedia(PHONE_QUERY), window.matchMedia(TOUCH_QUERY)]
-    const apply = () => setDevice(readDeviceClass())
-    apply()
-    queries.forEach((mq) => mq.addEventListener('change', apply))
-    return () => queries.forEach((mq) => mq.removeEventListener('change', apply))
-  }, [])
+  const device = useDeviceClass()
 
   /** The manifest, with the shown layer swapped in. `simpleViewer()` reads
    *  `simple.model`, so overriding it here is the whole layer switch — no
@@ -80,7 +70,7 @@ export default function ShowroomStage({
   )
 
   return (
-    <QualityProvider preset={simpleViewerQuality(config, device)}>
+    <QualityProvider surface="viewer" preset={simpleViewerQuality(config, device)}>
       <SimpleViewer
         label="showroom"
         config={viewConfig}

@@ -115,7 +115,7 @@ export const QUALITY_PRESETS: Record<QualityPreset, QualitySettings> = {
     groundShadows: 'contact',
     groundShadowResolution: 512,
     lampLights: true,
-    lampMaxLights: 80,
+    lampMaxLights: 8,
     lampShadowCasters: 1,
     envResolution: 1024,
     envIntensity: 1.5,

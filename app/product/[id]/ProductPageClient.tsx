@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { useEnvironment, useGLTF, useTexture } from '@react-three/drei'
 import { QualityProvider } from '@/contexts/QualityContext'
 import { useAssetProbe } from '@/hooks/useAssetProbe'
+import { useDeviceClass } from '@/hooks/useDeviceClass'
 import { usePresentation } from '@/stores/presentationStore'
 import { useShop } from '@/stores/storeShopStore'
 import { findCatalogItemBySceneObject } from '@/lib/store/catalog'
@@ -15,12 +16,9 @@ import {
   defaultPaint,
   lowerTier,
   needsEnvironment,
-  PHONE_QUERY,
   presentationQuality,
-  readDeviceClass,
   requiredAssets,
   roomMode,
-  TOUCH_QUERY,
   type DeviceClass,
   type PresentationConfig,
   type ResolvedPresentation,
@@ -84,19 +82,8 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
    * desktop tier and a phone with a `quality.mobile` override settles onto it
    * before the canvas mounts behind the splash.
    */
-  const [device, setDevice] = useState<DeviceClass>('desktop')
+  const device = useDeviceClass()
   const phone = device === 'phone'
-  useEffect(() => {
-    const queries = [window.matchMedia(PHONE_QUERY), window.matchMedia(TOUCH_QUERY)]
-    const apply = () => setDevice(readDeviceClass())
-    apply()
-    // matchMedia rather than a resize listener: this only ever needs to know
-    // which side of the query we are on, and a resize handler would re-render
-    // the page on every frame of a window drag. It also keeps up with a phone
-    // being turned, which the query is written to answer either way round.
-    queries.forEach((mq) => mq.addEventListener('change', apply))
-    return () => queries.forEach((mq) => mq.removeEventListener('change', apply))
-  }, [])
   const qualityPreset = useMemo(
     () => lowerTier(presentationQuality(config, device), downgrades),
     [config, device, downgrades]
@@ -267,7 +254,7 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
   }, [state, sceneReady])
 
   return (
-    <QualityProvider preset={qualityPreset}>
+    <QualityProvider surface="presentation" preset={qualityPreset}>
       {/* `viewport-fill`, not `h-screen`: iOS reads `100vh` as the height with
           the address bar retracted, so a full-screen container is taller than
           the screen. Here that only cost the canvas ~13% of its pixels to draw

@@ -4,6 +4,7 @@ import type { ProductData } from '@/components/store/ProductInteraction'
 import type { PartialSun } from '@/components/store/hooks/useStoreConfig'
 import type { ZonePaintConfig } from '@/stores/presentationStore'
 import { type QualityPreset } from '@/lib/config/quality'
+import { SURFACE_POLICY, resolveTier, type DeviceClass } from '@/lib/config/deviceTier'
 
 /** The three independently colourable parts of a piece. Unlike the showroom's
  *  keyword matching, the zone is implied by which layer GLB a mesh came from —
@@ -215,105 +216,21 @@ export function sunEnabled(config: PresentationConfig): boolean {
 export const PRESENTATION_DEFAULT_QUALITY: QualityPreset = 'medium'
 
 /**
- * Media query for "a phone", as opposed to a tablet or a small window.
+ * Device classes, tier ceilings and the shadow budget now live in
+ * `lib/config/deviceTier` — one resolver, shared by every surface, instead of
+ * this file's copy plus the provider's differing one. Re-exported here so the
+ * ~10 modules that import them from this path keep working.
  *
- * Two conditions, and both are load-bearing. `pointer: coarse` separates touch
- * hardware from a desktop browser someone has dragged narrow — the desktop
- * keeps the desktop tier at any window size. The **short side** under 768px
- * then separates a phone from a tablet, in either orientation: an iPad is 768
- * across even in portrait, while a phone in landscape is ~430 tall. Testing
- * width alone gets that one backwards.
+ * @see resolveTier, SURFACE_POLICY
  */
-export const PHONE_QUERY = '(pointer: coarse) and ((max-width: 767px) or (max-height: 767px))'
-
-/**
- * Touch hardware of any size, phone or tablet.
- *
- * Deliberately wider than PHONE_QUERY. That one picks which *tier* a product is
- * authored for, and a tablet can honestly take the desktop one. This picks
- * whether the composer may allocate a 4x-multisampled RGBA16F buffer, and no
- * mobile GPU can — an iPad at the `high` tier's DPR is ~3MP, which is ~97MB for
- * that one target. @see PresentationPostProcessing
- */
-export const TOUCH_QUERY = '(pointer: coarse)'
-
-/** What class of hardware is drawing this page. @see readDeviceClass */
-export type DeviceClass = 'desktop' | 'tablet' | 'phone'
-
-/**
- * Resolve the device class from the two queries above.
- *
- * Safe to call during a server render — it answers `desktop`, which is what the
- * page's first (server) paint is anyway, and the client settles it before the
- * canvas mounts. Inside the Canvas, which is `dynamic(..., { ssr: false })`, it
- * can be read synchronously in a `useState` initialiser.
- */
-export function readDeviceClass(): DeviceClass {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 'desktop'
-  if (window.matchMedia(PHONE_QUERY).matches) return 'phone'
-  if (window.matchMedia(TOUCH_QUERY).matches) return 'tablet'
-  return 'desktop'
-}
-
-/** Cheapest first — the ladder the ceilings and the downgrade below walk. */
-const TIER_LADDER: QualityPreset[] = ['low', 'medium', 'high', 'ultra']
-
-/**
- * The highest tier each class of hardware may be handed, whatever the manifest
- * asks for.
- *
- * This is not a taste setting, it is the page's memory budget, and it is the
- * fix for /product killing iPhones while /store — a far bigger scene — did not.
- * /store runs under the app-wide provider, which drops a phone to `low`; this
- * page pins its tier from the manifest and so *bypassed* that downgrade, and the
- * manifest asked for `high` on mobile. On an iPhone that meant, all at once:
- *
- *  - DPR 1.75 instead of 1 — 3x the pixels, and every full-screen pass with them
- *  - a 2048² shadow map instead of 512² — 16x the texels, ~32MB on its own
- *  - the floor's planar reflection — since dropped from the page outright —
- *    re-rendering the whole room from a mirrored camera on every drawn frame
- *  - an RGBA16F composer chain sized to those 3x pixels
- *
- * Sum it and the tab is past what iOS Safari will let a WebGL page hold, so the
- * context is dropped and the tab reloaded — repeatedly, since the retry came
- * back at the same tier. A phone therefore gets what /store proves a phone can
- * hold, a tablet stops one rung short of the desktop render, and the manifest
- * keeps its say anywhere below the ceiling.
- */
-export const DEVICE_TIER_CEILING: Record<DeviceClass, QualityPreset> = {
-  phone: 'low',
-  tablet: 'medium',
-  desktop: 'ultra',
-}
-
-/**
- * Shadow work a device may be asked for, independent of the tier.
- *
- * Separate from the ceiling above because it is the one cost the tier does not
- * describe honestly: drei's PCSS patch bakes `samples` into the global shadow
- * chunk, so every shadow-receiving fragment in the room pays a blocker search
- * *plus* a PCF loop of that many taps. The manifest asks for 16, which is a
- * desktop number — on a phone it is the single most expensive thing on screen.
- */
-export const SHADOW_BUDGET: Record<DeviceClass, { resolution: number; samples: number }> = {
-  phone: { resolution: 512, samples: 8 },
-  tablet: { resolution: 1024, samples: 12 },
-  desktop: { resolution: Infinity, samples: Infinity },
-}
-
-/** Clamp a tier to a ceiling, on the ladder above. */
-function capTier(tier: QualityPreset, ceiling: QualityPreset): QualityPreset {
-  const at = TIER_LADDER.indexOf(tier)
-  const max = TIER_LADDER.indexOf(ceiling)
-  return at > max ? ceiling : tier
-}
-
-/** Step a tier down the ladder, never below `low`. @see the context-loss
- *  downgrade in ProductPageClient. */
-export function lowerTier(tier: QualityPreset, steps: number): QualityPreset {
-  if (steps <= 0) return tier
-  return TIER_LADDER[Math.max(0, TIER_LADDER.indexOf(tier) - steps)]
-}
+export {
+  PHONE_QUERY,
+  TOUCH_QUERY,
+  SHADOW_BUDGET,
+  readDeviceClass,
+  lowerTier,
+  type DeviceClass,
+} from '@/lib/config/deviceTier'
 
 /**
  * The tier this product renders at.
@@ -331,7 +248,7 @@ export function presentationQuality(config: PresentationConfig, device: DeviceCl
   const q = config.quality
   const base = q?.preset ?? PRESENTATION_DEFAULT_QUALITY
   const asked = device === 'phone' ? q?.mobile ?? base : base
-  return capTier(asked, DEVICE_TIER_CEILING[device])
+  return resolveTier({ surface: 'presentation', device, manifest: asked })
 }
 
 /**
@@ -339,16 +256,17 @@ export function presentationQuality(config: PresentationConfig, device: DeviceCl
  *
  * Deliberately not `presentationQuality`. That one is a memory budget for a
  * page carrying a room GLB, a 2048² shadow map and an RGBA16F composer chain —
- * none of which exist here. The tier on the simple viewer
- * buys DPR and anisotropy and nothing else, so a phone can honestly hold more
- * than `low`, and a desktop should not inherit a `preset` that was dialled down
- * to keep phones alive on the heavy page. The picker overrides all of it.
+ * none of which exist here. The tier on the simple viewer buys DPR and
+ * anisotropy and nothing else, so a phone can honestly hold more than `low`,
+ * and a desktop should not inherit a `preset` that was dialled down to keep
+ * phones alive on the heavy page.
+ *
+ * What changed: it used to be uncapped, on that same argument. The argument is
+ * right about the page and wrong about the picker — every rung here is
+ * affordable except the one that puts a handset on DPR 2. The `viewer` ceiling
+ * is that line. @see SURFACE_POLICY
  */
-export const SIMPLE_VIEWER_QUALITY: Record<DeviceClass, QualityPreset> = {
-  phone: 'medium',
-  tablet: 'high',
-  desktop: 'high',
-}
+export const SIMPLE_VIEWER_QUALITY = SURFACE_POLICY.viewer.fallback
 
 /**
  * The one GLB a plain viewer shows, when the manifest does not name one.
@@ -507,7 +425,8 @@ export function simpleViewer(config: PresentationConfig): ResolvedSimpleViewer {
 export function simpleViewerQuality(config: PresentationConfig, device: DeviceClass): QualityPreset {
   const q = config.simple?.quality
   const base = q?.preset ?? SIMPLE_VIEWER_QUALITY[device]
-  return device === 'phone' ? q?.mobile ?? base : base
+  const asked = device === 'phone' ? q?.mobile ?? base : base
+  return resolveTier({ surface: 'viewer', device, manifest: asked })
 }
 
 /**

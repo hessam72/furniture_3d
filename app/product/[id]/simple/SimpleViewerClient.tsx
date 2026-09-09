@@ -8,6 +8,7 @@ import type * as THREE from 'three'
 import { useGLTF } from '@react-three/drei'
 import { QualityProvider } from '@/contexts/QualityContext'
 import { useAssetProbe } from '@/hooks/useAssetProbe'
+import { useDeviceClass } from '@/hooks/useDeviceClass'
 import { usePresentation } from '@/stores/presentationStore'
 import { useShop } from '@/stores/storeShopStore'
 import { findCatalogItemBySceneObject, type Catalog } from '@/lib/store/catalog'
@@ -20,11 +21,8 @@ import {
   defaultPaint,
   findCoverVariant,
   finishedPiecePath,
-  PHONE_QUERY,
-  readDeviceClass,
   simpleViewer,
   simpleViewerQuality,
-  TOUCH_QUERY,
   type DeviceClass,
   type PresentationZone,
   type ResolvedPresentation,
@@ -63,18 +61,11 @@ export default function SimpleViewerClient({ presentation }: { presentation: Res
   const { config } = presentation
 
   /** Which tier the viewer opens on. Only a seed — the picker below owns it
-   *  from the first tap. @see SIMPLE_VIEWER_QUALITY */
-  const [device, setDevice] = useState<DeviceClass>('desktop')
-  useEffect(() => {
-    const queries = [window.matchMedia(PHONE_QUERY), window.matchMedia(TOUCH_QUERY)]
-    const apply = () => setDevice(readDeviceClass())
-    apply()
-    queries.forEach((mq) => mq.addEventListener('change', apply))
-    return () => queries.forEach((mq) => mq.removeEventListener('change', apply))
-  }, [])
+   *  from the first tap, up to this device's ceiling. @see SURFACE_POLICY */
+  const device = useDeviceClass()
 
   return (
-    <QualityProvider preset={simpleViewerQuality(config, device)}>
+    <QualityProvider surface="viewer" preset={simpleViewerQuality(config, device)}>
       <Viewer presentation={presentation} device={device} />
     </QualityProvider>
   )

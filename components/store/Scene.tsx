@@ -50,6 +50,7 @@ import { clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
 import { RendererStatsOverlay, RendererStatsProbe, isDebug } from '@/components/three/RendererStats'
 import { primeGltfLoaders } from '@/lib/three/gltfLoaders'
+import { SHADOW_BUDGET } from '@/lib/config/deviceTier'
 import { PartErrorBoundary } from '@/components/car/PartErrorBoundary'
 
 // Demand frameloop with idle physics pause — the /car performance model
@@ -214,7 +215,7 @@ type PendingFocus = {
 
 export default function Scene() {
   const { config, loading, error } = useStoreConfig()
-  const { settings, preset } = useQuality()
+  const { settings, preset, device } = useQuality()
   const [joystickInputRef, setJoystickInputRef] = useState<React.RefObject<{ x: number; y: number }> | null>(null)
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('loading')
   const [loadedCount, setLoadedCount] = useState(0)
@@ -479,10 +480,16 @@ export default function Scene() {
             <>
               <ShadowSystem
                 size={config.sun.soft?.size ?? 20}
-                samples={config.sun.soft?.samples ?? 16}
+                // stores.json asks for 16, which is a desktop number: every
+                // shadow-receiving fragment pays a blocker search plus a PCF
+                // loop of that many taps. /product halves it on a phone; this
+                // page was trusting the file. @see SHADOW_BUDGET
+                samples={Math.min(config.sun.soft?.samples ?? 16, SHADOW_BUDGET[device].samples)}
                 focus={config.sun.soft?.focus ?? 0}
               />
-              <SunLight sun={config.sun} />
+              {/* A 2048² map is ~32MB of FBO on a device that has nothing like
+                  that to spare. */}
+              <SunLight sun={config.sun} maxResolution={SHADOW_BUDGET[device].resolution} />
             </>
           )}
 

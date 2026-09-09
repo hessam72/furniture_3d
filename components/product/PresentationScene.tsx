@@ -10,7 +10,6 @@ import { useQuality } from '@/contexts/QualityContext'
 import {
   lightingMode,
   needsEnvironment,
-  readDeviceClass,
   roomMode,
   STORE_RENDER,
   sunEnabled,
@@ -64,7 +63,7 @@ interface Props {
  * `useQuality`, `roomBox` arriving, the store for the ones that read it.
  */
 export default function PresentationScene({ config, onLayerError, onReady, onContextLost }: Props) {
-  const { settings } = useQuality()
+  const { settings, device } = useQuality()
   const backdrop = roomMode(config)
   const needsIBL = needsEnvironment(config)
   // A room GLB is authored and checked under /store's renderer. Its materials
@@ -76,14 +75,18 @@ export default function PresentationScene({ config, onLayerError, onReady, onCon
   const debug = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug')
   const [perfScale, setPerfScale] = useState(1)
   /**
-   * Read once, synchronously, and handed down rather than re-queried per
-   * component: the passes below have to agree about what they are drawing on,
-   * and a composer or a shadow map that starts at the wrong size has already
-   * made the allocation by the time an effect could correct it. This component
-   * only ever mounts inside `dynamic(..., { ssr: false })`, so there is no
-   * server HTML for the synchronous read to disagree with.
+   * Read from the provider that already resolved it, and handed down rather
+   * than re-queried per component: the passes below have to agree about what
+   * they are drawing on, and a composer or a shadow map that starts at the
+   * wrong size has already made the allocation by the time an effect could
+   * correct it.
+   *
+   * This was a synchronous `readDeviceClass()` in a `useState` initialiser —
+   * correct, and the only surface that got it right, back when the provider
+   * settled the device in an effect and so began at `desktop`. The provider
+   * resolves it on the first render now, so there is one answer instead of two.
    */
-  const [device] = useState(readDeviceClass)
+
 
   // Spin/tilt targets live in a ref shared with the gesture layer — writing
   // them to zustand at 60Hz would re-render the bottom sheet every frame.
