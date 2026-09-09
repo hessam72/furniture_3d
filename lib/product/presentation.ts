@@ -22,6 +22,8 @@ export interface CoverVariant {
   id: string
   name: string
   path: string
+  /** A lighter stand-in for AR only. @see arModelPath */
+  arPath?: string
   thumbnail?: string
   priceDelta?: number
   material?: { roughness?: number; metalness?: number; clearcoat?: number }
@@ -29,6 +31,8 @@ export interface CoverVariant {
 
 export interface LayerMeta {
   path: string
+  /** A lighter stand-in for AR only. @see arModelPath */
+  arPath?: string
   label: string
   desc?: string
   /** Substring tested against mesh.name to pick the colourable subset of this layer */
@@ -360,6 +364,28 @@ export function finishedPiecePath(config: PresentationConfig): string {
 }
 
 /**
+ * The file AR should place in the room, for the layer the viewer is showing.
+ *
+ * Falls through to the displayed model wherever no `arPath`/`arModel` is
+ * authored, so declaring nothing changes nothing. What it buys where it *is*
+ * authored is the one thing no amount of code can do at runtime: fewer
+ * triangles. iOS Quick Look is reached through three's USDZ exporter, which
+ * writes geometry as decimal text into a zip it does not compress — so a
+ * high-poly piece is tens of megabytes of ASCII whatever its textures weigh,
+ * and the only cure is a decimated file.
+ *
+ * `layer` is the same string the page and the API route both key on: `frame`
+ * for the bare frame, a cover variant id, or anything else for the finished
+ * piece.
+ */
+export function arModelPath(config: PresentationConfig, layer: string): string {
+  if (layer === 'frame') return config.layers.frame.arPath ?? config.layers.frame.path
+  const variant = findCoverVariant(config, layer)
+  if (variant) return variant.arPath ?? variant.path
+  return config.simple?.arModel ?? finishedPiecePath(config)
+}
+
+/**
  * The `simple` block: everything /product/[id]/simple draws, as a manifest.
  *
  * Every field is optional and every default is the value the page shipped with,
@@ -372,6 +398,9 @@ export function finishedPiecePath(config: PresentationConfig): string {
 export interface SimpleViewerMeta {
   /** The GLB to show. Omitted → the finished piece. @see finishedPiecePath */
   model?: string
+  /** A lighter stand-in for AR only, used when no cover variant is showing.
+   *  @see arModelPath */
+  arModel?: string
   /** Image-based light. Omitted → `room.hdr`; `null` to render with the studio
    *  fill alone, for a product whose materials are meant to be read flat. */
   hdr?: string | null
