@@ -28,6 +28,7 @@ import PresentationTopBar from '@/components/product/PresentationTopBar'
 import MissingAssetsNotice from '@/components/product/MissingAssetsNotice'
 import { RendererStatsOverlay } from '@/components/three/RendererStats'
 import { useContextRecovery } from '@/hooks/useContextRecovery'
+import { useGltfCacheEviction } from '@/hooks/useGltfCacheEviction'
 import { preloadGltf } from '@/lib/three/gltfLoaders'
 import PresentationLoading from '@/components/product/PresentationLoading'
 import type { Catalog } from '@/lib/store/catalog'
@@ -82,6 +83,9 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
   const qualityPreset = useMemo(() => presentationQuality(config, device), [config, device])
 
   const assets = useMemo(() => requiredAssets(config), [config])
+
+  // Everything this page parsed goes back when the visitor leaves it.
+  useGltfCacheEviction(assets.filter((path) => path.endsWith('.glb')))
   const { state, missing } = useAssetProbe(useMemo(() => assets, [assets, probeKey]))
 
   const catalogId = useMemo(() => {

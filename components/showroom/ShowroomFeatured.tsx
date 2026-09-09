@@ -17,6 +17,7 @@ import {
 import type { ShowroomConfig } from '@/lib/showroom/config'
 import { RendererStatsOverlay } from '@/components/three/RendererStats'
 import { useContextRecovery } from '@/hooks/useContextRecovery'
+import { useGltfCacheEviction } from '@/hooks/useGltfCacheEviction'
 import Reveal from './Reveal'
 import { ArIcon, ArrowIcon, ChevronIcon, Icon, RotateIcon, SofaGhostIcon } from './icons'
 
@@ -116,6 +117,10 @@ export default function ShowroomFeatured({
   }, [arOpen])
 
   const probe = useAssetProbe(useMemo(() => (modelPath ? [modelPath] : []), [modelPath]))
+
+  // Every cover the visitor toggled through, not just the one on screen. This
+  // section re-probes and re-parses per toggle and never released any of them.
+  useGltfCacheEviction(modelPath ? [modelPath] : [])
   const canRender = !!config && !!modelPath && probe.state === 'ready' && !failed && !recovery.lost
 
   const handleError = useCallback(() => setFailed(true), [])

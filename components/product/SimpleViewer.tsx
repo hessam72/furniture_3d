@@ -14,6 +14,7 @@ import { PartErrorBoundary } from '@/components/car/PartErrorBoundary'
 import { clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
 import { collectZoneTargets, disposeTargets, preparePresentationObject } from '@/lib/three/layerMaterials'
+import { applyAnisotropy } from '@/lib/three/prepareCarMaterial'
 import { applyFirstCoat, useZonePaint } from '@/hooks/useZonePaint'
 import { usePresentation } from '@/stores/presentationStore'
 import {
@@ -80,12 +81,18 @@ function Piece({
 }) {
   const gltf = useGLTF(path, false, true, extendGltfLoader)
   const { settings } = useQuality()
+  const invalidate = useThree((s) => s.invalidate)
+  // Read at clone time without making the clone depend on it. @see below.
+  const anisotropyRef = useRef(settings.anisotropyLevel)
+  anisotropyRef.current = settings.anisotropyLevel
 
   const { scene, targets, radius, bottom, footprint } = useMemo(() => {
     const clone = gltf.scene.clone(true)
     preparePresentationObject(clone, {
       envMapIntensity: envIntensity,
-      anisotropy: settings.anisotropyLevel,
+      // Whatever the tier is on this render. The effect below keeps it current
+      // without rebuilding the scene — @see the note under this memo.
+      anisotropy: anisotropyRef.current,
       // No sun on this page, so no mesh takes part in a shadow pass and no
       // shadow map is ever allocated.
       shadows: false,
@@ -115,7 +122,27 @@ function Piece({
       footprint: Math.max(size.x, size.z) / 2,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gltf.scene, path, envIntensity, zone, paintable, settings.anisotropyLevel])
+  }, [gltf.scene, path, envIntensity, zone, paintable])
+
+  /**
+   * Anisotropy is applied to the existing clone, not baked into the memo above.
+   *
+   * It used to be a dependency, which meant a tap on the quality chips —
+   * available on this page and only this page — re-cloned the entire scene
+   * graph, re-cloned every material, disposed the old set and compiled a fresh
+   * set of programs. To change a texture filter. FurnitureStack has excluded it
+   * from its own deps deliberately for exactly this reason; this is the same
+   * decision, made explicit rather than by omission.
+   */
+  useEffect(() => {
+    scene.traverse((child) => {
+      const material = (child as THREE.Mesh).material
+      if (!material) return
+      const list = Array.isArray(material) ? material : [material]
+      list.forEach((entry) => applyAnisotropy(entry, settings.anisotropyLevel))
+    })
+    invalidate()
+  }, [scene, settings.anisotropyLevel, invalidate])
 
   useZonePaint(targets)
   useEffect(() => () => disposeTargets(targets), [targets])

@@ -29,6 +29,7 @@ import {
 } from '@/lib/product/presentation'
 import { RendererStatsOverlay } from '@/components/three/RendererStats'
 import { useContextRecovery, type ContextRecovery } from '@/hooks/useContextRecovery'
+import { useGltfCacheEviction } from '@/hooks/useGltfCacheEviction'
 import { preloadGltf } from '@/lib/three/gltfLoaders'
 import ProductSheet from '@/components/product/ProductSheet'
 import QualityChips from '@/components/product/QualityChips'
@@ -156,6 +157,9 @@ function Viewer({
     return Array.from(new Set(paths))
   }, [config, view.hdr])
   const { state, missing } = useAssetProbe(probeAssets)
+
+  // The layer set this page can reach, released when the visitor leaves it.
+  useGltfCacheEviction(probeAssets.filter((path) => path.endsWith('.glb')))
 
   /** Only what *this* view needs has to be present — a missing variant is the
    *  sheet's problem to report, not a reason to blank the page. */
