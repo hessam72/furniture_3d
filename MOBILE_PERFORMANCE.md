@@ -65,8 +65,27 @@ for mips — 81 MB, from a file that looked like a rounding error.
 
 ```bash
 npm i -g @gltf-transform/cli
-brew install ktx                     # or the KTX-Software release on Linux
+```
 
+Then **KTX-Software**, which provides the `ktx` encoder. There is no Homebrew
+formula — download the installer from
+[the releases page](https://github.com/KhronosGroup/KTX-Software/releases) and
+pick the `.pkg` for your Mac:
+
+| chip | file |
+|---|---|
+| Apple Silicon (M1–M4) | `KTX-Software-<version>-Darwin-arm64.pkg` |
+| Intel | `KTX-Software-<version>-Darwin-x86_64.pkg` |
+
+Open it, allow it through Gatekeeper if asked, then check it landed:
+
+```bash
+ktx --version        # → ktx version: v4.4.0
+```
+
+Now run the pipeline:
+
+```bash
 npm run glb:optimize  out/  public/models/**/*.glb
 npm run glb:budget    out/*.glb      # confirm the numbers
 ```

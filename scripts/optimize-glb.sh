@@ -29,8 +29,11 @@
 #
 # Requires:
 #   npm i -g @gltf-transform/cli
-#   KTX-Software (provides `ktx`) — https://github.com/KhronosGroup/KTX-Software/releases
-#     macOS:  brew install ktx        Linux: the .tar.bz2 release, bin/ on PATH
+#   KTX-Software (provides `ktx`) — there is NO Homebrew formula for it.
+#     Download from https://github.com/KhronosGroup/KTX-Software/releases
+#     macOS: the .pkg for your chip — Darwin-arm64 (Apple Silicon) or
+#            Darwin-x86_64 (Intel). Installs `ktx` on the PATH.
+#     Linux: the .tar.bz2; put its bin/ on PATH and lib/ on LD_LIBRARY_PATH.
 #
 set -euo pipefail
 
