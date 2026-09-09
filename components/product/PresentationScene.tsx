@@ -25,6 +25,7 @@ import PresentationGestures from './PresentationGestures'
 import { PresentationPostProcessing } from './PresentationPostProcessing'
 import FurnitureStack, { type StackControls, type StackFraming } from './FurnitureStack'
 import PresentationDiagnostics from './PresentationDiagnostics'
+import { RendererStatsProbe } from '@/components/three/RendererStats'
 import { SceneReady } from './PresentationLoading'
 
 interface Props {
@@ -231,6 +232,7 @@ export default function PresentationScene({ config, onLayerError, onReady, onCon
         <PresentationPostProcessing config={config} device={device} />
 
         {debug && <PresentationDiagnostics />}
+        {debug && <RendererStatsProbe label="presentation" />}
       </Canvas>
     </div>
   )

@@ -7,6 +7,7 @@ import * as THREE from 'three'
 import { NeutralToneMapping } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { PerfLadder } from '@/components/three/PerfLadder'
+import { RendererStatsProbe, isDebug } from '@/components/three/RendererStats'
 import { PartErrorBoundary } from '@/components/car/PartErrorBoundary'
 import { clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
@@ -269,6 +270,9 @@ interface Props {
    * current cover colour. @see /view/[id]
    */
   paintable?: boolean
+  /** Names this renderer in the `?debug` readout — three routes mount this
+   *  component and the overlay has to tell them apart. */
+  label?: string
 }
 
 /**
@@ -303,6 +307,7 @@ export default function SimpleViewer({
   embedded,
   zone = 'cover',
   paintable = true,
+  label = 'viewer',
 }: Props) {
   const { settings } = useQuality()
   const [perfScale, setPerfScale] = useState(1)
@@ -416,6 +421,8 @@ export default function SimpleViewer({
       />
 
       {embedded && <EmbeddedGestures />}
+
+      {isDebug() && <RendererStatsProbe label={label} />}
     </Canvas>
   )
 }

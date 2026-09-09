@@ -48,6 +48,7 @@ import { ActivityGovernor, markStoreActivity } from './activityGovernor'
 import { PerfLadder } from '@/components/three/PerfLadder'
 import { clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
+import { RendererStatsOverlay, RendererStatsProbe, isDebug } from '@/components/three/RendererStats'
 import { PartErrorBoundary } from '@/components/car/PartErrorBoundary'
 
 // Demand frameloop with idle physics pause — the /car performance model
@@ -212,7 +213,7 @@ type PendingFocus = {
 
 export default function Scene() {
   const { config, loading, error } = useStoreConfig()
-  const { settings } = useQuality()
+  const { settings, preset } = useQuality()
   const [joystickInputRef, setJoystickInputRef] = useState<React.RefObject<{ x: number; y: number }> | null>(null)
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('loading')
   const [loadedCount, setLoadedCount] = useState(0)
@@ -578,9 +579,12 @@ export default function Scene() {
           */}
           {/* Post-Processing (tier-driven; SSGI lazy on ultra opt-in) */}
           <PostProcessing />
+          {isDebug() && <RendererStatsProbe label="store" />}
         </Physics>
       </Canvas>
       </div>
+
+      <RendererStatsOverlay tier={preset} />
 
       {/* Product Drawer - 2D bottom sheet. No backdrop: the canvas below stays
           interactive so look-drag and the joystick keep working while it's open */}

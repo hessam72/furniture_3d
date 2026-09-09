@@ -15,6 +15,7 @@ import {
   type ZoneSwatch,
 } from '@/lib/product/presentation'
 import type { ShowroomConfig } from '@/lib/showroom/config'
+import { RendererStatsOverlay } from '@/components/three/RendererStats'
 import Reveal from './Reveal'
 import { ArIcon, ArrowIcon, ChevronIcon, Icon, RotateIcon, SofaGhostIcon } from './icons'
 
@@ -24,6 +25,7 @@ const ShowroomStage = dynamic(() => import('./ShowroomStage'), {
 })
 
 const ARProductViewer = dynamic(() => import('@/components/store/ARProductViewer'), { ssr: false })
+
 
 /** The bare frame, shown by the "structure" toggle. Not a cover id, so it
  *  cannot collide with one. */
@@ -324,6 +326,8 @@ export default function ShowroomFeatured({
           />
         </div>
       )}
+
+      <RendererStatsOverlay />
     </section>
   )
 }

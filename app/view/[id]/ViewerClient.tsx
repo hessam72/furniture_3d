@@ -95,6 +95,7 @@ export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
     >
       {!error && !showAR && (
         <SimpleViewer
+          label="upload"
           key={canvasKey}
           config={config}
           coverage={0}

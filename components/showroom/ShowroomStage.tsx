@@ -82,6 +82,7 @@ export default function ShowroomStage({
   return (
     <QualityProvider preset={simpleViewerQuality(config, device)}>
       <SimpleViewer
+        label="showroom"
         config={viewConfig}
         coverage={0}
         onReady={onReady}

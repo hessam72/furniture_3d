@@ -29,6 +29,7 @@ import {
   type PresentationZone,
   type ResolvedPresentation,
 } from '@/lib/product/presentation'
+import { RendererStatsOverlay } from '@/components/three/RendererStats'
 import ProductSheet from '@/components/product/ProductSheet'
 import QualityChips from '@/components/product/QualityChips'
 
@@ -305,6 +306,7 @@ function Viewer({
     >
       {live && !showAR && (
         <SimpleViewer
+          label="simple"
           key={canvasKey}
           config={viewConfig}
           coverage={coverage}
@@ -397,6 +399,8 @@ function Viewer({
           onClose={closeAR}
         />
       )}
+
+      <RendererStatsOverlay tier={simpleViewerQuality(config, device)} />
     </div>
   )
 }

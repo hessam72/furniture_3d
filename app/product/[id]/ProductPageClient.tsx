@@ -28,6 +28,7 @@ import {
 import ProductSheet from '@/components/product/ProductSheet'
 import PresentationTopBar from '@/components/product/PresentationTopBar'
 import MissingAssetsNotice from '@/components/product/MissingAssetsNotice'
+import { RendererStatsOverlay } from '@/components/three/RendererStats'
 import PresentationLoading from '@/components/product/PresentationLoading'
 import type { Catalog } from '@/lib/store/catalog'
 
@@ -323,6 +324,8 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
             onClose={closeAR}
           />
         )}
+
+        <RendererStatsOverlay tier={qualityPreset} />
       </div>
     </QualityProvider>
   )
