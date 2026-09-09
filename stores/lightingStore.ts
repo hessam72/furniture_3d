@@ -34,6 +34,11 @@ export interface LightingState {
   setEnvRotation: (degrees: number) => void
 }
 
+/**
+ * Sunset, Showroom and Garage went with `LightingControls`, the panel that was
+ * the only way to select them — and their three EXRs with them, 5.4MB of files
+ * nothing could reach. Studio is the default and the only one left.
+ */
 export const LIGHTING_PRESETS: LightingPreset[] = [
   {
     id: 'studio',
@@ -44,36 +49,6 @@ export const LIGHTING_PRESETS: LightingPreset[] = [
     rim: 80,
     envIntensity: 1.5,
     rotation: 0,
-  },
-  {
-    id: 'sunset',
-    name: 'Sunset',
-    hdri: '/hdr/sunset.exr',
-    key: 50,
-    fill: 60,
-    rim: 30,
-    envIntensity: 1.8,
-    rotation: 90,
-  },
-  {
-    id: 'showroom',
-    name: 'Showroom',
-    hdri: '/hdr/showroom.exr',
-    key: 80,
-    fill: 35,
-    rim: 50,
-    envIntensity: 1.2,
-    rotation: 0,
-  },
-  {
-    id: 'garage',
-    name: 'Garage',
-    hdri: '/hdr/garage.exr',
-    key: 40,
-    fill: 50,
-    rim: 20,
-    envIntensity: 1.0,
-    rotation: 180,
   },
 ]
 

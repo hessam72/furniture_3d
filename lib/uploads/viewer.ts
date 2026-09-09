@@ -35,7 +35,7 @@ export function assetHdrUrl(id: string, file: string): string {
  * `hdrUrl` is the one thing an uploader can choose: pass the environment map
  * that came with the model, or leave it out for the house default.
  */
-export const UPLOAD_VIEWER_HDR = '/hdr/200_hdrmaps_com_free_1kk.exr'
+export const UPLOAD_VIEWER_HDR = '/hdr/studio-512.hdr'
 export const UPLOAD_VIEWER_BG = '#ececef'
 
 export function uploadViewerConfig(modelUrl: string, hdrUrl?: string | null): PresentationConfig {
