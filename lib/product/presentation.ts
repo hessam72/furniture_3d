@@ -379,10 +379,15 @@ export function finishedPiecePath(config: PresentationConfig): string {
  * piece.
  */
 export function arModelPath(config: PresentationConfig, layer: string): string {
-  if (layer === 'frame') return config.layers.frame.arPath ?? config.layers.frame.path
+  // `""` counts as unset, not as a path. The fields sit in the manifest empty,
+  // waiting for a file that may never be authored, and `??` alone would hand an
+  // empty string to the route as a real answer.
+  const authored = (path: string | undefined) => (path && path.trim() ? path : null)
+
+  if (layer === 'frame') return authored(config.layers.frame.arPath) ?? config.layers.frame.path
   const variant = findCoverVariant(config, layer)
-  if (variant) return variant.arPath ?? variant.path
-  return config.simple?.arModel ?? finishedPiecePath(config)
+  if (variant) return authored(variant.arPath) ?? variant.path
+  return authored(config.simple?.arModel) ?? finishedPiecePath(config)
 }
 
 /**
