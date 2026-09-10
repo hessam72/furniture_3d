@@ -135,10 +135,19 @@ interface SurfacePolicy {
  * shadow map and a composer, and the plain viewer's is `medium` because it
  * allocates neither. What none of them may be is `ultra` on a handset.
  *
- * `presentation` ignores the stored choice on purpose. Its tier comes from the
- * product's manifest — a booth under a fixed camera has a cost that is known up
- * front and the same on every device — and a picker on another page has no
- * business moving it.
+ * **Every surface honours the stored choice**, and the ceiling is what keeps
+ * that safe. `presentation` briefly did not, on the reasoning that its tier is
+ * the manifest's and a picker elsewhere has no business moving it — which
+ * overlooked that `/product/[id]` has a picker of its own, in its top bar
+ * (`QualitySelector` in `PresentationTopBar`). The result was a control that
+ * wrote the tier and a resolver that discarded it: the buttons moved and
+ * nothing happened. The manifest is the *default* here, not the authority.
+ *
+ * What that reasoning was actually protecting against — a tier chosen on the
+ * cheap viewer following the visitor onto the heavy page — is already handled,
+ * and handled better, by capping on read. A desktop visitor who asked for
+ * `ultra` gets it because a desktop holds it; a phone gets `low` whatever they
+ * asked for.
  */
 export const SURFACE_POLICY: Record<RenderSurface, SurfacePolicy> = {
   presentation: {
@@ -151,7 +160,7 @@ export const SURFACE_POLICY: Record<RenderSurface, SurfacePolicy> = {
     // since the retry came back at the same tier.
     ceiling: { phone: 'low', tablet: 'medium', desktop: 'ultra' },
     fallback: { phone: 'medium', tablet: 'medium', desktop: 'medium' },
-    honoursStored: false,
+    honoursStored: true,
   },
   viewer: {
     ceiling: { phone: 'medium', tablet: 'high', desktop: 'ultra' },
@@ -170,6 +179,59 @@ export const SURFACE_POLICY: Record<RenderSurface, SurfacePolicy> = {
  *  are capped. */
 const STORAGE_KEY = 'car-quality-preset'
 
+/**
+ * The remembered choice, as an external store rather than a plain read.
+ *
+ * It has to be a store because of hydration. `/product/[id]` is statically
+ * prerendered, and the page chrome inside its provider — `QualitySelector`'s
+ * `aria-checked` and its selected-tier classes — is server-rendered from the
+ * tier. Read `localStorage` straight into a `useState` initialiser and the
+ * server's HTML (no storage, so the manifest tier) disagrees with the client's
+ * first render (the stored tier), React throws away the whole tree with
+ * "Hydration failed because the initial UI does not match", and the picker
+ * stops responding because the handlers went with it.
+ *
+ * `useSyncExternalStore` is the shape that fixes it: `getServerSnapshot`
+ * answers `null` during hydration so both renders agree, and React re-reads
+ * immediately afterwards and re-renders with the real value. The canvases are
+ * all `dynamic(ssr: false)` and mount after that, so they still size their
+ * buffers from the right tier on their first frame.
+ */
+let cached: QualityPreset | null | undefined
+const tierListeners = new Set<() => void>()
+
+function notifyTier() {
+  cached = undefined
+  tierListeners.forEach((listener) => listener())
+}
+
+export function subscribeStoredTier(listener: () => void): () => void {
+  tierListeners.add(listener)
+  // Another tab, sharing the same key. Cheap to honour, and confusing not to.
+  if (typeof window !== 'undefined') window.addEventListener('storage', notifyTier)
+  return () => {
+    tierListeners.delete(listener)
+    if (typeof window !== 'undefined' && tierListeners.size === 0) {
+      window.removeEventListener('storage', notifyTier)
+    }
+  }
+}
+
+/**
+ * Cached, because `useSyncExternalStore` compares snapshots with `Object.is`
+ * and calls this more than once per render.
+ */
+export function getStoredTier(): QualityPreset | null {
+  if (cached !== undefined) return cached
+  cached = readStoredTier()
+  return cached
+}
+
+/** Always `null` — @see the note above on why this may not read storage. */
+export function getStoredTierOnServer(): QualityPreset | null {
+  return null
+}
+
 export function readStoredTier(): QualityPreset | null {
   if (typeof window === 'undefined') return null
   try {
@@ -187,6 +249,8 @@ export function writeStoredTier(tier: QualityPreset): void {
   } catch {
     /* the choice simply does not survive the session */
   }
+  cached = tier
+  tierListeners.forEach((listener) => listener())
 }
 
 export interface TierRequest {

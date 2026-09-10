@@ -58,6 +58,23 @@ export function isDebug(): boolean {
   return typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug')
 }
 
+/**
+ * `isDebug()` read the way a *rendered* component has to read it.
+ *
+ * Calling it directly in a component body is a hydration mismatch waiting for
+ * someone to open `?debug`: the server has no query string, so it renders
+ * nothing, while the client renders the overlay — and React discards the whole
+ * tree. `getServerSnapshot` returns false so both agree, and the real answer
+ * arrives on the re-render straight after hydration.
+ *
+ * Fine to keep calling `isDebug()` from effects, event handlers and inside a
+ * Canvas (which never server-renders); only render bodies need this.
+ */
+const noSubscribe = () => () => {}
+export const debugSnapshot = () => isDebug()
+export const debugServerSnapshot = () => false
+export const subscribeDebug = noSubscribe
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1048576) return `${Math.round(bytes / 1024)}KB`
   return `${(bytes / 1048576).toFixed(bytes < 10485760 ? 1 : 0)}MB`

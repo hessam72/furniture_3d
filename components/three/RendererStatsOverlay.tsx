@@ -4,9 +4,11 @@ import { useSyncExternalStore } from 'react'
 import {
   TEXTURE_VRAM_MAX_BYTES,
   TEXTURE_VRAM_WARN_BYTES,
+  debugServerSnapshot,
+  debugSnapshot,
   formatBytes,
-  isDebug,
   readSamples,
+  subscribeDebug,
   subscribeSamples,
 } from './rendererStatsStore'
 
@@ -26,8 +28,11 @@ import {
  */
 export function RendererStatsOverlay({ tier }: { tier?: string }) {
   const rows = useSyncExternalStore(subscribeSamples, readSamples, readSamples)
+  // Hydration-safe: false on the server and during hydration, real afterwards.
+  // @see debugSnapshot
+  const debug = useSyncExternalStore(subscribeDebug, debugSnapshot, debugServerSnapshot)
 
-  if (!isDebug()) return null
+  if (!debug) return null
 
   const total = rows.reduce((sum, row) => sum + row.vram, 0)
   const level = total > TEXTURE_VRAM_MAX_BYTES ? '#f87171' : total > TEXTURE_VRAM_WARN_BYTES ? '#fbbf24' : '#4ade80'
