@@ -93,7 +93,7 @@ ktx --version        # → ktx version: v4.4.0
 Now run the pipeline:
 
 ```bash
-npm run glb:optimize  out/  public/models/**/*.glb
+npm run glb:optimize  out/  public/models/ktx-models/*.glb
 npm run glb:budget    out/*.glb      # confirm the numbers
 ```
 
