@@ -10,6 +10,7 @@
 !.yarn/releases
 !.yarn/versions
 public/models
+public/ktx-optimized
 # testing
 /coverage
 3d-scene-shadow-reflections-demo
