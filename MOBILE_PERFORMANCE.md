@@ -77,6 +77,13 @@ pick the `.pkg` for your Mac:
 | Apple Silicon (M1–M4) | `KTX-Software-<version>-Darwin-arm64.pkg` |
 | Intel | `KTX-Software-<version>-Darwin-x86_64.pkg` |
 
+<!-- for my mac -->
+<!-- curl -L -o ~/Downloads/ktx.pkg \
+  https://github.com/KhronosGroup/KTX-Software/releases/download/v4.4.0/KTX-Software-4.4.0-Darwin-arm64.pkg
+
+sudo installer -pkg ~/Downloads/ktx.pkg -target / -->
+
+
 Open it, allow it through Gatekeeper if asked, then check it landed:
 
 ```bash
@@ -86,7 +93,7 @@ ktx --version        # → ktx version: v4.4.0
 Now run the pipeline:
 
 ```bash
-npm run glb:optimize  out/  public/models/**/*.glb
+npm run glb:optimize  out/  public/models/ktx-models/*.glb
 npm run glb:budget    out/*.glb      # confirm the numbers
 ```
 

@@ -41,7 +41,7 @@ export function RendererStatsOverlay({ tier }: { tier?: string }) {
   return (
     <div
       dir="ltr"
-      className="pointer-events-none fixed left-2 top-[max(0.5rem,env(safe-area-inset-top))] z-[9999]
+      className="pointer-events-none fixed right-2 top-[max(4rem,env(safe-area-inset-top))] z-[9999]
                  max-w-[min(22rem,92vw)] rounded-lg bg-black/80 px-2.5 py-2 font-mono text-[10px]
                  leading-[1.45] text-neutral-200 backdrop-blur-sm"
     >

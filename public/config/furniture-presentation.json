@@ -3,7 +3,7 @@
     "room": {
       "mode": "model",
       "image": "/models/presentation/test/backdrop.jpeg",
-      "path": "/models/presentation/test/final-scene.glb",
+      "path": "/ktx-optimized/final-scene.glb",
       "imageDistance": 2,
       "imageOffsetY": 0,
       "pieceOffsetY": 0,
@@ -33,7 +33,7 @@
           {
             "id": "velvet",
             "name": "مخمل",
-            "path": "/models/presentation/test/single-sofa.glb",
+            "path": "/ktx-optimized/Furniture high Test3-optimized.glb",
             "arPath": "",
             "thumbnail": "/images/covers/velvet.jpeg",
             "priceDelta": 0,
@@ -46,7 +46,7 @@
            {
             "id": "leather",
             "name": "چرم طبیعی",
-            "path": "/models/presentation/test/single-sofa.glb",
+            "path": "/ktx-optimized/Furniture high Test2-optimized.glb",
             "arPath": "",
             "thumbnail": "/images/covers/leather.png",
             "priceDelta": 4500000,
@@ -195,7 +195,7 @@
       "mobile": "low"
     },
     "simple": {
-      "model": "/models/presentation/test/new-single-fur.glb",
+      "model": "/out/Furniture high Test3-optimized.glb",
       "arModel": "",
       "hdr": "/hdr/studio-512.hdr",
       "envIntensity": 1,
