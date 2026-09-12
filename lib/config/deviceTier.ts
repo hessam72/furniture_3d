@@ -158,8 +158,8 @@ export const SURFACE_POLICY: Record<RenderSurface, SurfacePolicy> = {
     // chain sized to those pixels, all at once. Past what iOS Safari lets a
     // WebGL page hold, so the context went and the tab reloaded — repeatedly,
     // since the retry came back at the same tier.
-    ceiling: { phone: 'medium', tablet: 'medium', desktop: 'ultra' },
-    fallback: { phone: 'medium', tablet: 'medium', desktop: 'medium' },
+    ceiling: { phone: 'high', tablet: 'high', desktop: 'ultra' },
+    fallback: { phone: 'low', tablet: 'low', desktop: 'medium' },
     honoursStored: true,
   },
   viewer: {
