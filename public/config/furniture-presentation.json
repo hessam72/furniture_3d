@@ -195,11 +195,11 @@
       "mobile": "low"
     },
     "simple": {
-      "model": "/out/Furniture high Test3-optimized.glb",
+      "path": "/ktx-optimized/Furniture high Test3-optimized.glb",
       "arModel": "",
       "hdr": "/hdr/studio-512.hdr",
       "envIntensity": 1,
-      "background": "#000000",
+      "background": "#ffffff",
       "fov": 35,
       "padding": 1.1,
       "minZoom": 0.1,
