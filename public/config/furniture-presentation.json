@@ -342,10 +342,12 @@
         "label": "بدنه مبل",
         "zone": "cover",
         "objects": [
-          "couch",
-          "sofa_body",
-          "seat",
-          "base"
+          "rene_sofa-007",
+          "rene_sofa-004",
+          "rene_sofa-014",
+          "rene_sofa-008",
+          "rene_sofa-006",
+          "rene_sofa-008001"
         ],
         "materials": [
           "Fabric_1",
@@ -357,9 +359,9 @@
         "label": "کوسن",
         "zone": "cushion",
         "objects": [
-          "cushion",
-          "pillow",
-          "scatter"
+          "Node_81",
+          "rene_sofa-009",
+          "rene_sofa-010"
         ],
         "materials": [
           "fabric_03"
@@ -370,10 +372,7 @@
         "label": "شال",
         "zone": "shawl",
         "objects": [
-          "shawl",
-          "throw",
-          "blanket",
-          "plaid"
+          "rene_sofa-012"
         ],
         "materials": [
           "vray_rene_sofa_011"
