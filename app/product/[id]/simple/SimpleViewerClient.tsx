@@ -19,6 +19,8 @@ import { AR_GLB_MAX_BYTES, AR_GLB_WARN_BYTES, AR_TRIANGLE_WARN, countTriangles }
 import {
   arModelPath,
   defaultPaint,
+  openingSwatchMaps,
+  restSwatchMaps,
   findCoverVariant,
   finishedPiecePath,
   simpleViewer,
@@ -29,7 +31,7 @@ import {
 } from '@/lib/product/presentation'
 import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
 import { useContextRecovery, type ContextRecovery } from '@/hooks/useContextRecovery'
-import { useGltfCacheEviction } from '@/hooks/useGltfCacheEviction'
+import { useGltfCacheEviction, useSwatchCacheEviction } from '@/hooks/useGltfCacheEviction'
 import { preloadGltf } from '@/lib/three/gltfLoaders'
 import ProductSheet from '@/components/product/ProductSheet'
 import QualityChips from '@/components/product/QualityChips'
@@ -160,6 +162,20 @@ function Viewer({
 
   // The layer set this page can reach, released when the visitor leaves it.
   useGltfCacheEviction(probeAssets.filter((path) => path.endsWith('.glb')))
+  useSwatchCacheEviction()
+
+  // The opening fabric, warmed before the canvas rather than on idle: it is what
+  // this page renders with, and nothing here animates a swap to hide a late one.
+  useEffect(() => {
+    if (state !== 'ready') return
+    const opening = openingSwatchMaps(config)
+    if (!opening.length) return
+    let stop = () => {}
+    void import('@/lib/three/swatchTextures').then(({ preloadSwatchMaps }) => {
+      stop = preloadSwatchMaps(opening)
+    })
+    return () => stop()
+  }, [state, config])
 
   /** Only what *this* view needs has to be present — a missing variant is the
    *  sheet's problem to report, not a reason to blank the page. */
@@ -196,6 +212,10 @@ function Viewer({
     let stopWarm = () => {}
     const warm = () => {
       stopWarm = preloadGltf(rest, useGLTF.preload)
+      // The rest of the palette, on the same terms as the rest of the covers.
+      void import('@/lib/three/swatchTextures').then(({ preloadSwatchMaps }) => {
+        preloadSwatchMaps(restSwatchMaps(config))
+      })
     }
     const idle = (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
       .requestIdleCallback
@@ -240,7 +260,10 @@ function Viewer({
   const openAR = useCallback(async () => {
     const layer = showingFrame ? 'frame' : coverId ?? 'default'
     const { paint } = usePresentation.getState()
-    const url = arModelUrl(productKey, layer, zone, paint)
+    // The swatch id travels beside the paint, so the route can put the chosen
+    // fabric in the file. Undefined for a plain colour swatch, which keeps those
+    // URLs byte-identical to the ones already in every cache.
+    const url = arModelUrl(productKey, layer, zone, paint, paint[zone]?.maps ? paint[zone].swatchId : null)
     const debug = new URLSearchParams(window.location.search).has('debug')
 
     setArBuilding(true)

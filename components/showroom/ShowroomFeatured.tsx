@@ -9,15 +9,18 @@ import { useAssetProbe } from '@/hooks/useAssetProbe'
 import { isARCapable } from '@/lib/device-utils'
 import {
   arModelPath,
+  coverPalette,
   defaultPaint,
   findCoverVariant,
+  isTextureSwatch,
+  swatchPaint,
   type ResolvedPresentation,
   type ZoneSwatch,
 } from '@/lib/product/presentation'
 import type { ShowroomConfig } from '@/lib/showroom/config'
 import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
 import { useContextRecovery } from '@/hooks/useContextRecovery'
-import { useGltfCacheEviction } from '@/hooks/useGltfCacheEviction'
+import { useGltfCacheEviction, useSwatchCacheEviction } from '@/hooks/useGltfCacheEviction'
 import Reveal from './Reveal'
 import { ArIcon, ArrowIcon, ChevronIcon, Icon, RotateIcon, SofaGhostIcon } from './icons'
 
@@ -71,6 +74,9 @@ export default function ShowroomFeatured({
   const setPaint = usePresentation((s) => s.setPaint)
   const initProduct = usePresentation((s) => s.initProduct)
   const activeColor = usePresentation((s) => s.paint.cover.color)
+  const activeSwatchId = usePresentation((s) => s.paint.cover.swatchId)
+  /** The swatch whose textures are still in flight, for the chip's busy state. */
+  const [pendingSwatch, setPendingSwatch] = useState<string | null>(null)
 
   /** The raw cached GLB behind the canvas, published by SimpleViewer. */
   const source = useRef<THREE.Object3D | null>(null)
@@ -83,11 +89,41 @@ export default function ShowroomFeatured({
   const modelPath = showingFrame ? config?.layers.frame.path : variant?.path
 
   /** Wood on the frame, upholstery on a cover — the viewer paints whatever it
-   *  mounts as the `cover` zone, so the palette has to follow the layer. */
+   *  mounts as the `cover` zone, so the palette has to follow the layer. Once a
+   *  swatch is a cloth rather than a tint it has to follow the *variant* too:
+   *  `coverPalette` hands back the variant's own list where it carries one. */
   const swatches: ZoneSwatch[] = useMemo(() => {
     if (!config) return []
-    return (showingFrame ? config.palettes.wood : config.palettes.cover) ?? []
-  }, [config, showingFrame])
+    return (showingFrame ? config.palettes.wood : coverPalette(config, variant)) ?? []
+  }, [config, showingFrame, variant])
+
+  /**
+   * Shared by the follow-the-layer effect and the chips: warm the textures
+   * before the store changes, so the map and the colour damp start together.
+   *
+   * `swatchTextures` is imported *inside*, and only for a swatch that actually
+   * carries maps — it reaches `three`, and a static import from this file put
+   * the whole library into /showroom's first-load bundle: 163KB to 300KB on a
+   * page that is mostly marketing copy. Same measured trap `useGltfCacheEviction`
+   * documents, same fix. By the time anyone taps a swatch the canvas has mounted
+   * and the module is already in memory.
+   */
+  const applySwatch = useCallback(
+    async (swatch: ZoneSwatch) => {
+      if (isTextureSwatch(swatch)) {
+        const { ensureSwatchMaps, peekSwatchMaps } = await import('@/lib/three/swatchTextures')
+        if (!peekSwatchMaps(swatch.maps!)) {
+          setPendingSwatch(swatch.id)
+          await ensureSwatchMaps(swatch.maps!)
+          setPendingSwatch(null)
+        }
+      }
+      // 0.6 preserves this section's existing fallback: ProductSheet leaves
+      // roughness alone when a swatch carries none, the showroom forces it.
+      setPaint(swatchPaint(swatch, 0.6), 'cover')
+    },
+    [setPaint]
+  )
 
   // Seed the shared store with the manifest's opening finish, once.
   useEffect(() => {
@@ -96,12 +132,12 @@ export default function ShowroomFeatured({
   }, [config, presentation, initProduct])
 
   // Follow the layer with its palette's first swatch, so the frame never opens
-  // wearing the upholstery colour.
+  // wearing the upholstery colour — or, now, the upholstery's cloth.
   useEffect(() => {
     const first = swatches[0]
     if (!first) return
-    setPaint({ color: first.hex, roughness: first.roughness ?? 0.6 }, 'cover')
-  }, [swatches, setPaint])
+    void applySwatch(first)
+  }, [swatches, applySwatch])
 
   useEffect(() => setArSupported(isARCapable()), [])
 
@@ -121,6 +157,7 @@ export default function ShowroomFeatured({
   // Every cover the visitor toggled through, not just the one on screen. This
   // section re-probes and re-parses per toggle and never released any of them.
   useGltfCacheEviction(modelPath ? [modelPath] : [])
+  useSwatchCacheEviction()
   const canRender = !!config && !!modelPath && probe.state === 'ready' && !failed && !recovery.lost
 
   const handleError = useCallback(() => setFailed(true), [])
@@ -196,12 +233,24 @@ export default function ShowroomFeatured({
                       key={swatch.id}
                       type="button"
                       className="sr-swatch"
-                      style={{ background: swatch.hex }}
+                      /* The hex stays under a thumbnail, so a chip whose image
+                         has not loaded reads as the right colour, not a hole. */
+                      style={{
+                        background: swatch.hex,
+                        ...(swatch.thumbnail
+                          ? { backgroundImage: `url(${swatch.thumbnail})`, backgroundSize: 'cover' }
+                          : {}),
+                      }}
                       aria-label={swatch.name}
-                      aria-pressed={activeColor.toLowerCase() === swatch.hex.toLowerCase()}
-                      onClick={() =>
-                        setPaint({ color: swatch.hex, roughness: swatch.roughness ?? 0.6 }, 'cover')
+                      aria-busy={pendingSwatch === swatch.id}
+                      /* By id, not by hex: a palette can offer one colour in two
+                         cloths, and a textured swatch's hex is only its chip. */
+                      aria-pressed={
+                        activeSwatchId
+                          ? activeSwatchId === swatch.id
+                          : activeColor.toLowerCase() === swatch.hex.toLowerCase()
                       }
+                      onClick={() => void applySwatch(swatch)}
                     />
                   ))}
                 </div>

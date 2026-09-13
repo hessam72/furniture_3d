@@ -1,10 +1,22 @@
 import * as THREE from 'three'
 import { prepareCarMaterial, type CarMaterialOptions } from './prepareCarMaterial'
+import { captureBaseline, type MaterialBaseline } from './swatchTextures'
 import type { PresentationZone } from '@/lib/product/presentation'
 
 export interface ZoneTarget {
   material: THREE.MeshPhysicalMaterial
   zone: PresentationZone
+  /**
+   * The *material's* name, not the mesh's.
+   *
+   * In the optimised exports the mesh and node names carry nothing — they are
+   * `rene_sofa-004` and `Node_67` — while the materials are `Fabric_1`,
+   * `fabric_03`, `vray_rene_sofa_011`. So a swatch that dresses only the
+   * upholstery has to say so by material, and this is what it matches against.
+   */
+  materialName: string
+  /** The maps and transforms this material shipped with. @see captureBaseline */
+  baseMaps: MaterialBaseline
 }
 
 /** `preparePresentationObject`'s options: material prep, plus whether this
@@ -110,7 +122,15 @@ export function collectZoneTargets(root: THREE.Object3D, options: CollectOptions
     const materials = Array.isArray(child.material) ? child.material : [child.material]
     const cloned = materials.map((mat) => {
       const copy = mat.clone() as THREE.MeshPhysicalMaterial
-      targets.push({ material: copy, zone: override ?? zone })
+      targets.push({
+        material: copy,
+        zone: override ?? zone,
+        materialName: mat.name ?? '',
+        // Read off the clone, which still holds the authored textures and their
+        // transforms — this is the only moment that state is guaranteed present,
+        // and both restoring and the inherit rule need it. @see captureBaseline
+        baseMaps: captureBaseline(copy),
+      })
       return copy
     })
     child.material = Array.isArray(child.material) ? cloned : cloned[0]

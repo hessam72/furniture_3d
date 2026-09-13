@@ -7,13 +7,17 @@ import { faPrice } from '@/lib/store/catalog'
 import { SpecDetails, SpecDimensions, SpecFabric } from '@/components/store/productSpecTabs'
 import { usePresentation } from '@/stores/presentationStore'
 import {
-  coverSurface,
+  coverPalette,
+  coverSelection,
   findCoverVariant,
+  isTextureSwatch,
+  swatchPaint,
   totalPrice,
   type PresentationZone,
   type ResolvedPresentation,
   type ZoneSwatch,
 } from '@/lib/product/presentation'
+import { ensureSwatchMaps, peekSwatchMaps } from '@/lib/three/swatchTextures'
 import SwatchRow from './SwatchRow'
 import CoverVariantGrid from './CoverVariantGrid'
 import LayerStepper from './LayerStepper'
@@ -99,13 +103,17 @@ export default function ProductSheet({
   const setSheetCoverage = usePresentation((s) => s.setSheetCoverage)
 
   // Push the chosen variant's surface into the paint state as well as the id —
-  // see the note in selectCover.
+  // see the note in selectCover. `coverSelection` also reseeds the swatch where
+  // the variant brings its own palette, so leather never opens wearing velvet.
   const pickCover = useCallback(
     (id: string) => {
-      selectCover(id, coverSurface(config, findCoverVariant(config, id)))
+      selectCover(id, coverSelection(config, id))
     },
     [config, selectCover]
   )
+
+  /** The swatch whose textures are still in flight, for the chip's busy state. */
+  const [pendingSwatch, setPendingSwatch] = useState<string | null>(null)
 
 
   // Exploding is a look-at-the-piece gesture — get out of its way.
@@ -145,15 +153,33 @@ export default function ProductSheet({
   const variant = findCoverVariant(config, coverId)
   const price = totalPrice(product, variant)
 
-  // Fabric swatches inherit their surface character from the active cover
-  // variant; only wood carries its own roughness.
-  const pick = (zone: PresentationZone) => (swatch: ZoneSwatch) => {
+  /**
+   * Fabric swatches inherit their surface character from the active cover
+   * variant; only wood carries its own roughness. `swatchPaint` resolves the
+   * rest — colour to white for a textured swatch, and `maps: null` for a plain
+   * one so the previous cloth is actually cleared rather than merged over.
+   *
+   * The commit *waits* on the texture, rather than the render layer holding an
+   * async state of its own: the store changing is what starts the ~400ms colour
+   * damp, and a map that lands after the damp has finished reads as a flicker.
+   * A warm swatch skips the await entirely — an `await` always costs a microtask
+   * and another commit, and the second tap on a swatch is the one people judge.
+   */
+  const pick = (zone: PresentationZone) => async (swatch: ZoneSwatch) => {
     setActiveZone(zone)
-    setPaint(
-      swatch.roughness !== undefined ? { color: swatch.hex, roughness: swatch.roughness } : { color: swatch.hex },
-      zone
-    )
+    if (isTextureSwatch(swatch) && !peekSwatchMaps(swatch.maps!)) {
+      setPendingSwatch(swatch.id)
+      // Resolves even on a 404 — a fabric that will not load leaves the piece in
+      // the cloth it was authored with rather than blocking the tap forever.
+      await ensureSwatchMaps(swatch.maps!)
+      setPendingSwatch(null)
+    }
+    setPaint(swatchPaint(swatch), zone)
   }
+
+  /** Cover swatches follow the mounted variant where it brings its own. */
+  const palettes = (zone: PresentationZone) =>
+    zone === 'cover' ? coverPalette(config, variant) : config.palettes[zone] ?? []
 
   // Collapsing must not dismiss — this sheet is the page's primary UI.
   const handleDragEnd = (_: unknown, info: PanInfo) => {
@@ -263,8 +289,10 @@ export default function ProductSheet({
                       key={zone}
                       zone={zone}
                       label={ZONE_LABELS[zone]}
-                      swatches={config.palettes[zone] ?? []}
+                      swatches={palettes(zone)}
+                      activeId={paint[zone].swatchId}
                       activeHex={paint[zone].color}
+                      pendingId={pendingSwatch}
                       onPick={pick(zone)}
                     />
                   ))}

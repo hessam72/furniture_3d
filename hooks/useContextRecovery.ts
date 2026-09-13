@@ -104,6 +104,20 @@ export function useContextRecovery(options: {
 
   const handleContextLost = useCallback(() => {
     lostAt.current = Date.now()
+    /**
+     * Swatch textures are the one cache that must NOT survive this.
+     *
+     * The rest of the caching here is built on the opposite instinct — drei's
+     * GLBs are kept warm precisely because a canvas is torn down constantly and
+     * re-parsing them is what leaves the camera with nothing to frame. But a
+     * `CompressedTexture` is a handle on a GL object, and once the context is
+     * gone that object is not: binding one on the replacement canvas draws black
+     * or throws. They are cheap to re-transcode and impossible to reuse.
+     *
+     * Imported inside, like the eviction hook and for the same measured reason:
+     * this module reaches no `three` at the top level and must not start.
+     */
+    void import('@/lib/three/swatchTextures').then(({ clearSwatchTextures }) => clearSwatchTextures())
     setLost(true)
     setLosses((n) => {
       onLost?.(n + 1)

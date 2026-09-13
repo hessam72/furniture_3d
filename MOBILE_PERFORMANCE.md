@@ -103,11 +103,34 @@ Copy `out/` up to the server over the existing paths. About 20 seconds per model
 
 ```bash
 npm run glb:budget public/models/presentation/test/*.glb
+npm run glb:budget public/textures/covers/*.ktx2   # the swatch fabrics, same tool
 ```
 
 Green ✔ under 96 MB, ⚠ over it, ✖ over 256 MB. Add `--strict` to make it exit
 non-zero — worth putting in front of a deploy so a 4096² map can never reach
 production again.
+
+Two figures are reported now, and the **iOS one is the budget**: an iPhone
+transcodes an ETC1S texture to ASTC at a full byte per pixel where a desktop
+takes ETC2 or BC1 at half. Judging by the cheaper number was judging against the
+machine that was never in trouble.
+
+### 2b. Swatch fabrics
+
+Colour switching replaces the base-colour **texture**, not just `material.color`
+— that is what makes velvet read as velvet. Those images are standalone `.ktx2`
+files under `public/textures/covers/`:
+
+```bash
+scripts/optimize-texture.sh           public/textures/covers velvet-emerald_basecolor.png
+scripts/optimize-texture.sh --normal  public/textures/covers velvet_normal.png
+```
+
+About 1.3 MB resident each on iOS, capped at 24 MB across the whole cache
+(`SWATCH_CACHE_BUDGET_BYTES`), LRU-evicted, and released when the page unmounts.
+`/textures` is served immutable for a year, so **re-encoding needs a new
+filename** — the script refuses to overwrite and tells you to bump `VERSION`.
+@see `arch-docs/TEXTURE_SWAP_PLAN.md`.
 
 ### 3. Verify on the phone
 

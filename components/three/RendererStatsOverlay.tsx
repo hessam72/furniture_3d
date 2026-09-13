@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from 'react'
 import {
+  SWATCH_CACHE_BUDGET_BYTES,
   TEXTURE_VRAM_MAX_BYTES,
   TEXTURE_VRAM_WARN_BYTES,
   debugServerSnapshot,
@@ -64,6 +65,20 @@ export function RendererStatsOverlay({ tier }: { tier?: string }) {
             geo {row.geometries} · tex {row.textures} · prog {row.programs} · calls {row.calls} ·{' '}
             {(row.triangles / 1000).toFixed(0)}k tris
           </div>
+          {!!row.swatchSets && (
+            <div
+              /* Amber past the cache's own budget, the same idiom the VRAM line
+                 uses — these bytes are real and the scene walk above misses them. */
+              style={{
+                color: (row.swatchBytes ?? 0) > SWATCH_CACHE_BUDGET_BYTES ? '#fbbf24' : undefined,
+              }}
+              className="text-neutral-500"
+            >
+              swatch {row.swatchSets} · {formatBytes(row.swatchBytes ?? 0)}/
+              {formatBytes(SWATCH_CACHE_BUDGET_BYTES)}
+              {row.swatchInflight ? ` · ${row.swatchInflight} in flight` : ''}
+            </div>
+          )}
           {row.worst.map((line) => (
             <div key={line} className="truncate text-neutral-600">
               {line}

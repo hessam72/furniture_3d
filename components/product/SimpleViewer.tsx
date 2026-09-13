@@ -17,6 +17,7 @@ import { useQuality } from '@/contexts/QualityContext'
 import { collectZoneTargets, disposeTargets, preparePresentationObject } from '@/lib/three/layerMaterials'
 import { applyAnisotropy } from '@/lib/three/prepareCarMaterial'
 import { applyFirstCoat, useZonePaint } from '@/hooks/useZonePaint'
+import { applyFirstSwatch, useSwatchTextures } from '@/hooks/useSwatchTextures'
 import { usePresentation } from '@/stores/presentationStore'
 import {
   simpleViewer,
@@ -102,7 +103,14 @@ function Piece({
     // An unpainted piece keeps every material the file shipped with — nothing
     // is cloned, so nothing is recoloured and nothing needs disposing.
     const collected = paintable ? collectZoneTargets(clone, { zone }) : []
-    if (paintable) applyFirstCoat(collected, usePresentation.getState().paint)
+    if (paintable) {
+      const { paint } = usePresentation.getState()
+      applyFirstCoat(collected, paint)
+      // Same reason as the coat above, one layer further in: if a fabric is
+      // already chosen, this file must not render a frame in the cloth it was
+      // exported with. Cache-only, so a cold swatch lands on the next effect.
+      applyFirstSwatch(collected, paint, anisotropyRef.current)
+    }
 
     // Centred rather than seated: with the piece's own centre on the origin,
     // the orbit turns it in place and the camera's distance is simply its
@@ -145,6 +153,9 @@ function Piece({
     invalidate()
   }, [scene, settings.anisotropyLevel, invalidate])
 
+  // Before useZonePaint, so on the mount pass the map is in place before the
+  // first damp frame reads the material.
+  useSwatchTextures(targets)
   useZonePaint(targets)
   useEffect(() => () => disposeTargets(targets), [targets])
 

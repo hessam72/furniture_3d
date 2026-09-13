@@ -29,7 +29,6 @@
         "desc": "پارچه یا چرم نهایی روی بدنه",
         "default": "leather",
         "variants": [
-         
           {
             "id": "velvet",
             "name": "مخمل",
@@ -43,7 +42,7 @@
               "clearcoat": 0
             }
           },
-           {
+          {
             "id": "leather",
             "name": "چرم طبیعی",
             "path": "/ktx-optimized/Furniture high Test2-optimized.glb",
@@ -91,7 +90,67 @@
         }
       ],
       "cover": [
-         {
+        {
+          "id": "weave-ecru",
+          "name": "بافت کرم",
+          "hex": "#cbbfae",
+          "roughness": 0.92,
+          "maps": {
+            "map": "/textures/covers/weave-ecru.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ]
+        },
+        {
+          "id": "wool-oat",
+          "name": "پشم جو‌دوسر",
+          "hex": "#b9ae9c",
+          "roughness": 0.95,
+          "maps": {
+            "map": "/textures/covers/wool-oat.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ]
+        },
+        {
+          "id": "boucle-stone",
+          "name": "بوکله سنگی",
+          "hex": "#a9a49c",
+          "roughness": 0.9,
+          "maps": {
+            "map": "/textures/covers/boucle-stone.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ]
+        },
+        {
+          "id": "linen-ash",
+          "name": "کتان خاکستری",
+          "hex": "#b4b0a8",
+          "roughness": 0.88,
+          "maps": {
+            "map": "/textures/covers/linen-ash.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ]
+        },
+        {
           "id": "white",
           "name": "کرم",
           "hex": "#ffffff"
@@ -121,7 +180,6 @@
           "name": "زرشکی",
           "hex": "#5e2129"
         }
-       
       ],
       "cushion": [
         {

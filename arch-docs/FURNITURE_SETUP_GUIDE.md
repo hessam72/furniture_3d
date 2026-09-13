@@ -253,12 +253,34 @@ across a single combined GLB.
    is taller than 3 m or shorter than 0.2 m — that is almost always a unit-scale
    mistake.
 4. **Cushions named `cushion_*`** inside `soft.glb`.
-5. `MeshStandardMaterial` or `MeshPhysicalMaterial`. **No baked colour textures
-   on colourable surfaces** — the page drives `color` directly. Normal,
-   roughness and AO maps are fine and encouraged.
-6. Every cover variant should occupy the same volume, so switching material
+5. `MeshStandardMaterial` or `MeshPhysicalMaterial`. **A colourable surface picks
+   one of two paths, and a zone's palette must not mix them.**
+   - *Tint* — no base-colour map. The page drives `color` directly, and a hex
+     swatch is the whole of it. Normal, roughness and AO maps are fine and
+     encouraged.
+   - *Cloth* — a base-colour map that swatches **replace** (@see
+     `arch-docs/TEXTURE_SWAP_PLAN.md`). This is what makes velvet read as velvet
+     rather than as linen in a velvet colour.
+
+   Mixing them in one palette is what breaks: a hex swatch multiplies against
+   whatever map is in the slot, so a tint chosen after a cloth tints the cloth.
+   And a material with **no** base-colour map can never take a textured swatch —
+   filling an empty slot changes the shader variant and recompiles the program
+   on every swap, so the code deliberately skips it.
+6. **Unwrap colourable islands 0..1.** Tiling belongs in `KHR_texture_transform`,
+   where the manifest can read and override it. Baked into the mesh UVs it is
+   invisible to the runtime, and a swatch asking for `repeat: [1,1]` still tiles
+   — for reasons nothing in the config can express. A dev-only warning fires when
+   a matched mesh's UVs run past 1.0, naming the mesh and material.
+7. **Material names are an API.** Swatches target materials by name
+   (`"materials": ["Fabric_1", …]`), because mesh names in the optimised exports
+   carry nothing — they are `rene_sofa-004` and `Node_67`. Name the upholstery
+   material something stable and deliberate, and re-check it after
+   `scripts/optimize-glb.sh`: `gltf-transform dedup` merges identical materials
+   and can collapse the name a swatch was written against.
+8. Every cover variant should occupy the same volume, so switching material
    doesn't change the silhouette.
-7. **No shadow-only geometry and no lights.** The page renders with no shadow
+9. **No shadow-only geometry and no lights.** The page renders with no shadow
    maps at all; a shadow-catcher plane would show up as a grey slab.
 
 ## The room

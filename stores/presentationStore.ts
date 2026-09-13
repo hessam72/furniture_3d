@@ -9,6 +9,7 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import type { PresentationZone } from '@/lib/product/presentation'
+import type { SwatchMaps, SwatchUv } from '@/lib/three/swatchTextures'
 
 /** Mirrors PaintConfig in carConfigStore so the lerp code is a direct port. */
 export interface ZonePaint {
@@ -16,6 +17,28 @@ export interface ZonePaint {
   metalness: number
   roughness: number
   clearcoat: number
+
+  /**
+   * Which palette entry is showing.
+   *
+   * Identity, not appearance. The UI used to compare hexes to decide which chip
+   * was active, which breaks twice over now: two swatches can share a colour,
+   * and a textured swatch's hex describes the chip rather than the cloth.
+   *
+   * Every field below this line is optional, and deliberately so — `decodePaint`
+   * in lib/ar/arSource builds a `ZonePaint` from a fixed four-element tuple and
+   * asserts it `satisfies ZonePaint`. None of them may join that tuple; the AR
+   * route carries the swatch in its own query parameter instead.
+   */
+  swatchId?: string
+  /** Texture URLs for `swatchId`, or null for the plain colour path. Carried in
+   *  the store rather than looked up, because the render layer never sees the
+   *  manifest — `applyFirstCoat(targets, getState().paint)` is its only channel. */
+  maps?: SwatchMaps | null
+  /** Material names the swatch dresses. Null → every material with a base map. */
+  materials?: string[] | null
+  /** UV override. Null → each slot inherits the transform it replaces. */
+  uv?: SwatchUv | null
 }
 
 export type ZonePaintConfig = Record<PresentationZone, ZonePaint>

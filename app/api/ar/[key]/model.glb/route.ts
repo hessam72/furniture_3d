@@ -1,13 +1,20 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { arModelPath, resolvePresentation } from '@/lib/product/presentation'
+import { arModelPath, findSwatch, isTextureSwatch, resolvePresentation } from '@/lib/product/presentation'
 import { decodePaint, isPresentationZone } from '@/lib/ar/arSource'
-import { patchGlbMaterials, readGlbJson, zoneEditsFromJson } from '@/lib/ar/glbPatch'
+import {
+  materialIndicesByName,
+  patchGlbMaterials,
+  readGlbJson,
+  zoneEditsFromJson,
+  type InjectableSlot,
+  type TextureInjection,
+} from '@/lib/ar/glbPatch'
 
 /**
  * The configured piece, as a real file at a real URL.
  *
- * `GET /api/ar/<key>/model.glb?layer=<frame|variantId>&zone=<wood|cover|cushion>&paint=<base64url>`
+ * `GET /api/ar/<key>/model.glb?layer=<frame|variantId>&zone=<wood|cover|cushion>&paint=<base64url>&tex=<swatchId>`
  *
  * This is the whole Android fix. Scene Viewer fetches the model itself and will
  * not touch a `blob:`, so every Android phone without WebXR used to fall back to
@@ -19,12 +26,38 @@ import { patchGlbMaterials, readGlbJson, zoneEditsFromJson } from '@/lib/ar/glbP
  * compression it was authored with survives. That is the difference between this
  * and the `GLTFExporter` round-trip it replaces, which decompressed everything
  * and came back 8x larger.
+ *
+ * `tex` is the one thing that adds bytes. A colour is a number and fits in the
+ * JSON; a fabric is an image, and showing the customer the cloth they chose
+ * means putting it in the file — appended to the end of BIN, with the material's
+ * texture reference repointed at it. Still nothing decompressed and nothing
+ * re-encoded: the response is the input plus the one fabric, on the order of a
+ * megabyte against `AR_GLB_WARN_BYTES`' fifteen.
  */
 
 // fs, and a response measured in megabytes: not the edge.
 export const runtime = 'nodejs'
 
 const PUBLIC_DIR = path.join(process.cwd(), 'public')
+
+/**
+ * Read a file the manifest published, and only such a file.
+ *
+ * The containment check is the second lock on the same door `layer` and `tex`
+ * already close: they select from the manifest rather than naming a path, and
+ * this makes certain that whatever the manifest named still resolves inside
+ * `public/`. Returns null rather than throwing — a missing asset is a real case
+ * here, since `public/models` is gitignored and deploys carry it out of band.
+ */
+async function readPublicFile(publicPath: string): Promise<Buffer | null> {
+  const file = path.resolve(PUBLIC_DIR, `.${publicPath}`)
+  if (file !== PUBLIC_DIR && !file.startsWith(PUBLIC_DIR + path.sep)) return null
+  try {
+    return await readFile(file)
+  } catch {
+    return null
+  }
+}
 
 /** Small enough to be free, large enough to cover a customer trying swatches.
  *  The browser's own cache does the real work — every response is immutable. */
@@ -75,19 +108,10 @@ export async function GET(request: Request, { params }: { params: { key: string 
   // piece to place in a room, and the page falls back to the published GLB.
   if (!modelPath) return new Response('no AR model for product', { status: 404 })
 
-  const file = path.resolve(PUBLIC_DIR, `.${modelPath}`)
-  if (file !== PUBLIC_DIR && !file.startsWith(PUBLIC_DIR + path.sep)) {
-    return new Response('bad model path', { status: 400 })
-  }
-
-  let source: Buffer
-  try {
-    source = await readFile(file)
-  } catch {
-    // `public/models` is gitignored, so a deploy missing its assets is a real
-    // case. The page falls back to the static product GLB on this.
-    return new Response('model not found', { status: 404 })
-  }
+  // `public/models` is gitignored, so a deploy missing its assets is a real
+  // case. The page falls back to the static product GLB on this.
+  const source = await readPublicFile(modelPath)
+  if (!source) return new Response('model not found', { status: 404 })
 
   // `readFile` hands back a Buffer over a pooled, oversized ArrayBuffer, so the
   // slice is both the copy and the trim. Cast: Node types it as ArrayBufferLike.
@@ -96,9 +120,42 @@ export async function GET(request: Request, { params }: { params: { key: string 
     source.byteOffset + source.byteLength
   ) as ArrayBuffer
 
+  /**
+   * The fabric, resolved from the manifest exactly the way `layer` is.
+   *
+   * A swatch id the palette does not publish is a 400, matching how
+   * `decodePaint` refuses a malformed tuple rather than guessing. A swatch that
+   * publishes files which are not on disk is *not* — that falls through to the
+   * colour-only patch, so a half-deployed texture set shows the authored cloth
+   * instead of breaking AR.
+   */
+  const texId = url.searchParams.get('tex')
+  const swatch = texId ? findSwatch(presentation.config, zone, texId, layer) : null
+  if (texId && !swatch) return new Response('unknown swatch', { status: 400 })
+
   try {
     const json = readGlbJson(bytes)
-    const patched = patchGlbMaterials(bytes, zoneEditsFromJson(json, zone, paint))
+
+    let injection: TextureInjection | undefined
+    if (swatch && isTextureSwatch(swatch)) {
+      const slots: [InjectableSlot, string | undefined][] = [
+        ['baseColorTexture', swatch.maps?.map],
+        ['normalTexture', swatch.maps?.normalMap],
+      ]
+      const maps: TextureInjection['maps'] = {}
+      for (const [slot, publicPath] of slots) {
+        if (!publicPath) continue
+        const ktx2 = await readPublicFile(publicPath)
+        if (ktx2) maps[slot] = new Uint8Array(ktx2)
+      }
+      if (Object.keys(maps).length) {
+        // Names, not indices — the same list the page matches on, so AR cannot
+        // dress a different set of parts than the screen just did.
+        injection = { materials: materialIndicesByName(json, swatch.materials), maps }
+      }
+    }
+
+    const patched = patchGlbMaterials(bytes, zoneEditsFromJson(json, zone, paint), injection)
     remember(cacheKey, patched)
     return glbResponse(patched)
   } catch (error) {

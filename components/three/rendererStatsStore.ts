@@ -24,6 +24,17 @@ export interface RendererSample {
   triangles: number
   /** The three biggest maps, already formatted — the actionable part. */
   worst: string[]
+  /**
+   * What the swatch cache holds that a scene walk cannot see.
+   *
+   * `vram` above is measured by traversing the scene, so it prices only textures
+   * bound to a material. A fabric sitting in the LRU, warmed but not shown, is
+   * real GPU memory and invisible to that — which is exactly the shape of leak
+   * this readout exists to catch. @see lib/three/swatchTextures.ts
+   */
+  swatchSets?: number
+  swatchBytes?: number
+  swatchInflight?: number
 }
 
 const samples = new Map<string, RendererSample>()
@@ -84,3 +95,13 @@ export function formatBytes(bytes: number): string {
 export const TEXTURE_VRAM_WARN_BYTES = 96 * 1048576
 /** Past this a phone is being asked for more than iOS will give the whole tab. */
 export const TEXTURE_VRAM_MAX_BYTES = 256 * 1048576
+
+/**
+ * How much of that warn budget the swatch texture cache may hold resident.
+ *
+ * A quarter of `TEXTURE_VRAM_WARN_BYTES`, which is ~8 two-map swatches at 1024²
+ * on iOS (ASTC, 1 byte per pixel, mips included) — a whole cover palette with
+ * room left over, and still less than half of warn once the piece itself is
+ * loaded. @see lib/three/swatchTextures.ts
+ */
+export const SWATCH_CACHE_BUDGET_BYTES = 24 * 1048576

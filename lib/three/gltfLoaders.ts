@@ -22,7 +22,7 @@
  * @see scripts/optimize-glb.sh, which produces the KTX2 these read.
  */
 
-import type { WebGLRenderer } from 'three'
+import type { CompressedTexture, WebGLRenderer } from 'three'
 import { DRACOLoader, KTX2Loader, type GLTFLoader } from 'three-stdlib'
 
 /** Both decoders are served from /public and cached immutably. @see next.config.mjs */
@@ -68,6 +68,28 @@ export function primeGltfLoaders(gl: WebGLRenderer): void {
 /** Resolves once a Canvas has primed the loaders. @see primeGltfLoaders */
 export function whenLoadersReady(): Promise<void> {
   return ready
+}
+
+/**
+ * One standalone .ktx2, transcoded by the loader every GLB already shares.
+ *
+ * Deliberately a function rather than `export ktx2Loader()`. This module's whole
+ * contract is that nobody can hold a loader that has not been primed and nobody
+ * can make a second one; handing the instance out exports both footguns at once.
+ * A `.load()` before `detectSupport()` throws "Missing initialization with
+ * detectSupport()", and a stray `.dispose()` would terminate the worker pool
+ * every GLB in the app is sharing, silently, for the rest of the session.
+ *
+ * Gated on `ready` for the same reason `preloadGltf` is, and with a sharper
+ * edge: a swatch prefetch fires from the bottom sheet, which is DOM, and can
+ * easily run before any Canvas has reached `onCreated`.
+ *
+ * Note the caller still owns the texture — nothing here caches or disposes.
+ * That is `lib/three/swatchTextures.ts`'s job, the way `useGltfCacheEviction`
+ * rather than `preloadGltf` owns the GLB cache.
+ */
+export function loadKtx2(url: string): Promise<CompressedTexture> {
+  return ready.then(() => ktx2Loader().loadAsync(url) as Promise<CompressedTexture>)
 }
 
 /**

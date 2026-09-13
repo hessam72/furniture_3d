@@ -29,6 +29,9 @@ const MB = 1048576
 const MAX_EDGE = 1024
 const VRAM_WARN = 96 * MB
 const VRAM_MAX = 256 * MB
+/** What the swatch texture cache may hold resident, for sizing a palette.
+ *  @see components/three/rendererStatsStore.ts */
+const SWATCH_CACHE_BUDGET = 24 * MB
 /** Quick Look writes geometry as decimal text into an uncompressed zip. */
 const TRIANGLE_WARN = 150_000
 
@@ -152,12 +155,32 @@ const residentBytes = (image) => {
   return Math.round(image.width * image.height * perPixel * mips)
 }
 
+/**
+ * The same figure on the device that actually runs out of memory.
+ *
+ * `residentBytes` prices ETC1S at half a byte a pixel, which is true of ETC2 and
+ * BC1 — desktop and most Android. An iPhone transcodes the same file to ASTC
+ * 4x4, at a full byte. So every ETC1S texture costs twice there as it does here,
+ * and iOS is the platform with the 256MB cap on canvas memory: budgeting against
+ * the cheaper number is budgeting against the machine that was never in trouble.
+ */
+const iosBytes = (image) => {
+  if (image.format !== 'ktx2') return residentBytes(image)
+  const mips = (image.levels ?? 0) > 1 ? 4 / 3 : 1
+  return Math.round(image.width * image.height * 1 * mips)
+}
+
+/** A texture without a mip chain aliases into noise the moment the piece turns —
+ *  and costs *less* VRAM, so it is the one defect nothing else here flags. */
+const mipsExpected = (width, height) => Math.floor(Math.log2(Math.max(width, height))) + 1
+
 async function report(path) {
   const buffer = await readFile(path)
   const { json, bin } = readGlb(buffer)
   const { triangles, images } = inspect(json, bin)
 
   const vram = images.reduce((total, image) => total + residentBytes(image), 0)
+  const ios = images.reduce((total, image) => total + iosBytes(image), 0)
   const oversized = images.filter((i) => Math.max(i.width, i.height) > MAX_EDGE)
   const mb = (bytes) => `${(bytes / MB).toFixed(bytes < 10 * MB ? 2 : 0)}MB`
 
@@ -166,17 +189,19 @@ async function report(path) {
     fileBytes: buffer.byteLength,
     triangles,
     textureVram: vram,
+    iosVram: ios,
     images,
     oversized,
-    over: vram > VRAM_MAX || triangles > TRIANGLE_WARN || oversized.length > 0,
+    // Judged on the iOS figure: that is the device with the 256MB cap.
+    over: ios > VRAM_MAX || triangles > TRIANGLE_WARN || oversized.length > 0,
     print() {
       console.log(`\n${basename(path)} — ${mb(buffer.byteLength)} on disk`)
       console.log(`  extensions   ${(json.extensionsUsed ?? []).join(', ') || 'none'}`)
       console.log(`  meshes ${json.meshes?.length ?? 0} · materials ${json.materials?.length ?? 0} · textures ${images.length}`)
       console.log(`  triangles    ${triangles.toLocaleString()}${triangles > TRIANGLE_WARN ? `   ⚠ over ${TRIANGLE_WARN.toLocaleString()} for AR` : ''}`)
       console.log(
-        `  TEXTURE VRAM ${mb(vram)}` +
-          (vram > VRAM_MAX ? '   ✖ over budget' : vram > VRAM_WARN ? '   ⚠ heavy for a phone' : '   ✔')
+        `  TEXTURE VRAM ${mb(ios)} on iOS · ${mb(vram)} desktop/Android` +
+          (ios > VRAM_MAX ? '   ✖ over budget' : ios > VRAM_WARN ? '   ⚠ heavy for a phone' : '   ✔')
       )
       if (images.length) {
         console.log('  largest maps:')
@@ -195,20 +220,75 @@ async function report(path) {
   }
 }
 
+/**
+ * A standalone .ktx2 — the swatch fabrics, which are the only textures in this
+ * app that live outside a GLB. @see scripts/optimize-texture.sh
+ *
+ * Same reader, same formula, deliberately: a second tool with its own arithmetic
+ * is a second tool to disagree with this one, and the whole point of the file is
+ * that there is one number.
+ */
+async function reportTexture(path) {
+  const buffer = await readFile(path)
+  const image = { index: 0, name: basename(path), fileBytes: buffer.byteLength, ...imageSize(buffer) }
+  if (image.format !== 'ktx2') throw new Error('not a KTX2 file')
+
+  const vram = residentBytes(image)
+  const ios = iosBytes(image)
+  const expected = mipsExpected(image.width, image.height)
+  const thinMips = (image.levels ?? 0) < expected
+  const oversized = Math.max(image.width, image.height) > MAX_EDGE
+  const mb = (bytes) => `${(bytes / MB).toFixed(bytes < 10 * MB ? 2 : 0)}MB`
+
+  return {
+    path,
+    fileBytes: buffer.byteLength,
+    triangles: 0,
+    textureVram: vram,
+    iosVram: ios,
+    images: [image],
+    oversized: oversized ? [image] : [],
+    over: oversized || thinMips,
+    print() {
+      const encoding = image.bytesPerPixel === 0.5 ? 'ETC1S' : 'UASTC'
+      console.log(
+        `\n${basename(path)} — ${image.width}×${image.height} ${encoding} · ${mb(buffer.byteLength)} on disk`
+      )
+      console.log(
+        `  TEXTURE VRAM ${mb(ios)} on iOS · ${mb(vram)} desktop/Android` +
+          (oversized ? `   ⚠ over ${MAX_EDGE}px` : '   ✔')
+      )
+      console.log(
+        `  mip levels   ${image.levels ?? 0}/${expected}` +
+          (thinMips ? '   ⚠ no mip chain — re-encode with --generate-mipmap' : '   ✔')
+      )
+    },
+  }
+}
+
+const KTX2_MAGIC = Buffer.from([0xab, 0x4b, 0x54, 0x58, 0x20, 0x32, 0x30, 0xbb])
+
+async function reportAny(path) {
+  // By magic, not by extension: a mis-named file should say what it is rather
+  // than fail deep inside a GLB chunk walk.
+  const head = (await readFile(path)).subarray(0, 8)
+  return head.equals(KTX2_MAGIC) ? reportTexture(path) : report(path)
+}
+
 const args = process.argv.slice(2)
 const asJson = args.includes('--json')
 const strict = args.includes('--strict')
 const paths = args.filter((arg) => !arg.startsWith('--'))
 
 if (!paths.length) {
-  console.error('usage: node scripts/glb-budget.mjs [--json] [--strict] <file.glb ...>')
+  console.error('usage: node scripts/glb-budget.mjs [--json] [--strict] <file.glb|file.ktx2 ...>')
   process.exit(2)
 }
 
 const results = []
 for (const path of paths) {
   try {
-    results.push(await report(path))
+    results.push(await reportAny(path))
   } catch (error) {
     console.error(`${path}: ${error.message}`)
     process.exitCode = 2
@@ -218,7 +298,14 @@ for (const path of paths) {
 if (asJson) {
   console.log(
     JSON.stringify(
-      results.map(({ path, fileBytes, triangles, textureVram, over }) => ({ path, fileBytes, triangles, textureVram, over })),
+      results.map(({ path, fileBytes, triangles, textureVram, iosVram, over }) => ({
+        path,
+        fileBytes,
+        triangles,
+        textureVram,
+        iosVram,
+        over,
+      })),
       null,
       2
     )
@@ -226,8 +313,20 @@ if (asJson) {
 } else {
   results.forEach((result) => result.print())
   if (results.length > 1) {
-    const total = results.reduce((sum, r) => sum + r.textureVram, 0)
-    console.log(`\nAll ${results.length} files together: ${(total / MB).toFixed(0)}MB of texture VRAM`)
+    const ios = results.reduce((sum, r) => sum + r.iosVram, 0)
+    const desktop = results.reduce((sum, r) => sum + r.textureVram, 0)
+    console.log(
+      `\nAll ${results.length} files together: ${(ios / MB).toFixed(0)}MB of texture VRAM on iOS` +
+        ` · ${(desktop / MB).toFixed(0)}MB desktop/Android`
+    )
+    // A palette is sized against the swatch cache's budget, not the scene's:
+    // only a handful of these are ever resident at once. @see swatchTextures.ts
+    if (results.every((r) => r.images.length === 1 && r.images[0].format === 'ktx2')) {
+      console.log(
+        `  the swatch cache holds ${(SWATCH_CACHE_BUDGET / MB).toFixed(0)}MB of this at a time` +
+          ` — roughly ${Math.floor(SWATCH_CACHE_BUDGET / (ios / results.length))} of these`
+      )
+    }
   }
   console.log('')
 }

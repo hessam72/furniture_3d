@@ -14,6 +14,8 @@ import { isARCapable } from '@/lib/device-utils'
 import {
   arModelPath,
   defaultPaint,
+  openingSwatchMaps,
+  restSwatchMaps,
   lowerTier,
   needsEnvironment,
   presentationQuality,
@@ -28,7 +30,7 @@ import PresentationTopBar from '@/components/product/PresentationTopBar'
 import MissingAssetsNotice from '@/components/product/MissingAssetsNotice'
 import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
 import { useContextRecovery } from '@/hooks/useContextRecovery'
-import { useGltfCacheEviction } from '@/hooks/useGltfCacheEviction'
+import { useGltfCacheEviction, useSwatchCacheEviction } from '@/hooks/useGltfCacheEviction'
 import { preloadGltf } from '@/lib/three/gltfLoaders'
 import PresentationLoading from '@/components/product/PresentationLoading'
 import type { Catalog } from '@/lib/store/catalog'
@@ -86,6 +88,7 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
 
   // Everything this page parsed goes back when the visitor leaves it.
   useGltfCacheEviction(assets.filter((path) => path.endsWith('.glb')))
+  useSwatchCacheEviction()
   const { state, missing } = useAssetProbe(useMemo(() => assets, [assets, probeKey]))
 
   const catalogId = useMemo(() => {
@@ -153,12 +156,28 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
     // and a room GLB so `room.mode` can switch between them.
     if (roomMode(config) === 'image' && config.room.image) useTexture.preload(config.room.image)
 
+    // The opening fabric, warmed with the GLBs rather than on idle: it is what
+    // the page renders with, so a late arrival is a visible change of cloth
+    // rather than a swap that was already going to animate.
+    const opening = openingSwatchMaps(config)
+    let stopSwatches = () => {}
+    if (opening.length) {
+      void import('@/lib/three/swatchTextures').then(({ preloadSwatchMaps }) => {
+        stopSwatches = preloadSwatchMaps(opening)
+      })
+    }
+
     // Not on a phone. Warming the other covers buys a swap that never suspends,
     // and pays for it in exactly the currency a phone has least of: every warmed
     // variant is a second full GLB parsed and held in drei's cache, on a device
     // already at its ceiling with the one it is showing. There the swap
     // suspends behind the wipe instead, which is what the wipe is for.
-    if (phone) return
+    if (phone) {
+      return () => {
+        stopSwatches()
+        stopPreload()
+      }
+    }
 
     const rest = config.layers.cover.variants
       .filter((v) => v.id !== config.layers.cover.default)
@@ -166,6 +185,11 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
     let stopWarm = () => {}
     const warm = () => {
       stopWarm = preloadGltf(rest, useGLTF.preload)
+      // The rest of the palette, on the same terms as the rest of the covers:
+      // a courtesy bought with desktop memory, and one a phone does not get.
+      void import('@/lib/three/swatchTextures').then(({ preloadSwatchMaps }) => {
+        preloadSwatchMaps(restSwatchMaps(config))
+      })
     }
 
     const idle = (window as any).requestIdleCallback
@@ -175,6 +199,7 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
       if (idle && cancel) cancel(handle)
       else window.clearTimeout(handle as number)
       stopWarm()
+      stopSwatches()
       stopPreload()
     }
   }, [state, assets, config, phone])

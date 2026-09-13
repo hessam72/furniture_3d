@@ -86,13 +86,23 @@ export function isPresentationZone(value: string | null): value is PresentationZ
  * `layer` is `frame` for the bare frame, a cover variant id otherwise. The route
  * resolves it against the manifest — a path is never sent, so no request can
  * name a file the manifest does not.
+ *
+ * `swatchId` is the same kind of token for the fabric: an id the route looks up
+ * in the palette, never a texture URL. It is a parameter of its own rather than
+ * a fifth element of the paint tuple, because `decodePaint` rejects any entry
+ * that is not exactly four long and that string is the cache key for both the
+ * browser and the route — growing it would make every URL issued before this
+ * change answer 400. Omitted when there is no textured swatch, so those URLs
+ * stay byte-identical to the ones already cached.
  */
 export function arModelUrl(
   key: string,
   layer: string,
   zone: PresentationZone,
-  paint: ZonePaintConfig
+  paint: ZonePaintConfig,
+  swatchId?: string | null
 ): string {
   const query = new URLSearchParams({ layer, zone, paint: encodePaint(paint) })
+  if (swatchId) query.set('tex', swatchId)
   return `/api/ar/${encodeURIComponent(key)}/model.glb?${query.toString()}`
 }
