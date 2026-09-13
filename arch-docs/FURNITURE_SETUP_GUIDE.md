@@ -253,12 +253,57 @@ across a single combined GLB.
    is taller than 3 m or shorter than 0.2 m — that is almost always a unit-scale
    mistake.
 4. **Cushions named `cushion_*`** inside `soft.glb`.
-5. `MeshStandardMaterial` or `MeshPhysicalMaterial`. **No baked colour textures
-   on colourable surfaces** — the page drives `color` directly. Normal,
-   roughness and AO maps are fine and encouraged.
-6. Every cover variant should occupy the same volume, so switching material
+5. `MeshStandardMaterial` or `MeshPhysicalMaterial`. **A colourable surface picks
+   one of two paths, and a zone's palette must not mix them.**
+   - *Tint* — no base-colour map. The page drives `color` directly, and a hex
+     swatch is the whole of it. Normal, roughness and AO maps are fine and
+     encouraged.
+   - *Cloth* — a base-colour map that swatches **replace** (@see
+     `arch-docs/TEXTURE_SWAP_PLAN.md`). This is what makes velvet read as velvet
+     rather than as linen in a velvet colour.
+
+   Mixing them in one palette is what breaks: a hex swatch multiplies against
+   whatever map is in the slot, so a tint chosen after a cloth tints the cloth.
+   And a material with **no** base-colour map can never take a textured swatch —
+   filling an empty slot changes the shader variant and recompiles the program
+   on every swap, so the code deliberately skips it.
+6. **Unwrap colourable islands 0..1.** Tiling belongs in `KHR_texture_transform`,
+   where the manifest can read and override it. Baked into the mesh UVs it is
+   invisible to the runtime, and a swatch asking for `repeat: [1,1]` still tiles
+   — for reasons nothing in the config can express. A dev-only warning fires when
+   a matched mesh's UVs run past 1.0, naming the mesh and material.
+7. **Name the groups.** A furniture GLB is not one object — the couch, its
+   scatter cushions and a throw each sit under their own node, and a configurator
+   that cannot tell them apart dresses all three in the same cloth. Give each a
+   stable group name (`Couch`, `Cushions`, `Shawl`) and list it in `parts`:
+
+   ```jsonc
+   "parts": [
+     { "id": "couch",   "label": "بدنه مبل", "zone": "cover",   "objects": ["couch", "seat"] },
+     { "id": "cushion", "label": "کوسن",     "zone": "cushion", "objects": ["cushion", "pillow"] },
+     { "id": "shawl",   "label": "شال",      "zone": "shawl",   "objects": ["shawl", "throw"] }
+   ]
+   ```
+
+   **A match claims the whole subtree**, so naming the group is enough — the
+   forty meshes under it do not need listing. A nested part beats its ancestor,
+   so a `Cushions` group inside `Couch` still reads as cushions. Each part drives
+   its own `palettes[zone]`, which is what makes couch / cushion / shawl
+   independently choosable.
+
+   Read the names off your own file rather than guessing: open any product page
+   with **`?debug`** and the console prints the loaded tree, its materials, and
+   which part claimed each node. A rule that matches nothing is warned about
+   there too — that failure is otherwise silent.
+8. **Material names are an API.** Swatches target materials by name
+   (`"materials": ["Fabric_1", …]`), because mesh names in the optimised exports
+   carry nothing — they are `rene_sofa-004` and `Node_67`. Name the upholstery
+   material something stable and deliberate, and re-check it after
+   `scripts/optimize-glb.sh`: `gltf-transform dedup` merges identical materials
+   and can collapse the name a swatch was written against.
+9. Every cover variant should occupy the same volume, so switching material
    doesn't change the silhouette.
-7. **No shadow-only geometry and no lights.** The page renders with no shadow
+10. **No shadow-only geometry and no lights.** The page renders with no shadow
    maps at all; a shadow-catcher plane would show up as a grey slab.
 
 ## The room

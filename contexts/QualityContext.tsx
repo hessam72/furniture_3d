@@ -15,18 +15,29 @@
  */
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  ReactNode,
+} from 'react';
 import { QualityPreset, QualitySettings, QUALITY_PRESETS } from '@/lib/config/quality';
 import {
   SURFACE_POLICY,
-  readStoredTier,
+  getStoredTier,
+  getStoredTierOnServer,
   resolveTier,
+  subscribeStoredTier,
   writeStoredTier,
   type DeviceClass,
   type RenderSurface,
 } from '@/lib/config/deviceTier';
 import { useDeviceClass } from '@/hooks/useDeviceClass';
-import { readGpuClass, type GpuClass } from '@/lib/three/gpuClass';
+import { getGpuClassOnServer, readGpuClass, subscribeGpuClass } from '@/lib/three/gpuClass';
 
 interface QualityContextType {
   preset: QualityPreset;
@@ -72,25 +83,35 @@ export function QualityProvider({
   const device = useDeviceClass();
 
   /**
-   * Resolved in the initialiser, not an effect.
+   * Read through an external store, not a `useState` initialiser.
    *
-   * The effect this replaces is what made a phone's first render the desktop
-   * tier — and the canvas underneath could mount, size its buffers and compile
-   * its programs against that before the correction arrived. Reading storage
-   * synchronously is safe because nothing tier-dependent is server-rendered:
-   * every Canvas is `dynamic(..., { ssr: false })`, and the only other consumer
-   * is `QualityChips`, which renders behind a probe that is still `checking`
-   * during SSR. Keep that true, or hydration will start warning.
+   * The initialiser version was a hydration bug: `/product/[id]` is statically
+   * prerendered and `QualitySelector` — inside this provider, in the top bar —
+   * server-renders `aria-checked` and its selected classes from the tier. The
+   * server has no `localStorage`, so it rendered the manifest tier while the
+   * client's first render used the stored one. React discarded the tree, and
+   * the picker stopped responding along with it.
+   *
+   * `useSyncExternalStore` hydrates against `null` — matching the server — and
+   * re-reads immediately afterwards. No effect, so still no stale first value
+   * for the canvases, which are all `dynamic(ssr: false)` and mount later.
+   * @see subscribeStoredTier
    */
-  const [chosen, setChosen] = useState<QualityPreset | null>(() => readStoredTier());
+  const chosen = useSyncExternalStore(subscribeStoredTier, getStoredTier, getStoredTierOnServer);
 
   /**
-   * The measured hardware, read in the same initialiser and for the same
-   * reason: the canvas below sizes its buffers on the first render, so a probe
-   * that lands in an effect lands after the allocation it exists to prevent.
-   * One 1x1 context per tab, cached in sessionStorage. @see readGpuClass
+   * The measured hardware — a 1x1 probe context, once per tab, cached in
+   * `sessionStorage`.
+   *
+   * Read the same way `chosen` is, and for both of its reasons. The server
+   * cannot probe, so an initialiser would render the unprobed tier on the
+   * server and the probed one on the client — the hydration mismatch directly
+   * above, which took the picker down with it. And it must not be an effect
+   * either: the canvas sizes its buffers on the first render, so a probe that
+   * lands afterwards lands after the allocation it exists to prevent.
+   * @see readGpuClass
    */
-  const [gpu] = useState<GpuClass>(() => readGpuClass());
+  const gpu = useSyncExternalStore(subscribeGpuClass, readGpuClass, getGpuClassOnServer);
 
   const preset = resolveTier({ surface, device, manifest, stored: chosen, downgrades, gpu });
   // Capped the same way the resolver caps, or the picker offers rungs that
@@ -106,8 +127,8 @@ export function QualityProvider({
 
   // The raw choice is stored, and capped again on the way back out. Capping on
   // write would look equivalent and would not be — @see deviceTier's header.
+  // `writeStoredTier` notifies the store, which is what re-renders us.
   const setPreset = useCallback((next: QualityPreset) => {
-    setChosen(next);
     writeStoredTier(next);
   }, []);
 

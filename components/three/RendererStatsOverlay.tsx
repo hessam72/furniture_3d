@@ -2,11 +2,14 @@
 
 import { useSyncExternalStore } from 'react'
 import {
+  SWATCH_CACHE_BUDGET_BYTES,
   TEXTURE_VRAM_MAX_BYTES,
   TEXTURE_VRAM_WARN_BYTES,
+  debugServerSnapshot,
+  debugSnapshot,
   formatBytes,
-  isDebug,
   readSamples,
+  subscribeDebug,
   subscribeSamples,
 } from './rendererStatsStore'
 
@@ -26,8 +29,11 @@ import {
  */
 export function RendererStatsOverlay({ tier }: { tier?: string }) {
   const rows = useSyncExternalStore(subscribeSamples, readSamples, readSamples)
+  // Hydration-safe: false on the server and during hydration, real afterwards.
+  // @see debugSnapshot
+  const debug = useSyncExternalStore(subscribeDebug, debugSnapshot, debugServerSnapshot)
 
-  if (!isDebug()) return null
+  if (!debug) return null
 
   const total = rows.reduce((sum, row) => sum + row.vram, 0)
   const level = total > TEXTURE_VRAM_MAX_BYTES ? '#f87171' : total > TEXTURE_VRAM_WARN_BYTES ? '#fbbf24' : '#4ade80'
@@ -59,6 +65,20 @@ export function RendererStatsOverlay({ tier }: { tier?: string }) {
             geo {row.geometries} · tex {row.textures} · prog {row.programs} · calls {row.calls} ·{' '}
             {(row.triangles / 1000).toFixed(0)}k tris
           </div>
+          {!!row.swatchSets && (
+            <div
+              /* Amber past the cache's own budget, the same idiom the VRAM line
+                 uses — these bytes are real and the scene walk above misses them. */
+              style={{
+                color: (row.swatchBytes ?? 0) > SWATCH_CACHE_BUDGET_BYTES ? '#fbbf24' : undefined,
+              }}
+              className="text-neutral-500"
+            >
+              swatch {row.swatchSets} · {formatBytes(row.swatchBytes ?? 0)}/
+              {formatBytes(SWATCH_CACHE_BUDGET_BYTES)}
+              {row.swatchInflight ? ` · ${row.swatchInflight} in flight` : ''}
+            </div>
+          )}
           {row.worst.map((line) => (
             <div key={line} className="truncate text-neutral-600">
               {line}

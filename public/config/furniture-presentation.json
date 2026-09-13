@@ -29,7 +29,6 @@
         "desc": "پارچه یا چرم نهایی روی بدنه",
         "default": "leather",
         "variants": [
-         
           {
             "id": "velvet",
             "name": "مخمل",
@@ -43,7 +42,7 @@
               "clearcoat": 0
             }
           },
-           {
+          {
             "id": "leather",
             "name": "چرم طبیعی",
             "path": "/ktx-optimized/Furniture high Test2-optimized.glb",
@@ -91,7 +90,71 @@
         }
       ],
       "cover": [
-         {
+        {
+          "id": "weave-ecru",
+          "name": "بافت کرم",
+          "hex": "#cbbfae",
+          "roughness": 0.92,
+          "maps": {
+            "map": "/textures/covers/weave-ecru.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/weave-ecru.png"
+        },
+        {
+          "id": "wool-oat",
+          "name": "پشم جو‌دوسر",
+          "hex": "#b9ae9c",
+          "roughness": 0.95,
+          "maps": {
+            "map": "/textures/covers/wool-oat.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/wool-oat.png"
+        },
+        {
+          "id": "boucle-stone",
+          "name": "بوکله سنگی",
+          "hex": "#a9a49c",
+          "roughness": 0.9,
+          "maps": {
+            "map": "/textures/covers/boucle-stone.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/boucle-stone.png"
+        },
+        {
+          "id": "linen-ash",
+          "name": "کتان خاکستری",
+          "hex": "#b4b0a8",
+          "roughness": 0.88,
+          "maps": {
+            "map": "/textures/covers/linen-ash.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/linen-ash.png"
+        },
+        {
           "id": "white",
           "name": "کرم",
           "hex": "#ffffff"
@@ -121,23 +184,84 @@
           "name": "زرشکی",
           "hex": "#5e2129"
         }
-       
       ],
       "cushion": [
         {
-          "id": "ivory",
+          "id": "cushion-linen",
+          "name": "کتان",
+          "hex": "#b4b0a8",
+          "roughness": 0.9,
+          "maps": {
+            "map": "/textures/covers/linen-ash.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/linen-ash.png"
+        },
+        {
+          "id": "cushion-wool",
+          "name": "پشمی",
+          "hex": "#b9ae9c",
+          "roughness": 0.95,
+          "maps": {
+            "map": "/textures/covers/wool-oat.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/wool-oat.png"
+        },
+        {
+          "id": "cushion-weave",
+          "name": "بافت",
+          "hex": "#cbbfae",
+          "roughness": 0.92,
+          "maps": {
+            "map": "/textures/covers/weave-ecru.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/weave-ecru.png"
+        },
+        {
+          "id": "cushion-ivory",
           "name": "استخوانی",
           "hex": "#e8e0d2"
         },
         {
-          "id": "grey",
+          "id": "cushion-black",
+          "name": "مشکی",
+          "hex": "#1a1a1a"
+        }
+      ],
+      "shawl": [
+        {
+          "id": "shawl-boucle",
+          "name": "بوکله",
+          "hex": "#a9a49c",
+          "roughness": 0.9,
+          "maps": {
+            "map": "/textures/covers/boucle-stone.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/boucle-stone.png"
+        },
+        {
+          "id": "shawl-wool",
+          "name": "پشمی",
+          "hex": "#b9ae9c",
+          "roughness": 0.95,
+          "maps": {
+            "map": "/textures/covers/wool-oat.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/wool-oat.png"
+        },
+        {
+          "id": "shawl-grey",
           "name": "دودی",
           "hex": "#8b8b8b"
         },
         {
-          "id": "black",
-          "name": "مشکی",
-          "hex": "#1a1a1a"
+          "id": "shawl-wine",
+          "name": "زرشکی",
+          "hex": "#5e2129"
         }
       ]
     },
@@ -195,11 +319,11 @@
       "mobile": "low"
     },
     "simple": {
-      "model": "/out/Furniture high Test3-optimized.glb",
+      "path": "/ktx-optimized/Furniture high Test3-optimized.glb",
       "arModel": "",
       "hdr": "/hdr/studio-512.hdr",
       "envIntensity": 1,
-      "background": "#000000",
+      "background": "#ffffff",
       "fov": 35,
       "padding": 1.1,
       "minZoom": 0.1,
@@ -220,6 +344,63 @@
     },
     "wipe": {
       "durationMs": 900
-    }
+    },
+    "parts": [
+      {
+        "id": "couch",
+        "label": "بدنه مبل",
+        "zone": "cover",
+        "objects": [
+          "rene_sofa-007",
+          "rene_sofa-004",
+          "rene_sofa-014",
+          "rene_sofa-008",
+          "rene_sofa-006",
+          "rene_sofa-008001"
+        ],
+        "materials": [
+          "Fabric_1",
+          "vray_rene_sofa_010"
+        ]
+      },
+      {
+        "id": "cushion",
+        "label": "کوسن",
+        "zone": "cushion",
+        "objects": [
+          "Node_81",
+          "rene_sofa-009",
+          "rene_sofa-010"
+        ],
+        "materials": [
+          "fabric_03"
+        ]
+      },
+      {
+        "id": "shawl",
+        "label": "شال",
+        "zone": "shawl",
+        "objects": [
+          "rene_sofa-012"
+        ],
+        "materials": [
+          "vray_rene_sofa_011"
+        ]
+      },
+      {
+        "id": "wood",
+        "label": "پایه چوبی",
+        "zone": "wood",
+        "objects": [
+          "leg",
+          "frame",
+          "wood"
+        ],
+        "materials": [
+          "vray_rene_sofa_012",
+          "vray_rene_sofa_013"
+        ]
+      }
+    ]
   }
 }

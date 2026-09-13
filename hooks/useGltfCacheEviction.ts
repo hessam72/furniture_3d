@@ -23,6 +23,29 @@ import { useEffect, useRef } from 'react'
  * changes while it is open still evicts what it actually loaded, not what it
  * started with.
  */
+/**
+ * The same rule for the swatch textures a page loaded.
+ *
+ * Deliberately separate from the module's own LRU, which handles churn *within*
+ * a visit — a customer trying eight fabrics — and deliberately at page unmount
+ * for the reason above: an AR round trip, a context-loss retry and a StrictMode
+ * double-mount all tear the Canvas down and all want the fabric still warm on
+ * the way back. @see lib/three/swatchTextures.ts
+ */
+export function useSwatchCacheEviction(): void {
+  useEffect(() => {
+    return () => {
+      // Imported here rather than at the top, same measured reason as below:
+      // this module reaches `three`, and /showroom is a marketing page.
+      void import('@/lib/three/swatchTextures').then(({ evictSwatchTextures }) => {
+        // Budget 0 rather than `clearSwatchTextures`: a fabric another live page
+        // is still showing keeps its reference and survives.
+        evictSwatchTextures(0)
+      })
+    }
+  }, [])
+}
+
 export function useGltfCacheEviction(paths: string[]): void {
   const held = useRef(new Set<string>())
   paths.filter(Boolean).forEach((path) => held.current.add(path))

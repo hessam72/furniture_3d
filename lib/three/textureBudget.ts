@@ -148,6 +148,18 @@ export function estimateTextureVram(root: THREE.Object3D): number {
 }
 
 /**
+ * One texture's resident size, for callers holding a texture rather than a scene.
+ *
+ * The swatch cache holds textures that are not bound to any material yet, so
+ * `collectTextureCosts` cannot see them — but the two must agree on the price or
+ * the `?debug` readout adds up to something that is true of neither.
+ * @see lib/three/swatchTextures.ts
+ */
+export function textureResidentBytes(texture: THREE.Texture): number {
+  return textureBytes(texture).bytes
+}
+
+/**
  * The largest map in a scene, capped at this, is a texture set a phone can hold.
  *
  * 1024² as RGBA8 with mips is 5.6MB; 2048² is 22MB and 4096² is 87MB. A piece
@@ -159,4 +171,9 @@ export const TEXTURE_MAX_EDGE_PHONE = 1024
 /** The budgets and the byte formatter live in components/three/rendererStatsStore,
  *  which imports nothing — so the DOM overlay can read them without dragging
  *  `three` into a marketing page's bundle. */
-export { TEXTURE_VRAM_MAX_BYTES, TEXTURE_VRAM_WARN_BYTES, formatBytes } from '@/components/three/rendererStatsStore'
+export {
+  SWATCH_CACHE_BUDGET_BYTES,
+  TEXTURE_VRAM_MAX_BYTES,
+  TEXTURE_VRAM_WARN_BYTES,
+  formatBytes,
+} from '@/components/three/rendererStatsStore'

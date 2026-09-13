@@ -3,22 +3,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Loader2, Scan } from 'lucide-react'
 import type * as THREE from 'three'
 import { useGLTF } from '@react-three/drei'
 import { QualityProvider } from '@/contexts/QualityContext'
 import { useAssetProbe } from '@/hooks/useAssetProbe'
 import { useDeviceClass } from '@/hooks/useDeviceClass'
 import { usePresentation } from '@/stores/presentationStore'
-import { useShop } from '@/stores/storeShopStore'
-import { findCatalogItemBySceneObject, type Catalog } from '@/lib/store/catalog'
-import catalog from '@/public/config/catalog.json'
 import { isARCapable } from '@/lib/device-utils'
-import { arModelUrl } from '@/lib/ar/arSource'
+import { arModelUrl, swatchIdsFromPaint } from '@/lib/ar/arSource'
 import { AR_GLB_MAX_BYTES, AR_GLB_WARN_BYTES, AR_TRIANGLE_WARN, countTriangles } from '@/lib/ar/budget'
 import {
   arModelPath,
   defaultPaint,
+  openingSwatchMaps,
+  restSwatchMaps,
   findCoverVariant,
   finishedPiecePath,
   simpleViewer,
@@ -29,10 +28,10 @@ import {
 } from '@/lib/product/presentation'
 import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
 import { useContextRecovery, type ContextRecovery } from '@/hooks/useContextRecovery'
-import { useGltfCacheEviction } from '@/hooks/useGltfCacheEviction'
+import { useGltfCacheEviction, useSwatchCacheEviction } from '@/hooks/useGltfCacheEviction'
 import { preloadGltf } from '@/lib/three/gltfLoaders'
 import { WEBGL_UNAVAILABLE_FA, webglUnavailable } from '@/lib/three/gpuClass'
-import ProductSheet from '@/components/product/ProductSheet'
+import ViewerDock from '@/components/product/ViewerDock'
 import QualityChips from '@/components/product/QualityChips'
 
 const SimpleViewer = dynamic(() => import('@/components/product/SimpleViewer'), {
@@ -42,11 +41,6 @@ const SimpleViewer = dynamic(() => import('@/components/product/SimpleViewer'), 
 
 const ARProductViewer = dynamic(() => import('@/components/store/ARProductViewer'), { ssr: false })
 
-/** Said once in the sheet, because a swatch that paints nothing on the layer
- *  currently mounted reads as a broken control rather than a deliberate one. */
-const ZONE_NOTE =
-  'این نما هر بار یک لایه را نشان می‌دهد: رنگ چوب روی «اسکلت چوبی» و رنگ رویه روی نمای نهایی دیده می‌شود.'
-
 /**
  * A stripped viewer for the same piece the presentation page dresses.
  *
@@ -54,11 +48,12 @@ const ZONE_NOTE =
  * no reflection and no post — so the piece can be judged on its own and the
  * page runs the same everywhere.
  *
- * What it is *not* is a lesser product page: it carries the presentation
- * page's own bottom sheet, so every fact, swatch, layer and the AR button are
- * where a customer already knows to find them. The sheet writes to the shared
- * presentation store, which is what makes that possible — this page only has
- * to answer the store's state with the right file on screen.
+ * Where `/product/[id]` is a product page with a 3D view in it, this is the
+ * piece itself with the fewest controls that still let you configure it: pick a
+ * cloth for each part, look inside, put it in your room. @see ViewerDock, which
+ * is why this page no longer mounts `ProductSheet` — the two answer to different
+ * layouts and different priorities, and one component serving both would need a
+ * mode flag on every tab.
  */
 export default function SimpleViewerClient({ presentation }: { presentation: ResolvedPresentation }) {
   const { config } = presentation
@@ -122,12 +117,9 @@ function Viewer({
    * full presentation page's rig reads.
    */
   const coverage = usePresentation((s) => s.sheetCoverage)
-
-  const addToCart = useShop((s) => s.addToCart)
-  const catalogId = useMemo(
-    () => findCatalogItemBySceneObject(catalog as Catalog, productKey)?.id ?? null,
-    [productKey]
-  )
+  /** And how much of the width, once the dock is open on a screen wide enough to
+   *  give it any. The camera slides the piece clear rather than shrinking it. */
+  const dockCoverage = usePresentation((s) => s.dockCoverage)
 
   /**
    * The cover swap is a clip-plane wipe on the full page, played by the scene.
@@ -174,6 +166,20 @@ function Viewer({
 
   // The layer set this page can reach, released when the visitor leaves it.
   useGltfCacheEviction(probeAssets.filter((path) => path.endsWith('.glb')))
+  useSwatchCacheEviction()
+
+  // The opening fabric, warmed before the canvas rather than on idle: it is what
+  // this page renders with, and nothing here animates a swap to hide a late one.
+  useEffect(() => {
+    if (state !== 'ready') return
+    const opening = openingSwatchMaps(config)
+    if (!opening.length) return
+    let stop = () => {}
+    void import('@/lib/three/swatchTextures').then(({ preloadSwatchMaps }) => {
+      stop = preloadSwatchMaps(opening)
+    })
+    return () => stop()
+  }, [state, config])
 
   /** Only what *this* view needs has to be present — a missing variant is the
    *  sheet's problem to report, not a reason to blank the page. */
@@ -214,6 +220,10 @@ function Viewer({
     let stopWarm = () => {}
     const warm = () => {
       stopWarm = preloadGltf(rest, useGLTF.preload)
+      // The rest of the palette, on the same terms as the rest of the covers.
+      void import('@/lib/three/swatchTextures').then(({ preloadSwatchMaps }) => {
+        preloadSwatchMaps(restSwatchMaps(config))
+      })
     }
     const idle = (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
       .requestIdleCallback
@@ -258,7 +268,11 @@ function Viewer({
   const openAR = useCallback(async () => {
     const layer = showingFrame ? 'frame' : coverId ?? 'default'
     const { paint } = usePresentation.getState()
-    const url = arModelUrl(productKey, layer, zone, paint)
+    // Every zone's swatch id travels beside the paint, so the route can put each
+    // chosen fabric in the file — the couch's, the cushions', the shawl's. It
+    // used to send only the active zone's, which is why colour reached the room
+    // and cloth did not. Zones wearing a plain colour contribute nothing.
+    const url = arModelUrl(productKey, layer, zone, paint, swatchIdsFromPaint(paint))
     const debug = new URLSearchParams(window.location.search).has('debug')
 
     setArBuilding(true)
@@ -267,12 +281,20 @@ function Viewer({
       const head = await fetch(url, { method: 'HEAD' })
       const size = Number(head.headers.get('content-length') ?? 0)
       const triangles = source.current ? countTriangles(source.current) : 0
+      // What the route found in the file AR is about to be handed. `ok` means
+      // the room shows what this canvas shows; anything else is a list of
+      // extensions Scene Viewer or Quick Look drop without an error, and the
+      // reason to look at how the asset was exported. @see arHazards
+      const compat = head.headers.get('x-ar-compat')
 
       if (debug) {
         console.log(
           `[AR] ${arModelPath(config, layer)} → ${(size / 1048576).toFixed(1)} MB, ` +
-            `${triangles ? triangles.toLocaleString() : '?'} triangles`
+            `${triangles ? triangles.toLocaleString() : '?'} triangles, compat ${compat ?? '?'}`
         )
+      }
+      if (compat && compat !== 'ok') {
+        console.warn(`[AR] this file cannot reach AR unchanged — ${compat}`)
       }
       if (!head.ok) throw new Error(`configured model unavailable (${head.status})`)
       if (size > AR_GLB_MAX_BYTES) throw new Error(`configured model is ${size} bytes`)
@@ -334,7 +356,10 @@ function Viewer({
     <div
       dir="rtl"
       className="font-persian viewport-fill relative w-screen overflow-hidden"
-      style={{ background: view.background }}
+      /* `--dock-w` is declared here rather than inside the dock because two
+         things need to agree on it: the dock's own width, and the padding that
+         keeps the header's controls from sliding underneath it. */
+      style={{ background: view.background, ['--dock-w' as string]: 'clamp(20rem, 29vw, 25rem)' }}
     >
       {live && !showAR && !recovery.lost && !noWebgl && (
         <SimpleViewer
@@ -342,6 +367,7 @@ function Viewer({
           key={canvasKey}
           config={viewConfig}
           coverage={coverage}
+          dockCoverage={dockCoverage}
           zone={zone}
           sourceRef={source}
           onReady={handleReady}
@@ -350,45 +376,64 @@ function Viewer({
         />
       )}
 
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
-        <div className="flex flex-col items-start gap-2">
-          <Link
-            href={`/product/${productKey}`}
-            aria-label="نمای کامل محصول"
-            className="pointer-events-auto flex h-9 items-center gap-1 rounded-full border border-neutral-200
-                       bg-white/85 px-3 text-[13px] text-neutral-700 backdrop-blur-sm transition-colors
-                       hover:border-neutral-300 hover:text-neutral-900"
-          >
-            <ChevronRight className="h-4 w-4" />
-            نمای کامل
-          </Link>
+      {/* The page's own name lives in the dock, where it is already shown at the
+          head of the panel. Repeating it over the piece would be a second title
+          competing with the product for the only part of the screen the piece
+          has. Here it stays for the document outline and for a screen reader. */}
+      <h1 className="sr-only">{product.name}</h1>
+
+      {/* Every control up here is a dark glass pill rather than a tinted one:
+          `simple.background` is a manifest value and may be white for the next
+          product, and a dark pill is the one treatment that reads on both. */}
+      <header
+        /* On a wide screen the dock owns the trailing edge, so the header stops
+           short of it — a back link tucked behind a panel is a back link the
+           customer does not have. On a phone the dock is a bottom sheet and the
+           whole width is free. */
+        className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between
+                   gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))]
+                   md:ps-[calc(var(--dock-w)+1.5rem)]"
+      >
+        <Link
+          href={`/product/${productKey}`}
+          aria-label="نمای کامل محصول"
+          className="pointer-events-auto flex h-9 items-center gap-1.5 rounded-full border border-white/10
+                     bg-[#0a0e15]/70 px-3.5 text-[12px] text-white/70 backdrop-blur-xl
+                     transition-colors duration-200 hover:border-white/20 hover:text-white
+                     md:h-10 md:px-4 md:text-[12.5px]"
+        >
+          <ChevronRight className="h-4 w-4" />
+          نمای کامل
+        </Link>
+
+        <div className="flex flex-col items-end gap-2">
+          {live && !showAR && !noWebgl && (
+            <button
+              type="button"
+              onClick={openAR}
+              disabled={arBuilding}
+              className="pointer-events-auto flex h-9 items-center gap-2 rounded-full border border-white/10
+                         bg-[#0a0e15]/70 py-1 pl-3.5 pr-1 text-[12px] font-medium text-white
+                         backdrop-blur-xl transition-colors duration-200 hover:border-blue-400/40
+                         disabled:opacity-60 md:h-10 md:pl-4 md:text-[12.5px]"
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500 text-white md:h-8 md:w-8">
+                {arBuilding ? (
+                  <Loader2 className="h-[15px] w-[15px] animate-spin" />
+                ) : (
+                  <Scan className="h-[15px] w-[15px]" strokeWidth={2} />
+                )}
+              </span>
+              {arBuilding ? 'در حال آماده‌سازی…' : arSupported ? 'مشاهده در فضای خانه' : 'پیش‌نمای سه‌بعدی'}
+            </button>
+          )}
           {/* A render-quality picker over a page that cannot render. */}
           {live && !showAR && !noWebgl && <QualityChips />}
         </div>
-
-        <h1 className="max-w-[55%] truncate pt-1 text-right text-[15px] font-semibold text-neutral-900">
-          {product.name}
-        </h1>
       </header>
 
       {live && (
-        <ProductSheet
-          presentation={presentation}
-          onViewAR={openAR}
-          onAddToCart={() => catalogId && addToCart(catalogId)}
-          // Always: the configured model is a URL, not something that has to be
-          // built first and can fail to be. `arLive` goes false only once a real
-          // attempt has fallen back to the published file.
-          arAvailable
-          arCapable={arSupported}
-          arLive={!arStale}
-          arBuilding={arBuilding}
-          // One file on screen at a time — there is no stack to pull apart,
-          // and each palette shows on the layer it belongs to.
-          explodable={false}
-          zoneNote={ZONE_NOTE}
-          hidden={showAR}
-        />
+        <ViewerDock presentation={presentation} arBuilding={arBuilding} hidden={showAR} />
       )}
 
       {(blocked.length > 0 || error || recovery.lost || noWebgl) && (
@@ -464,24 +509,32 @@ function Notice({
   onRetry?: () => void
 }) {
   // Transparent: the page root behind it already carries the ground colour.
+  // Its own dark card rather than bare text on the page root: `simple.background`
+  // is a manifest value, and a message that is only legible on one of the two
+  // grounds it may be drawn over is not a message.
   return (
     <div className="absolute inset-0 z-40 flex items-center justify-center p-6">
-      <div className="max-w-sm space-y-3 text-center">
-        <h2 className="text-[15px] font-semibold text-neutral-900">{productName}</h2>
-        <p className="text-[13px] leading-7 text-neutral-500">نمایش سه‌بعدی این محصول در دسترس نیست.</p>
-        <p className="break-all text-[11px] leading-6 text-neutral-400">{detail}</p>
-        <div className="flex items-center justify-center gap-2">
+      <div
+        className="max-w-sm space-y-3 rounded-3xl border border-white/10 bg-[#0a0e15]/85 p-7 text-center
+                   shadow-[0_30px_80px_-30px_rgb(0_0_0/0.95)] backdrop-blur-2xl"
+      >
+        <h2 className="text-[15px] font-semibold text-white">{productName}</h2>
+        <p className="text-[13px] leading-7 text-white/55">نمایش سه‌بعدی این محصول در دسترس نیست.</p>
+        <p className="break-all text-[11px] leading-6 text-white/30">{detail}</p>
+        <div className="flex items-center justify-center gap-2 pt-1">
           {onRetry && (
             <button
               onClick={onRetry}
-              className="rounded-lg border border-neutral-300 px-4 py-2 text-[13px] text-neutral-700 transition-colors hover:border-neutral-500"
+              className="rounded-xl bg-blue-500 px-4 py-2 text-[13px] font-medium text-white
+                         transition-colors hover:bg-blue-400"
             >
               تلاش دوباره
             </button>
           )}
           <Link
             href={`/product/${productKey}`}
-            className="inline-block rounded-lg border border-neutral-300 px-4 py-2 text-[13px] text-neutral-700 transition-colors hover:border-neutral-500"
+            className="inline-block rounded-xl border border-white/15 px-4 py-2 text-[13px] text-white/75
+                       transition-colors hover:border-white/30 hover:text-white"
           >
             نمای کامل محصول
           </Link>

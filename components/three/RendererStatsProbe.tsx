@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { collectTextureCosts } from '@/lib/three/textureBudget'
+import { swatchCacheStats } from '@/lib/three/swatchTextures'
 import { formatBytes, dropSample, reportSample } from './rendererStatsStore'
 
 /**
@@ -30,6 +31,10 @@ export function RendererStatsProbe({ label }: { label: string }) {
 
     const sample = () => {
       const costs = collectTextureCosts(scene)
+      // Read here rather than in the overlay: this file already imports `three`,
+      // and rendererStatsStore imports nothing on purpose so the DOM half can
+      // stay out of a marketing page's bundle. @see rendererStatsStore.ts
+      const swatch = swatchCacheStats()
       reportSample(id, {
         label,
         fps: frames.current / 2,
@@ -43,6 +48,9 @@ export function RendererStatsProbe({ label }: { label: string }) {
         worst: costs
           .slice(0, 3)
           .map((cost) => `${cost.width}\u00d7${cost.height} ${formatBytes(cost.bytes)} ${cost.name.slice(0, 22)}`),
+        swatchSets: swatch.sets,
+        swatchBytes: swatch.bytes,
+        swatchInflight: swatch.inflight,
       })
       frames.current = 0
     }

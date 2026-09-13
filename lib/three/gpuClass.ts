@@ -146,3 +146,25 @@ export function webglUnavailable(): boolean {
  * lets the visitor stop trying.
  */
 export const WEBGL_UNAVAILABLE_FA = 'مرورگر این دستگاه از نمایش سه‌بعدی پشتیبانی نمی‌کند'
+
+/**
+ * `useSyncExternalStore` plumbing, so a provider can read the class without a
+ * hydration mismatch.
+ *
+ * The hardware never changes under a running tab, so there is nothing to
+ * subscribe to — but the server cannot probe and the client can, and a tier
+ * that differs between the server's HTML and the client's first render is the
+ * bug that broke the quality picker once already. `useSyncExternalStore` uses
+ * the server snapshot for the hydration render and `readGpuClass` immediately
+ * afterwards, which is the same shape `getStoredTier` uses and for the same
+ * reason. No effect, so the canvases — all `dynamic(ssr: false)`, mounting
+ * later — still never see a stale value.
+ */
+export function subscribeGpuClass(): () => void {
+  return () => {}
+}
+
+/** Always `normal`: the server has no GPU to ask. @see subscribeGpuClass */
+export function getGpuClassOnServer(): GpuClass {
+  return 'normal'
+}

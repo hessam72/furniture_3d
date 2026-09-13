@@ -34,7 +34,10 @@ export default function QualityChips() {
     <div
       role="radiogroup"
       aria-label="کیفیت نمایش"
-      className="pointer-events-auto flex gap-1 rounded-full border border-neutral-200 bg-white/85 p-1 backdrop-blur-sm"
+      /* Dark glass like the rest of the page chrome: `simple.background` is a
+         manifest value and may be white for the next product, and a dark pill is
+         the one treatment that reads on both grounds. */
+      className="pointer-events-auto flex gap-1 rounded-full border border-white/10 bg-[#0a0e15]/70 p-1 backdrop-blur-xl"
     >
       {tiers.map((tier) => (
         <button
@@ -43,7 +46,7 @@ export default function QualityChips() {
           aria-checked={preset === tier}
           onClick={() => setPreset(tier)}
           className={`rounded-full px-2.5 py-1 text-[11px] transition-colors ${
-            preset === tier ? 'bg-neutral-900 text-white' : 'text-neutral-600 hover:text-neutral-900'
+            preset === tier ? 'bg-white/[0.14] text-white' : 'text-white/45 hover:text-white/80'
           }`}
         >
           {LABELS[tier]}

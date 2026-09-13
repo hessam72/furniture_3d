@@ -14,13 +14,20 @@ import { useCanvasLifecycle } from '@/hooks/useCanvasLifecycle'
 import { PartErrorBoundary } from '@/components/three/PartErrorBoundary'
 import { clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
-import { collectZoneTargets, disposeTargets, preparePresentationObject } from '@/lib/three/layerMaterials'
+import {
+  collectZoneTargets,
+  describeObjectTree,
+  disposeTargets,
+  preparePresentationObject,
+} from '@/lib/three/layerMaterials'
 import { applyAnisotropy } from '@/lib/three/prepareCarMaterial'
 import { applyFirstCoat, useZonePaint } from '@/hooks/useZonePaint'
+import { applyFirstSwatch, useSwatchTextures } from '@/hooks/useSwatchTextures'
 import { usePresentation } from '@/stores/presentationStore'
 import {
   simpleViewer,
   type PresentationConfig,
+  type PresentationPart,
   type PresentationZone,
   type ResolvedSimpleViewer,
 } from '@/lib/product/presentation'
@@ -32,6 +39,25 @@ import ViewerPlinth, { type PlinthSpec } from './ViewerPlinth'
 /** Never let the control panel claim more than this much of the height, however
  *  tall it measures — past it the piece has no frame left to be judged in. */
 const MAX_PANEL_COVERAGE = 0.5
+
+/** The same ceiling for a side dock. A panel wider than this leaves the piece
+ *  squeezed into a column, which is worse than a panel that overlaps it. */
+const MAX_DOCK_COVERAGE = 0.45
+
+/**
+ * What the camera frames on: the piece's measured size.
+ *
+ * `radius` still sets the near/far planes and the zoom stops, where a
+ * conservative bound is the right thing. The two extents are what the fit
+ * actually solves against. @see Piece
+ */
+export interface Fit {
+  radius: number
+  horizontal: number
+  vertical: number
+}
+
+const EMPTY_FIT: Fit = { radius: 0, horizontal: 0, vertical: 0 }
 
 /** The opening three-quarter view: slightly off-axis and slightly above, which
  *  is how furniture is photographed. Normalised on use. */
@@ -58,25 +84,29 @@ const OPENING_POLAR = Math.acos(OPENING_DIR.y / OPENING_DIR.length())
 function Piece({
   path,
   envIntensity,
-  onRadius,
+  onFit,
   sourceRef,
   plinth,
   zone,
+  parts,
   paintable = true,
 }: {
   path: string
   envIntensity: number
-  /** The piece's bounding-sphere radius, once measured — the camera frames on
-   *  it and cannot solve anything before it arrives. */
-  onRadius: (radius: number) => void
+  /** The piece's measured size, once it exists — the camera frames on it and
+   *  cannot solve anything before it arrives. @see Fit */
+  onFit: (fit: Fit) => void
   /** Publishes the raw cached GLTF scene — not the painted clone below — for an
    *  host page to inspect outside the Canvas. */
   sourceRef?: React.MutableRefObject<THREE.Object3D | null>
   /** Stands the piece on a plinth. @see ViewerPlinth */
   plinth?: PlinthSpec
-  /** Which palette this file wears. The frame is `wood`, a cover variant is
-   *  `cover` — one file at a time, so one zone at a time. */
+  /** The zone for anything no part rule claims. The frame is `wood`, a cover
+   *  variant is `cover` — one file at a time. */
   zone: PresentationZone
+  /** The named groups inside this file — couch, cushions, shawl — so each can be
+   *  dressed on its own. Omitted → the whole file wears `zone`. */
+  parts?: PresentationPart[]
   /** False leaves the GLB's own materials alone. @see Props.paintable */
   paintable?: boolean
 }) {
@@ -87,7 +117,7 @@ function Piece({
   const anisotropyRef = useRef(settings.anisotropyLevel)
   anisotropyRef.current = settings.anisotropyLevel
 
-  const { scene, targets, radius, bottom, footprint } = useMemo(() => {
+  const { scene, targets, radius, extent, bottom, footprint } = useMemo(() => {
     const clone = gltf.scene.clone(true)
     preparePresentationObject(clone, {
       envMapIntensity: envIntensity,
@@ -101,8 +131,15 @@ function Piece({
 
     // An unpainted piece keeps every material the file shipped with — nothing
     // is cloned, so nothing is recoloured and nothing needs disposing.
-    const collected = paintable ? collectZoneTargets(clone, { zone }) : []
-    if (paintable) applyFirstCoat(collected, usePresentation.getState().paint)
+    const collected = paintable ? collectZoneTargets(clone, { zone, parts }) : []
+    if (paintable) {
+      const { paint } = usePresentation.getState()
+      applyFirstCoat(collected, paint)
+      // Same reason as the coat above, one layer further in: if a fabric is
+      // already chosen, this file must not render a frame in the cloth it was
+      // exported with. Cache-only, so a cold swatch lands on the next effect.
+      applyFirstSwatch(collected, paint, anisotropyRef.current)
+    }
 
     // Centred rather than seated: with the piece's own centre on the origin,
     // the orbit turns it in place and the camera's distance is simply its
@@ -117,13 +154,28 @@ function Piece({
       scene: clone,
       targets: collected,
       radius: sphere.radius,
+      /**
+       * How far the piece reaches across, and how far up.
+       *
+       * Two numbers rather than one sphere, because a sofa is not spherical and
+       * the difference is most of the screen. A 2.4m-wide, 0.8m-tall sectional
+       * has a bounding sphere about 1.3m across; fit *that* into the frame and
+       * the piece uses a third of the height available to it, floating in
+       * whitespace. The box is what a photographer would frame on.
+       *
+       * `hypot` rather than the larger of the two: yaw is the one rotation this
+       * viewer always allows, and the widest silhouette a spin can produce is
+       * the diagonal of the footprint. So this is still a bound that holds at
+       * every angle, just a much tighter one than the sphere.
+       */
+      extent: { horizontal: Math.hypot(size.x, size.z) / 2, vertical: size.y / 2 },
       // Measured *after* the centring above, so both are in the space the
       // plinth is placed in: the underside, and half the footprint.
       bottom: -size.y / 2,
       footprint: Math.max(size.x, size.z) / 2,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gltf.scene, path, envIntensity, zone, paintable])
+  }, [gltf.scene, path, envIntensity, zone, parts, paintable])
 
   /**
    * Anisotropy is applied to the existing clone, not baked into the memo above.
@@ -145,6 +197,32 @@ function Piece({
     invalidate()
   }, [scene, settings.anisotropyLevel, invalidate])
 
+  /**
+   * The file's own names, for whoever has to write the `parts` block.
+   *
+   * Those names live in the exporter's head and nowhere else, and a rule that
+   * matches nothing fails by dressing nothing — no error, no warning, just a
+   * swatch that does not work. Printing the tree turns that from a guess into a
+   * lookup. Also flags rules that hit nothing, which is the other half of the
+   * same problem: `gltf-transform dedup` can rename a material out from under a
+   * config that used to be right.
+   */
+  useEffect(() => {
+    if (!isDebug()) return
+    console.groupCollapsed(`[parts] ${path}`)
+    console.log(describeObjectTree(scene, parts))
+    const claimed = new Set(targets.map((target) => target.zone))
+    parts?.forEach((part) => {
+      if (!claimed.has(part.zone)) {
+        console.warn(`[parts] "${part.id}" matched nothing — check its objects/materials against the tree above`)
+      }
+    })
+    console.groupEnd()
+  }, [scene, parts, targets, path])
+
+  // Before useZonePaint, so on the mount pass the map is in place before the
+  // first damp frame reads the material.
+  useSwatchTextures(targets)
   useZonePaint(targets)
   useEffect(() => () => disposeTargets(targets), [targets])
 
@@ -157,7 +235,21 @@ function Piece({
   }, [sourceRef, gltf.scene])
   // A plinth reaches past the piece on every side, so the fit has to be solved
   // against the pair or the stage clips out of frame at some angles.
-  useEffect(() => onRadius(plinth ? radius * 1.2 : radius), [radius, plinth, onRadius])
+  useEffect(
+    () =>
+      onFit(
+        plinth
+          ? {
+              radius: radius * 1.2,
+              // The plinth reaches past the piece on every side, so the fit is
+              // solved against the pair or the stage clips out of frame.
+              horizontal: extent.horizontal * 1.2,
+              vertical: extent.vertical * 1.2,
+            }
+          : { radius, ...extent }
+      ),
+    [radius, extent, plinth, onFit]
+  )
 
   return (
     <>
@@ -188,14 +280,17 @@ function Piece({
  * snapping back to the opening shot.
  */
 function Frame({
-  radius,
+  fit,
   coverage,
+  dock,
   view,
   controls,
 }: {
-  radius: number
+  fit: Fit
   /** Fraction of the viewport height the control panel covers. */
   coverage: number
+  /** Fraction of the viewport width a side dock covers. */
+  dock: number
   view: ResolvedSimpleViewer
   controls: React.MutableRefObject<OrbitControlsImpl | null>
 }) {
@@ -204,16 +299,25 @@ function Frame({
   const invalidate = useThree((s) => s.invalidate)
   const fitted = useRef(0)
 
+  const { radius } = fit
+
   useEffect(() => {
     if (!radius || !Number.isFinite(radius)) return
 
     const hidden = Math.min(Math.max(coverage, 0), MAX_PANEL_COVERAGE)
+    const docked = Math.min(Math.max(dock, 0), MAX_DOCK_COVERAGE)
     const halfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)
-    // The usable half-angles: vertical shrunk by the band the panel leaves,
-    // horizontal opened by the aspect.
+    // The usable half-angles: each shrunk by the band its panel leaves — the
+    // sheet takes height, the dock takes width — and horizontal opened by the
+    // aspect.
     const vHalf = Math.atan(halfFov * (1 - hidden))
-    const hHalf = Math.atan(halfFov * (size.width / size.height))
-    const distance = (radius / Math.sin(Math.min(vHalf, hHalf))) * view.padding
+    const hHalf = Math.atan(halfFov * (size.width / size.height) * (1 - docked))
+    // Each extent against its own half-angle, and the binding one wins. A sofa
+    // is wide and low, so on a landscape screen that is usually the height —
+    // and solving it this way is what fills the frame instead of fitting a
+    // sphere that is mostly air.
+    const distance =
+      Math.max(fit.horizontal / Math.tan(hHalf), fit.vertical / Math.tan(vHalf)) * view.padding
 
     const previous = fitted.current
     fitted.current = distance
@@ -228,12 +332,32 @@ function Frame({
     camera.position.copy(direction).multiplyScalar(distance * keep)
     camera.lookAt(0, 0, 0)
 
-    // A positive offsetY walks the frustum window down the virtual image, which
-    // is what carries the piece up the screen — half the panel's coverage puts
-    // it in the middle of what is left. Also updates the projection matrix, so
-    // it goes last.
-    if (hidden > 0) camera.setViewOffset(size.width, size.height, 0, (size.height * hidden) / 2, size.width, size.height)
-    else camera.clearViewOffset()
+    /**
+     * A positive offsetY walks the frustum window down the virtual image, which
+     * is what carries the piece up the screen — half the panel's coverage puts
+     * it in the middle of what is left. offsetX is the same trick sideways:
+     * walking the window right carries the piece left, out from under a dock on
+     * the right edge.
+     *
+     * Note this *moves* the piece rather than scaling it. Shrinking the canvas
+     * to the free space would have been the easy version and is the wrong one:
+     * it costs a resize of every buffer on every open, and the customer loses
+     * sofa the moment they ask to see the fabric.
+     *
+     * Also updates the projection matrix, so it goes last.
+     */
+    if (hidden > 0 || docked > 0) {
+      camera.setViewOffset(
+        size.width,
+        size.height,
+        (size.width * docked) / 2,
+        (size.height * hidden) / 2,
+        size.width,
+        size.height
+      )
+    } else {
+      camera.clearViewOffset()
+    }
 
     const orbit = controls.current
     if (orbit) {
@@ -243,7 +367,7 @@ function Frame({
       orbit.update()
     }
     invalidate()
-  }, [radius, coverage, view, size.width, size.height, camera, controls, invalidate])
+  }, [fit, radius, coverage, dock, view, size.width, size.height, camera, controls, invalidate])
 
   return null
 }
@@ -273,6 +397,10 @@ interface Props {
   /** Fraction of the viewport height the control panel covers, measured by the
    *  page. The piece is framed into what it leaves. @see Frame */
   coverage: number
+  /** Fraction of the viewport *width* a side dock covers, measured the same way.
+   *  A prop rather than a store read so the showroom, which has no dock, cannot
+   *  inherit one from a `/simple` visit earlier in the session. */
+  dockCoverage?: number
   /** Raised once the piece is measured — the page holds its splash until then. */
   onReady: () => void
   onError: (category: string, error: Error) => void
@@ -339,6 +467,7 @@ interface Props {
 export default function SimpleViewer({
   config,
   coverage,
+  dockCoverage = 0,
   onReady,
   onError,
   sourceRef,
@@ -352,7 +481,7 @@ export default function SimpleViewer({
 }: Props) {
   const { settings, device } = useQuality()
   const [perfScale, setPerfScale] = useState(1)
-  const [radius, setRadius] = useState(0)
+  const [fit, setFit] = useState<Fit>(EMPTY_FIT)
   const controls = useRef<OrbitControlsImpl | null>(null)
 
   const view = useMemo(() => simpleViewer(config), [config])
@@ -367,10 +496,10 @@ export default function SimpleViewer({
     return [min, Math.max(min, +(max * perfScale).toFixed(2))]
   }, [settings.dpr, device, antialias, perfScale])
 
-  const handleRadius = useCallback(
-    (value: number) => {
-      setRadius(value)
-      if (value) onReady()
+  const handleFit = useCallback(
+    (next: Fit) => {
+      setFit(next)
+      if (next.radius) onReady()
     },
     [onReady]
   )
@@ -443,16 +572,17 @@ export default function SimpleViewer({
           <Piece
             path={view.model}
             envIntensity={envIntensity}
-            onRadius={handleRadius}
+            onFit={handleFit}
             sourceRef={sourceRef}
             plinth={plinth}
             zone={zone}
+            parts={config.parts}
             paintable={paintable}
           />
         </PartErrorBoundary>
       </Suspense>
 
-      <Frame radius={radius} coverage={coverage} view={view} controls={controls} />
+      <Frame fit={fit} coverage={coverage} dock={dockCoverage} view={view} controls={controls} />
 
       {/* Rotate and dolly, nothing else. Panning would slide the piece off the
           pivot the orbit turns about, which is the one thing this camera must

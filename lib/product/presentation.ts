@@ -2,21 +2,122 @@ import presentationConfig from '@/public/config/furniture-presentation.json'
 import productsConfig from '@/public/config/products.json'
 import type { ProductData } from '@/components/store/ProductInteraction'
 import type { PartialSun } from '@/components/store/hooks/useStoreConfig'
-import type { ZonePaintConfig } from '@/stores/presentationStore'
+import type { ZonePaint, ZonePaintConfig } from '@/stores/presentationStore'
+import type { SwatchMaps, SwatchSpec, SwatchUv } from '@/lib/three/swatchTextures'
 import { type QualityPreset } from '@/lib/config/quality'
 import { SURFACE_POLICY, resolveTier, type DeviceClass } from '@/lib/config/deviceTier'
 
-/** The three independently colourable parts of a piece. Unlike the showroom's
- *  keyword matching, the zone is implied by which layer GLB a mesh came from —
- *  only `soft` needs a name rule, to split cushions from the fixed fibre base. */
-export type PresentationZone = 'wood' | 'cover' | 'cushion'
+/**
+ * The independently colourable parts of a piece.
+ *
+ * On the layered `/product` page the zone is implied by which layer GLB a mesh
+ * came from. On `/simple` and `/showroom` there is one file for the whole piece,
+ * so the split has to come from inside it — a sofa GLB holds its couch, its
+ * cushions and a shawl as separately named groups, and dressing all three in the
+ * same cloth is not a configurator. That is what `parts` in the manifest is for.
+ * @see PresentationPart
+ */
+export type PresentationZone = 'wood' | 'cover' | 'cushion' | 'shawl'
+
+/**
+ * Every zone, in the order the AR paint tuple encodes them.
+ *
+ * **Append only.** `encodePaint` writes this array positionally and the result
+ * is the cache key for every AR URL ever issued; reordering it would silently
+ * repaint old links, and `shawl` is last for exactly that reason.
+ * @see lib/ar/arSource.ts
+ */
+export const PRESENTATION_ZONES: PresentationZone[] = ['wood', 'cover', 'cushion', 'shawl']
+
+export function isPresentationZoneName(value: unknown): value is PresentationZone {
+  return PRESENTATION_ZONES.includes(value as PresentationZone)
+}
+
+/**
+ * One named group inside a single GLB — the couch, its cushions, the shawl.
+ *
+ * A furniture GLB is not one object. It is a scene graph where the seat, the
+ * scatter cushions and a throw each sit under their own node, and a configurator
+ * that cannot tell them apart dresses the throw in the same cloth as the frame.
+ * This is how the manifest tells them apart, and it is deliberately authored by
+ * *name* rather than by material: material names survive `gltf-transform dedup`
+ * only by luck, and two parts commonly share one material.
+ *
+ * Read the names out of your own file rather than guessing them — the loaded
+ * tree is printed to the console on any page opened with `?debug`.
+ */
+export interface PresentationPart {
+  /** Stable id, used for the paint slot and the UI row. */
+  id: string
+  /** Row label in the sheet. */
+  label: string
+  /**
+   * Which paint zone this part wears. Two parts may share a zone, in which case
+   * they change together — that is a choice the manifest makes, not an accident.
+   */
+  zone: PresentationZone
+  /**
+   * Node, group or mesh names, case-insensitive substrings.
+   *
+   * **A match claims the whole subtree.** Naming the group is enough; every mesh
+   * under it belongs to the part without being listed, which is what makes this
+   * authorable against a real export rather than against a flattened list.
+   * A nested part wins over its ancestor, so `cushion` inside `couch` still
+   * reads as a cushion.
+   */
+  objects?: string[]
+  /**
+   * Material names, as a second, independent rule.
+   *
+   * Claims a material **wherever it appears**, and wins over `objects` — so it
+   * is the sharper tool of the two: use it to pull the piping out of a group
+   * that is otherwise all upholstery, or to split an export whose groups were
+   * never named usefully in the first place. `objects` is still the one to
+   * reach for first, because it survives re-authoring; material names do not
+   * always survive `gltf-transform dedup`.
+   */
+  materials?: string[]
+}
 
 export interface ZoneSwatch {
   id: string
   name: string
+  /**
+   * The swatch's colour.
+   *
+   * Still required, and still what the UI chip is cut in — but for a swatch that
+   * carries `maps` it is *not* what lands in `material.color`. `map` is
+   * multiplied by `color`, so a textured swatch tinted by its own average colour
+   * would be darkened twice; those drive the colour to white and let the image
+   * speak. @see swatchPaint
+   */
   hex: string
   /** Wood tones carry their own roughness; fabric swatches inherit it from the cover variant */
   roughness?: number
+  /**
+   * Present → this swatch replaces map slots rather than tinting them, and the
+   * piece changes cloth rather than colour. Absent → exactly the behaviour this
+   * file has always had. @see lib/three/swatchTextures.ts
+   */
+  maps?: SwatchMaps
+  /**
+   * Material-name substrings this swatch dresses, case-insensitive. Mesh names
+   * in these exports carry nothing (`rene_sofa-004`), so the upholstery has to
+   * be named by its material (`Fabric_1`). Omitted → every material in the zone
+   * that has a base map.
+   */
+  materials?: string[]
+  /**
+   * UV transform for the swapped maps. Omitted → each slot inherits the
+   * transform of the texture it replaces, which keeps a new colour registered
+   * with the relief underneath it. `[1, 1]` is how literal 1×1 is asked for.
+   */
+  repeat?: [number, number]
+  offset?: [number, number]
+  rotation?: number
+  /** Chip image, for a cloth a flat hex misrepresents. Keep it small — a WebP
+   *  under ~20KB; it renders at about 32px. */
+  thumbnail?: string
 }
 
 export interface CoverVariant {
@@ -28,6 +129,16 @@ export interface CoverVariant {
   thumbnail?: string
   priceDelta?: number
   material?: { roughness?: number; metalness?: number; clearcoat?: number }
+  /**
+   * Swatches shown only while this variant is the mounted one, replacing
+   * `palettes.cover`.
+   *
+   * Harmless to omit while a swatch is a tint — one hex list dresses any cloth.
+   * It stops being harmless once a swatch *is* a cloth: a velvet basecolour
+   * dropped onto the leather GLB is not a leather colourway, it is the wrong
+   * fabric. @see coverPalette
+   */
+  palette?: ZoneSwatch[]
 }
 
 export interface LayerMeta {
@@ -442,22 +553,26 @@ export function defaultPaint(config: PresentationConfig): ZonePaintConfig {
   // Same helper selectCover uses, so the opening finish and every later swap
   // are described the same way.
   const surface = coverSurface(config, cover)
-  const first = (zone: PresentationZone) => config.palettes[zone]?.[0]
+  const first = (zone: PresentationZone) =>
+    zone === 'cover' ? coverPalette(config, cover)[0] : config.palettes[zone]?.[0]
+
+  // `swatchPaint` rather than a bare hex, so the page opens with a swatch
+  // *identity* the UI can highlight and the texture path can act on. A palette
+  // that carries no entry for a zone falls back to the hard-coded hex, which is
+  // the shape this had before swatches had ids at all.
+  const seed = (zone: PresentationZone, fallback: ZonePaint): ZonePaint => {
+    const swatch = first(zone)
+    return swatch ? { ...fallback, ...swatchPaint(swatch, fallback.roughness) } : fallback
+  }
 
   return {
-    wood: {
-      color: first('wood')?.hex ?? '#c8a06a',
-      roughness: first('wood')?.roughness ?? 0.55,
-      metalness: 0,
-      clearcoat: 0,
-    },
-    cover: { color: first('cover')?.hex ?? '#36454f', ...surface },
-    cushion: {
-      color: first('cushion')?.hex ?? '#e8e0d2',
-      roughness: 0.8,
-      metalness: 0,
-      clearcoat: 0,
-    },
+    wood: seed('wood', { color: '#c8a06a', roughness: 0.55, metalness: 0, clearcoat: 0 }),
+    cover: seed('cover', { color: '#36454f', ...surface }),
+    cushion: seed('cushion', { color: '#e8e0d2', roughness: 0.8, metalness: 0, clearcoat: 0 }),
+    // A throw is a loose woven thing, so it opens rougher than the upholstery.
+    // Only ever seen on a piece whose `parts` claim a shawl group; everything
+    // else leaves this zone with nothing assigned to it.
+    shawl: seed('shawl', { color: '#b4b0a8', roughness: 0.95, metalness: 0, clearcoat: 0 }),
   }
 }
 
@@ -529,7 +644,15 @@ export interface PresentationConfig {
     stage?: StageMeta
     startStep?: 0 | 1
   }
-  palettes: Record<PresentationZone, ZoneSwatch[]>
+  palettes: Partial<Record<PresentationZone, ZoneSwatch[]>>
+  /**
+   * The named groups inside the piece's GLB, and which zone each one wears.
+   *
+   * Omitted → the old behaviour exactly: the whole file is one zone, dressed as
+   * a single cloth. Present → the sheet shows one swatch row per part and each
+   * changes on its own. @see PresentationPart
+   */
+  parts?: PresentationPart[]
   /**
    * Framing is expressed as angles and ratios, never absolute metres. The rig
    * derives the actual distance from the piece's measured bounds and the live
@@ -707,6 +830,138 @@ export function coverSurface(
     metalness: variant?.material?.metalness ?? 0,
     clearcoat: isMatte(config) ? 0 : variant?.material?.clearcoat ?? 0,
   }
+}
+
+/**
+ * Everything the `cover` zone should become when a variant is selected.
+ *
+ * The variant's surface character, plus — where the variant brings its own
+ * palette — its opening swatch. Without that second half, picking leather while
+ * a velvet swatch was active would leave the velvet *texture* on a piece whose
+ * palette no longer offers it, and no chip would light up.
+ */
+export function coverSelection(config: PresentationConfig, id: string | null): Partial<ZonePaint> {
+  const variant = findCoverVariant(config, id)
+  const surface = coverSurface(config, variant)
+  // Only a variant that carries its own list reseeds; a shared palette means the
+  // swatch the customer picked is still on offer and should survive the swap.
+  const opening = variant?.palette?.[0]
+  return opening ? { ...surface, ...swatchPaint(opening) } : surface
+}
+
+/**
+ * A swatch by id, from the palette that zone actually shows.
+ *
+ * The AR route's only way to turn a query parameter into a file: `tex` names a
+ * swatch, the manifest names the texture. Same lock `layer` has — no request can
+ * reach a path the manifest has not published.
+ */
+export function findSwatch(
+  config: PresentationConfig,
+  zone: PresentationZone,
+  id: string | null | undefined,
+  coverId?: string | null
+): ZoneSwatch | null {
+  if (!id) return null
+  const palette =
+    zone === 'cover' ? coverPalette(config, findCoverVariant(config, coverId ?? null)) : config.palettes[zone] ?? []
+  // A variant's own palette replaces the shared one, so a swatch may be reachable
+  // under one cover and not another. Fall back to the shared list rather than
+  // 400-ing a swatch the manifest genuinely publishes.
+  return palette.find((swatch) => swatch.id === id) ?? config.palettes[zone]?.find((s) => s.id === id) ?? null
+}
+
+/** Whether a swatch dresses the piece in a different cloth or just tints it. */
+export function isTextureSwatch(swatch: ZoneSwatch | null | undefined): boolean {
+  return !!swatch?.maps && Object.values(swatch.maps).some(Boolean)
+}
+
+/** A swatch's UV override, or null to inherit the replaced slot's transform. */
+export function swatchUv(swatch: ZoneSwatch): SwatchUv | null {
+  if (!swatch.repeat && !swatch.offset && swatch.rotation === undefined) return null
+  return { repeat: swatch.repeat, offset: swatch.offset, rotation: swatch.rotation }
+}
+
+/** The render layer's view of a swatch, resolved from the manifest. */
+export function swatchSpec(swatch: ZoneSwatch): SwatchSpec | null {
+  if (!isTextureSwatch(swatch)) return null
+  return { id: swatch.id, maps: swatch.maps!, materials: swatch.materials, uv: swatchUv(swatch) }
+}
+
+/**
+ * A swatch, as the paint store holds it.
+ *
+ * The one place a swatch becomes state, because two of the three fields are easy
+ * to get wrong in isolation:
+ *
+ *  - **`color` is white for a textured swatch.** `map` is multiplied by `color`,
+ *    so passing the swatch's own hex through would darken every fabric by its
+ *    own average colour.
+ *  - **`maps` must be set to null, not omitted.** `setPaint` merges, so a plain
+ *    colour swatch picked after a textured one has to actively clear the maps or
+ *    the old cloth stays on the piece.
+ *
+ * `roughnessFallback` exists because the two callers disagreed before this
+ * helper did: `ProductSheet` left roughness alone when a swatch carried none,
+ * `ShowroomFeatured` forced 0.6. Passing it preserves the showroom's look
+ * exactly rather than quietly restyling it.
+ */
+export function swatchPaint(swatch: ZoneSwatch, roughnessFallback?: number): Partial<ZonePaint> {
+  const textured = isTextureSwatch(swatch)
+  const roughness = swatch.roughness ?? roughnessFallback
+  return {
+    swatchId: swatch.id,
+    color: textured ? '#ffffff' : swatch.hex,
+    maps: textured ? swatch.maps! : null,
+    materials: textured ? swatch.materials ?? null : null,
+    uv: textured ? swatchUv(swatch) : null,
+    ...(roughness !== undefined ? { roughness } : {}),
+  }
+}
+
+/** Every swatch across every zone, the mounted variant's palette included. */
+function allSwatches(config: PresentationConfig): ZoneSwatch[] {
+  const variants = config.layers.cover.variants.flatMap((variant) => variant.palette ?? [])
+  const zones = PRESENTATION_ZONES
+  return [...zones.flatMap((zone) => config.palettes[zone] ?? []), ...variants]
+}
+
+/** The maps the page opens with — what `defaultPaint` seeds each zone from. */
+export function openingSwatchMaps(config: PresentationConfig): SwatchMaps[] {
+  const cover = findCoverVariant(config, config.layers.cover.default)
+  const zones = PRESENTATION_ZONES
+  return zones
+    .map((zone) => (zone === 'cover' ? coverPalette(config, cover)[0] : config.palettes[zone]?.[0]))
+    .filter((swatch): swatch is ZoneSwatch => isTextureSwatch(swatch))
+    .map((swatch) => swatch.maps!)
+}
+
+/** Everything else, for the desktop-only idle warm. Deduped by `map`, since a
+ *  family shares its normal and the cache would collapse them anyway. */
+export function restSwatchMaps(config: PresentationConfig): SwatchMaps[] {
+  const opening = new Set(openingSwatchMaps(config).map((maps) => maps.map))
+  const seen = new Set<string>()
+  return allSwatches(config)
+    .filter(isTextureSwatch)
+    .map((swatch) => swatch.maps!)
+    .filter((maps) => {
+      const key = maps.map ?? ''
+      if (opening.has(key) || seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+}
+
+/**
+ * The cover swatches to show for the mounted variant.
+ *
+ * A variant's own `palette` replaces the shared list rather than extending it —
+ * the same rule the showroom's `covers` override already follows, and for the
+ * same reason: a list that mixed both would offer finishes this cloth does not
+ * come in.
+ */
+export function coverPalette(config: PresentationConfig, variant: CoverVariant | null): ZoneSwatch[] {
+  return variant?.palette ?? config.palettes.cover ?? []
 }
 
 /**

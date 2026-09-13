@@ -6,6 +6,7 @@ import { Html, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { applyMatte, collectZoneTargets, disposeTargets, preparePresentationObject } from '@/lib/three/layerMaterials'
 import { applyFirstCoat, useZonePaint } from '@/hooks/useZonePaint'
+import { applyFirstSwatch, useSwatchTextures } from '@/hooks/useSwatchTextures'
 import { usePresentation } from '@/stores/presentationStore'
 import { useQuality } from '@/contexts/QualityContext'
 import { PartErrorBoundary } from '@/components/three/PartErrorBoundary'
@@ -61,12 +62,17 @@ function useLayer(path: string, zone: PresentationZone, matte: boolean, shadows:
       shadows,
     })
     const collected = collectZoneTargets(clone, { zone, match })
-    applyFirstCoat(collected, usePresentation.getState().paint)
+    const { paint } = usePresentation.getState()
+    applyFirstCoat(collected, paint)
+    // Same first-frame rule as the coat: a layer remounting into an already
+    // chosen fabric must not show one frame of the cloth its GLB shipped with.
+    applyFirstSwatch(collected, paint, settings.anisotropyLevel)
     if (matte) applyMatte(collected)
     return { scene: clone, targets: collected }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gltf.scene, path, matte, shadows])
 
+  useSwatchTextures(targets)
   useZonePaint(targets)
   useEffect(() => () => disposeTargets(targets), [targets])
 
