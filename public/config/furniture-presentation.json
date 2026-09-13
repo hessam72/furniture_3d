@@ -183,19 +183,76 @@
       ],
       "cushion": [
         {
-          "id": "ivory",
+          "id": "cushion-linen",
+          "name": "کتان",
+          "hex": "#b4b0a8",
+          "roughness": 0.9,
+          "maps": {
+            "map": "/textures/covers/linen-ash.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          }
+        },
+        {
+          "id": "cushion-wool",
+          "name": "پشمی",
+          "hex": "#b9ae9c",
+          "roughness": 0.95,
+          "maps": {
+            "map": "/textures/covers/wool-oat.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          }
+        },
+        {
+          "id": "cushion-weave",
+          "name": "بافت",
+          "hex": "#cbbfae",
+          "roughness": 0.92,
+          "maps": {
+            "map": "/textures/covers/weave-ecru.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          }
+        },
+        {
+          "id": "cushion-ivory",
           "name": "استخوانی",
           "hex": "#e8e0d2"
         },
         {
-          "id": "grey",
+          "id": "cushion-black",
+          "name": "مشکی",
+          "hex": "#1a1a1a"
+        }
+      ],
+      "shawl": [
+        {
+          "id": "shawl-boucle",
+          "name": "بوکله",
+          "hex": "#a9a49c",
+          "roughness": 0.9,
+          "maps": {
+            "map": "/textures/covers/boucle-stone.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          }
+        },
+        {
+          "id": "shawl-wool",
+          "name": "پشمی",
+          "hex": "#b9ae9c",
+          "roughness": 0.95,
+          "maps": {
+            "map": "/textures/covers/wool-oat.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          }
+        },
+        {
+          "id": "shawl-grey",
           "name": "دودی",
           "hex": "#8b8b8b"
         },
         {
-          "id": "black",
-          "name": "مشکی",
-          "hex": "#1a1a1a"
+          "id": "shawl-wine",
+          "name": "زرشکی",
+          "hex": "#5e2129"
         }
       ]
     },
@@ -278,6 +335,64 @@
     },
     "wipe": {
       "durationMs": 900
-    }
+    },
+    "parts": [
+      {
+        "id": "couch",
+        "label": "بدنه مبل",
+        "zone": "cover",
+        "objects": [
+          "couch",
+          "sofa_body",
+          "seat",
+          "base"
+        ],
+        "materials": [
+          "Fabric_1",
+          "vray_rene_sofa_010"
+        ]
+      },
+      {
+        "id": "cushion",
+        "label": "کوسن",
+        "zone": "cushion",
+        "objects": [
+          "cushion",
+          "pillow",
+          "scatter"
+        ],
+        "materials": [
+          "fabric_03"
+        ]
+      },
+      {
+        "id": "shawl",
+        "label": "شال",
+        "zone": "shawl",
+        "objects": [
+          "shawl",
+          "throw",
+          "blanket",
+          "plaid"
+        ],
+        "materials": [
+          "vray_rene_sofa_011"
+        ]
+      },
+      {
+        "id": "wood",
+        "label": "پایه چوبی",
+        "zone": "wood",
+        "objects": [
+          "leg",
+          "frame",
+          "wood"
+        ],
+        "materials": [
+          "vray_rene_sofa_012",
+          "vray_rene_sofa_013"
+        ]
+      }
+    ]
   }
 }

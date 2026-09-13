@@ -22,7 +22,11 @@
  * file the client would build are the same bytes.
  */
 
-import type { PresentationZone } from '@/lib/product/presentation'
+import {
+  isPresentationZoneName,
+  type PresentationPart,
+  type PresentationZone,
+} from '@/lib/product/presentation'
 import type { ZonePaintConfig } from '@/stores/presentationStore'
 
 const MAGIC = 0x46546c67 // 'glTF'
@@ -148,6 +152,81 @@ function applyEdit(material: any, edit: MaterialEdit) {
   if (edit.metalness !== undefined) pbr.metallicFactor = edit.metalness
   if (edit.roughness !== undefined) pbr.roughnessFactor = edit.roughness
   return true
+}
+
+/**
+ * Which zone each glTF material wears, resolved the way the page resolves it.
+ *
+ * The raw-JSON twin of `collectZoneTargets`, and it has to walk the node tree
+ * for the same reason: a sofa GLB names the *group* — `Couch`, `Cushions`,
+ * `Shawl` — and a match claims everything under it. A flat pass over
+ * `json.meshes` cannot see that structure at all, because a mesh does not know
+ * which node references it.
+ *
+ * Precedence matches the page exactly: `extras.zone` on the node or mesh, then a
+ * part's `materials` rule, then the nearest named ancestor, then `fallback`.
+ *
+ * **Known limit, unchanged:** one glTF material shared by two groups in
+ * different zones cannot be split here — there is one material index and one
+ * `baseColorFactor`. The page clones per mesh and can. First claim wins, so the
+ * result is at least stable rather than order-dependent on the caller.
+ */
+export function zonesByMaterial(
+  json: any,
+  fallback: PresentationZone,
+  parts?: PresentationPart[] | null
+): Map<number, PresentationZone> {
+  const rules = parts ?? []
+  const nodes: any[] = json.nodes ?? []
+  const meshes: any[] = json.meshes ?? []
+  const lower = (v: unknown) => String(v ?? '').toLowerCase()
+
+  const readZone = (extras: any): PresentationZone | null => {
+    const value = extras?.userdata?.zone ?? extras?.zone ?? extras?.userdata?.paintZone ?? extras?.paintZone
+    return isPresentationZoneName(value) ? value : null
+  }
+  const partForName = (name: string) => {
+    const haystack = lower(name)
+    if (!haystack) return null
+    return rules.find((part) => part.objects?.some((needle) => haystack.includes(lower(needle)))) ?? null
+  }
+  const partForMaterial = (name: string) => {
+    const haystack = lower(name)
+    if (!haystack) return null
+    return rules.find((part) => part.materials?.some((needle) => haystack.includes(lower(needle)))) ?? null
+  }
+
+  const out = new Map<number, PresentationZone>()
+  const claim = (materialIndex: number, zone: PresentationZone) => {
+    if (!out.has(materialIndex)) out.set(materialIndex, zone)
+  }
+
+  const seen = new Set<number>()
+  const walk = (nodeIndex: number, inherited: PresentationZone) => {
+    // Guard against a malformed file pointing a child back up its own chain.
+    if (seen.has(nodeIndex)) return
+    seen.add(nodeIndex)
+
+    const node = nodes[nodeIndex]
+    if (!node) return
+    const here = readZone(node.extras) ?? partForName(node.name)?.zone ?? inherited
+
+    if (typeof node.mesh === 'number') {
+      const mesh = meshes[node.mesh]
+      const meshZone = readZone(mesh?.extras) ?? partForName(mesh?.name)?.zone ?? here
+      ;(mesh?.primitives ?? []).forEach((primitive: any) => {
+        if (typeof primitive.material !== 'number') return
+        const byMaterial = partForMaterial(json.materials?.[primitive.material]?.name)
+        claim(primitive.material, byMaterial?.zone ?? meshZone)
+      })
+    }
+
+    ;(node.children ?? []).forEach((child: number) => walk(child, here))
+  }
+
+  const roots: number[] = json.scenes?.[json.scene ?? 0]?.nodes ?? nodes.map((_, i) => i)
+  roots.forEach((root) => walk(root, fallback))
+  return out
 }
 
 /** Which material indices carry a name matching any of these substrings.
@@ -359,9 +438,10 @@ export function patchGlbMaterials(
  * them exactly or AR shows a colour the page never displayed.
  *
  * The mesh-name `match` rule those two support is deliberately not implemented:
- * the plain viewer never passes one — it paints one file as one zone — and
- * guessing at it here would be a second, silently diverging copy of a rule that
- * only the layered page uses.
+ * the plain viewer never passes one, and guessing at it here would be a second,
+ * silently diverging copy of a rule that only the layered page uses. The `parts`
+ * rule *is* implemented, because the plain viewer very much does pass it — that
+ * is what tells a couch from the shawl lying on it. @see zonesByMaterial
  *
  * `extras` is where the override lives, because that is what `GLTFLoader` copies
  * into `userData`, which is what `zoneOverride` reads.
@@ -369,7 +449,8 @@ export function patchGlbMaterials(
 export function zoneEditsFromJson(
   json: any,
   zone: PresentationZone,
-  paint: ZonePaintConfig
+  paint: ZonePaintConfig,
+  parts?: PresentationPart[] | null
 ): Map<number, MaterialEdit> {
   const editFor = (z: PresentationZone): MaterialEdit | null => {
     const p = paint[z]
@@ -382,30 +463,12 @@ export function zoneEditsFromJson(
     }
   }
 
-  const readZone = (extras: any): PresentationZone | null => {
-    const value = extras?.userdata?.zone ?? extras?.zone ?? extras?.userdata?.paintZone ?? extras?.paintZone
-    return value === 'wood' || value === 'cover' || value === 'cushion' ? value : null
-  }
-
-  // A node's extras land in the same `userData` as its mesh's, so an override
-  // tagged on either in Blender has to be honoured.
-  const byMesh = new Map<number, PresentationZone>()
-  ;(json.nodes ?? []).forEach((node: any) => {
-    const override = readZone(node?.extras)
-    if (override != null && typeof node.mesh === 'number') byMesh.set(node.mesh, override)
-  })
-
   const edits = new Map<number, MaterialEdit>()
-  ;(json.meshes ?? []).forEach((mesh: any, meshIndex: number) => {
-    const override = readZone(mesh?.extras) ?? byMesh.get(meshIndex) ?? null
-    const edit = editFor(override ?? zone)
-    if (!edit) return
-    ;(mesh.primitives ?? []).forEach((primitive: any) => {
-      // An untextured primitive with no material draws in glTF's default white;
-      // there is nothing to recolour and nothing the viewer paints either.
-      if (typeof primitive.material === 'number') edits.set(primitive.material, edit)
-    })
+  zonesByMaterial(json, zone, parts).forEach((materialZone, materialIndex) => {
+    const edit = editFor(materialZone)
+    // A zone with no paint in this configuration leaves its materials as
+    // authored, rather than falling back to another zone's colour.
+    if (edit) edits.set(materialIndex, edit)
   })
-
   return edits
 }

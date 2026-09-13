@@ -1,18 +1,18 @@
 import * as THREE from 'three'
 import { prepareCarMaterial, type CarMaterialOptions } from './prepareCarMaterial'
 import { captureBaseline, type MaterialBaseline } from './swatchTextures'
-import type { PresentationZone } from '@/lib/product/presentation'
+import {
+  isPresentationZoneName,
+  type PresentationPart,
+  type PresentationZone,
+} from '@/lib/product/presentation'
 
 export interface ZoneTarget {
   material: THREE.MeshPhysicalMaterial
   zone: PresentationZone
   /**
-   * The *material's* name, not the mesh's.
-   *
-   * In the optimised exports the mesh and node names carry nothing — they are
-   * `rene_sofa-004` and `Node_67` — while the materials are `Fabric_1`,
-   * `fabric_03`, `vray_rene_sofa_011`. So a swatch that dresses only the
-   * upholstery has to say so by material, and this is what it matches against.
+   * The *material's* name, not the mesh's. A swatch may narrow further by it —
+   * useful where one group holds both the upholstery and its piping.
    */
   materialName: string
   /** The maps and transforms this material shipped with. @see captureBaseline */
@@ -90,14 +90,38 @@ export function applyMatte(targets: ZoneTarget[]) {
 function zoneOverride(mesh: THREE.Mesh): PresentationZone | null {
   const data = mesh.userData as Record<string, any> | undefined
   const value = data?.userdata?.zone ?? data?.zone ?? data?.userdata?.paintZone ?? data?.paintZone
-  return value === 'wood' || value === 'cover' || value === 'cushion' ? value : null
+  return isPresentationZoneName(value) ? value : null
 }
 
 export interface CollectOptions {
-  /** Zone every matching mesh in this layer belongs to. */
+  /** Zone for anything no part rule claims. */
   zone: PresentationZone
   /** Substring tested against mesh.name. Omit to take every mesh in the layer. */
   match?: string
+  /**
+   * The named groups inside this file, from the manifest.
+   *
+   * Omitted → every mesh takes `zone`, which is what a single-purpose layer GLB
+   * wants. Given → the couch, its cushions and the shawl are told apart by the
+   * names their author gave them. @see PresentationPart
+   */
+  parts?: PresentationPart[]
+}
+
+const lower = (value: string | undefined | null) => (value ?? '').toLowerCase()
+
+/** Does this object's name claim it for a part? */
+function partForObject(object: THREE.Object3D, parts: PresentationPart[]): PresentationPart | null {
+  const name = lower(object.name)
+  if (!name) return null
+  return parts.find((part) => part.objects?.some((needle) => name.includes(lower(needle)))) ?? null
+}
+
+/** A part's `materials` rule, applied within an already-matched subtree. */
+function partForMaterial(materialName: string, parts: PresentationPart[]): PresentationPart | null {
+  const name = lower(materialName)
+  if (!name) return null
+  return parts.find((part) => part.materials?.some((needle) => name.includes(lower(needle)))) ?? null
 }
 
 /**
@@ -106,37 +130,91 @@ export interface CollectOptions {
  * Cloning is mandatory — drei caches the GLTF, so mutating a material in place
  * would leak colour and clipping planes into every other user of that asset.
  * Meshes outside the match rule are left untouched and un-cloned.
+ *
+ * A recursive walk rather than `Object3D.traverse`, and that is the whole point
+ * of the rewrite: the zone has to be *inherited*. A sofa GLB names the group,
+ * not each of the forty meshes under it, so matching `couch` has to claim
+ * everything below it — while a `cushion` group nested inside still wins for its
+ * own subtree, because the nearest match down the path is the one that applies.
+ *
+ * Precedence, most specific first:
+ *   1. `userData.zone` on the mesh — the Blender tag, always the last word
+ *   2. a part's `materials` rule
+ *   3. the nearest ancestor (or the mesh itself) matched by a part's `objects`
+ *   4. `options.zone`
  */
 export function collectZoneTargets(root: THREE.Object3D, options: CollectOptions): ZoneTarget[] {
-  const { zone, match } = options
+  const { zone, match, parts } = options
   const needle = match?.toLowerCase()
   const targets: ZoneTarget[] = []
+  const rules = parts ?? []
 
-  root.traverse((child) => {
-    if (!(child instanceof THREE.Mesh) || !child.material) return
+  const walk = (object: THREE.Object3D, inherited: PresentationZone) => {
+    // Re-evaluated at every level, so the deepest naming wins over the shallowest.
+    const claimed = rules.length ? partForObject(object, rules) : null
+    const here = claimed?.zone ?? inherited
 
-    const override = zoneOverride(child)
-    const matched = !needle || child.name.toLowerCase().includes(needle)
-    if (!override && !matched) return
+    const mesh = object as THREE.Mesh
+    if (mesh.isMesh && mesh.material) {
+      const override = zoneOverride(mesh)
+      const matched = !needle || lower(mesh.name).includes(needle)
+      if (override || matched) {
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+        const cloned = materials.map((mat) => {
+          const copy = mat.clone() as THREE.MeshPhysicalMaterial
+          const byMaterial = rules.length ? partForMaterial(mat.name, rules) : null
+          targets.push({
+            material: copy,
+            zone: override ?? byMaterial?.zone ?? here,
+            materialName: mat.name ?? '',
+            // Read off the clone, which still holds the authored textures and their
+            // transforms — this is the only moment that state is guaranteed present,
+            // and both restoring and the inherit rule need it. @see captureBaseline
+            baseMaps: captureBaseline(copy),
+          })
+          return copy
+        })
+        mesh.material = Array.isArray(mesh.material) ? cloned : cloned[0]
+      }
+    }
 
-    const materials = Array.isArray(child.material) ? child.material : [child.material]
-    const cloned = materials.map((mat) => {
-      const copy = mat.clone() as THREE.MeshPhysicalMaterial
-      targets.push({
-        material: copy,
-        zone: override ?? zone,
-        materialName: mat.name ?? '',
-        // Read off the clone, which still holds the authored textures and their
-        // transforms — this is the only moment that state is guaranteed present,
-        // and both restoring and the inherit rule need it. @see captureBaseline
-        baseMaps: captureBaseline(copy),
-      })
-      return copy
-    })
-    child.material = Array.isArray(child.material) ? cloned : cloned[0]
-  })
+    object.children.forEach((child) => walk(child, here))
+  }
 
+  walk(root, zone)
   return targets
+}
+
+/**
+ * The loaded file's shape, for the console.
+ *
+ * `parts` is authored against names only their exporter knows, and guessing them
+ * is how this feature silently dresses nothing. Printed under `?debug` so the
+ * names can be read off the real file rather than inferred from a screenshot.
+ * The same idea as `describeSceneNames` in lib/store/sceneObject.ts.
+ */
+export function describeObjectTree(root: THREE.Object3D, parts?: PresentationPart[]): string {
+  const rules = parts ?? []
+  const lines: string[] = []
+
+  const walk = (object: THREE.Object3D, depth: number, inherited: PresentationZone | null) => {
+    const claimed = rules.length ? partForObject(object, rules) : null
+    const here = claimed?.zone ?? inherited
+    const mesh = object as THREE.Mesh
+    const materials = mesh.isMesh
+      ? (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).map((m) => m?.name || '(unnamed)')
+      : []
+
+    lines.push(
+      `${'  '.repeat(depth)}${object.name || '(unnamed)'}` +
+        (materials.length ? `  [${materials.join(', ')}]` : '') +
+        (claimed ? `  ← part "${claimed.id}" → ${claimed.zone}` : here ? `  · ${here}` : '')
+    )
+    object.children.forEach((child) => walk(child, depth + 1, here))
+  }
+
+  walk(root, 0, null)
+  return lines.join('\n')
 }
 
 /** Dispose only the cloned materials — geometry belongs to drei's cache. */

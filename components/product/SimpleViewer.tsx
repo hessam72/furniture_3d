@@ -14,7 +14,12 @@ import { useCanvasLifecycle } from '@/hooks/useCanvasLifecycle'
 import { PartErrorBoundary } from '@/components/three/PartErrorBoundary'
 import { clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
-import { collectZoneTargets, disposeTargets, preparePresentationObject } from '@/lib/three/layerMaterials'
+import {
+  collectZoneTargets,
+  describeObjectTree,
+  disposeTargets,
+  preparePresentationObject,
+} from '@/lib/three/layerMaterials'
 import { applyAnisotropy } from '@/lib/three/prepareCarMaterial'
 import { applyFirstCoat, useZonePaint } from '@/hooks/useZonePaint'
 import { applyFirstSwatch, useSwatchTextures } from '@/hooks/useSwatchTextures'
@@ -22,6 +27,7 @@ import { usePresentation } from '@/stores/presentationStore'
 import {
   simpleViewer,
   type PresentationConfig,
+  type PresentationPart,
   type PresentationZone,
   type ResolvedSimpleViewer,
 } from '@/lib/product/presentation'
@@ -63,6 +69,7 @@ function Piece({
   sourceRef,
   plinth,
   zone,
+  parts,
   paintable = true,
 }: {
   path: string
@@ -75,9 +82,12 @@ function Piece({
   sourceRef?: React.MutableRefObject<THREE.Object3D | null>
   /** Stands the piece on a plinth. @see ViewerPlinth */
   plinth?: PlinthSpec
-  /** Which palette this file wears. The frame is `wood`, a cover variant is
-   *  `cover` — one file at a time, so one zone at a time. */
+  /** The zone for anything no part rule claims. The frame is `wood`, a cover
+   *  variant is `cover` — one file at a time. */
   zone: PresentationZone
+  /** The named groups inside this file — couch, cushions, shawl — so each can be
+   *  dressed on its own. Omitted → the whole file wears `zone`. */
+  parts?: PresentationPart[]
   /** False leaves the GLB's own materials alone. @see Props.paintable */
   paintable?: boolean
 }) {
@@ -102,7 +112,7 @@ function Piece({
 
     // An unpainted piece keeps every material the file shipped with — nothing
     // is cloned, so nothing is recoloured and nothing needs disposing.
-    const collected = paintable ? collectZoneTargets(clone, { zone }) : []
+    const collected = paintable ? collectZoneTargets(clone, { zone, parts }) : []
     if (paintable) {
       const { paint } = usePresentation.getState()
       applyFirstCoat(collected, paint)
@@ -131,7 +141,7 @@ function Piece({
       footprint: Math.max(size.x, size.z) / 2,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gltf.scene, path, envIntensity, zone, paintable])
+  }, [gltf.scene, path, envIntensity, zone, parts, paintable])
 
   /**
    * Anisotropy is applied to the existing clone, not baked into the memo above.
@@ -152,6 +162,29 @@ function Piece({
     })
     invalidate()
   }, [scene, settings.anisotropyLevel, invalidate])
+
+  /**
+   * The file's own names, for whoever has to write the `parts` block.
+   *
+   * Those names live in the exporter's head and nowhere else, and a rule that
+   * matches nothing fails by dressing nothing — no error, no warning, just a
+   * swatch that does not work. Printing the tree turns that from a guess into a
+   * lookup. Also flags rules that hit nothing, which is the other half of the
+   * same problem: `gltf-transform dedup` can rename a material out from under a
+   * config that used to be right.
+   */
+  useEffect(() => {
+    if (!isDebug()) return
+    console.groupCollapsed(`[parts] ${path}`)
+    console.log(describeObjectTree(scene, parts))
+    const claimed = new Set(targets.map((target) => target.zone))
+    parts?.forEach((part) => {
+      if (!claimed.has(part.zone)) {
+        console.warn(`[parts] "${part.id}" matched nothing — check its objects/materials against the tree above`)
+      }
+    })
+    console.groupEnd()
+  }, [scene, parts, targets, path])
 
   // Before useZonePaint, so on the mount pass the map is in place before the
   // first damp frame reads the material.
@@ -434,6 +467,7 @@ export default function SimpleViewer({
             sourceRef={sourceRef}
             plinth={plinth}
             zone={zone}
+            parts={config.parts}
             paintable={paintable}
           />
         </PartErrorBoundary>

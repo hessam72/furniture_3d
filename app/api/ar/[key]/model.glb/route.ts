@@ -7,6 +7,7 @@ import {
   patchGlbMaterials,
   readGlbJson,
   zoneEditsFromJson,
+  zonesByMaterial,
   type InjectableSlot,
   type TextureInjection,
 } from '@/lib/ar/glbPatch'
@@ -149,13 +150,30 @@ export async function GET(request: Request, { params }: { params: { key: string 
         if (ktx2) maps[slot] = new Uint8Array(ktx2)
       }
       if (Object.keys(maps).length) {
-        // Names, not indices — the same list the page matches on, so AR cannot
-        // dress a different set of parts than the screen just did.
-        injection = { materials: materialIndicesByName(json, swatch.materials), maps }
+        /**
+         * Which materials wear this fabric.
+         *
+         * The zone comes first, resolved through the same part rules the page
+         * walks — so a shawl swatch reaches the shawl group and nothing else,
+         * and the couch keeps its own cloth. A swatch may narrow further by
+         * material name, for a group holding both upholstery and piping.
+         */
+        const byZone = zonesByMaterial(json, zone, presentation.config.parts)
+        const inZone = new Set(
+          [...byZone.entries()].filter(([, materialZone]) => materialZone === zone).map(([index]) => index)
+        )
+        const narrowed = swatch.materials?.length
+          ? new Set([...inZone].filter((index) => materialIndicesByName(json, swatch.materials).has(index)))
+          : inZone
+        injection = { materials: narrowed, maps }
       }
     }
 
-    const patched = patchGlbMaterials(bytes, zoneEditsFromJson(json, zone, paint), injection)
+    const patched = patchGlbMaterials(
+      bytes,
+      zoneEditsFromJson(json, zone, paint, presentation.config.parts),
+      injection
+    )
     remember(cacheKey, patched)
     return glbResponse(patched)
   } catch (error) {

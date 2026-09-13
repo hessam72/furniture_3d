@@ -7,10 +7,77 @@ import type { SwatchMaps, SwatchSpec, SwatchUv } from '@/lib/three/swatchTexture
 import { type QualityPreset } from '@/lib/config/quality'
 import { SURFACE_POLICY, resolveTier, type DeviceClass } from '@/lib/config/deviceTier'
 
-/** The three independently colourable parts of a piece. Unlike the showroom's
- *  keyword matching, the zone is implied by which layer GLB a mesh came from —
- *  only `soft` needs a name rule, to split cushions from the fixed fibre base. */
-export type PresentationZone = 'wood' | 'cover' | 'cushion'
+/**
+ * The independently colourable parts of a piece.
+ *
+ * On the layered `/product` page the zone is implied by which layer GLB a mesh
+ * came from. On `/simple` and `/showroom` there is one file for the whole piece,
+ * so the split has to come from inside it — a sofa GLB holds its couch, its
+ * cushions and a shawl as separately named groups, and dressing all three in the
+ * same cloth is not a configurator. That is what `parts` in the manifest is for.
+ * @see PresentationPart
+ */
+export type PresentationZone = 'wood' | 'cover' | 'cushion' | 'shawl'
+
+/**
+ * Every zone, in the order the AR paint tuple encodes them.
+ *
+ * **Append only.** `encodePaint` writes this array positionally and the result
+ * is the cache key for every AR URL ever issued; reordering it would silently
+ * repaint old links, and `shawl` is last for exactly that reason.
+ * @see lib/ar/arSource.ts
+ */
+export const PRESENTATION_ZONES: PresentationZone[] = ['wood', 'cover', 'cushion', 'shawl']
+
+export function isPresentationZoneName(value: unknown): value is PresentationZone {
+  return PRESENTATION_ZONES.includes(value as PresentationZone)
+}
+
+/**
+ * One named group inside a single GLB — the couch, its cushions, the shawl.
+ *
+ * A furniture GLB is not one object. It is a scene graph where the seat, the
+ * scatter cushions and a throw each sit under their own node, and a configurator
+ * that cannot tell them apart dresses the throw in the same cloth as the frame.
+ * This is how the manifest tells them apart, and it is deliberately authored by
+ * *name* rather than by material: material names survive `gltf-transform dedup`
+ * only by luck, and two parts commonly share one material.
+ *
+ * Read the names out of your own file rather than guessing them — the loaded
+ * tree is printed to the console on any page opened with `?debug`.
+ */
+export interface PresentationPart {
+  /** Stable id, used for the paint slot and the UI row. */
+  id: string
+  /** Row label in the sheet. */
+  label: string
+  /**
+   * Which paint zone this part wears. Two parts may share a zone, in which case
+   * they change together — that is a choice the manifest makes, not an accident.
+   */
+  zone: PresentationZone
+  /**
+   * Node, group or mesh names, case-insensitive substrings.
+   *
+   * **A match claims the whole subtree.** Naming the group is enough; every mesh
+   * under it belongs to the part without being listed, which is what makes this
+   * authorable against a real export rather than against a flattened list.
+   * A nested part wins over its ancestor, so `cushion` inside `couch` still
+   * reads as a cushion.
+   */
+  objects?: string[]
+  /**
+   * Material names, as a second, independent rule.
+   *
+   * Claims a material **wherever it appears**, and wins over `objects` — so it
+   * is the sharper tool of the two: use it to pull the piping out of a group
+   * that is otherwise all upholstery, or to split an export whose groups were
+   * never named usefully in the first place. `objects` is still the one to
+   * reach for first, because it survives re-authoring; material names do not
+   * always survive `gltf-transform dedup`.
+   */
+  materials?: string[]
+}
 
 export interface ZoneSwatch {
   id: string
@@ -502,6 +569,10 @@ export function defaultPaint(config: PresentationConfig): ZonePaintConfig {
     wood: seed('wood', { color: '#c8a06a', roughness: 0.55, metalness: 0, clearcoat: 0 }),
     cover: seed('cover', { color: '#36454f', ...surface }),
     cushion: seed('cushion', { color: '#e8e0d2', roughness: 0.8, metalness: 0, clearcoat: 0 }),
+    // A throw is a loose woven thing, so it opens rougher than the upholstery.
+    // Only ever seen on a piece whose `parts` claim a shawl group; everything
+    // else leaves this zone with nothing assigned to it.
+    shawl: seed('shawl', { color: '#b4b0a8', roughness: 0.95, metalness: 0, clearcoat: 0 }),
   }
 }
 
@@ -573,7 +644,15 @@ export interface PresentationConfig {
     stage?: StageMeta
     startStep?: 0 | 1
   }
-  palettes: Record<PresentationZone, ZoneSwatch[]>
+  palettes: Partial<Record<PresentationZone, ZoneSwatch[]>>
+  /**
+   * The named groups inside the piece's GLB, and which zone each one wears.
+   *
+   * Omitted → the old behaviour exactly: the whole file is one zone, dressed as
+   * a single cloth. Present → the sheet shows one swatch row per part and each
+   * changes on its own. @see PresentationPart
+   */
+  parts?: PresentationPart[]
   /**
    * Framing is expressed as angles and ratios, never absolute metres. The rig
    * derives the actual distance from the piece's measured bounds and the live
@@ -843,14 +922,14 @@ export function swatchPaint(swatch: ZoneSwatch, roughnessFallback?: number): Par
 /** Every swatch across every zone, the mounted variant's palette included. */
 function allSwatches(config: PresentationConfig): ZoneSwatch[] {
   const variants = config.layers.cover.variants.flatMap((variant) => variant.palette ?? [])
-  const zones: PresentationZone[] = ['wood', 'cover', 'cushion']
+  const zones = PRESENTATION_ZONES
   return [...zones.flatMap((zone) => config.palettes[zone] ?? []), ...variants]
 }
 
 /** The maps the page opens with — what `defaultPaint` seeds each zone from. */
 export function openingSwatchMaps(config: PresentationConfig): SwatchMaps[] {
   const cover = findCoverVariant(config, config.layers.cover.default)
-  const zones: PresentationZone[] = ['wood', 'cover', 'cushion']
+  const zones = PRESENTATION_ZONES
   return zones
     .map((zone) => (zone === 'cover' ? coverPalette(config, cover)[0] : config.palettes[zone]?.[0]))
     .filter((swatch): swatch is ZoneSwatch => isTextureSwatch(swatch))

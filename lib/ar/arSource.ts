@@ -12,12 +12,13 @@
  * No `three` import — this is read by app/api/ar/[key]/model.glb/route.ts.
  */
 
-import type { PresentationZone } from '@/lib/product/presentation'
+import { PRESENTATION_ZONES, isPresentationZoneName, type PresentationZone } from '@/lib/product/presentation'
 import type { ZonePaint, ZonePaintConfig } from '@/stores/presentationStore'
 
-const ZONES: PresentationZone[] = ['wood', 'cover', 'cushion']
+/** The wire order. Append-only — @see PRESENTATION_ZONES. */
+const ZONES = PRESENTATION_ZONES
 
-/** Long enough for three zones of paint, short enough that a hand-edited URL
+/** Long enough for every zone's paint, short enough that a hand-edited URL
  *  cannot make the route parse megabytes. */
 export const MAX_PAINT_PARAM_LENGTH = 512
 
@@ -63,10 +64,16 @@ export function decodePaint(raw: string | null): ZonePaintConfig | null {
   } catch {
     return null
   }
-  if (!Array.isArray(parsed) || parsed.length !== ZONES.length) return null
+  // A shorter tuple is a URL issued before a zone was appended, not a malformed
+  // one. `shawl` went on the end precisely so indices 0-2 keep their meaning and
+  // links already in a customer's history — or a browser cache, for a year —
+  // still resolve to the piece they described. Longer than we know about is
+  // still a reject: that is a newer build's URL, and guessing at it is worse
+  // than a 400.
+  if (!Array.isArray(parsed) || parsed.length === 0 || parsed.length > ZONES.length) return null
 
   const out = {} as ZonePaintConfig
-  for (let i = 0; i < ZONES.length; i++) {
+  for (let i = 0; i < parsed.length; i++) {
     const entry = parsed[i]
     if (entry === null) continue
     if (!Array.isArray(entry) || entry.length !== 4) return null
@@ -79,7 +86,7 @@ export function decodePaint(raw: string | null): ZonePaintConfig | null {
 }
 
 export function isPresentationZone(value: string | null): value is PresentationZone {
-  return value === 'wood' || value === 'cover' || value === 'cushion'
+  return isPresentationZoneName(value)
 }
 
 /**
@@ -89,11 +96,12 @@ export function isPresentationZone(value: string | null): value is PresentationZ
  *
  * `swatchId` is the same kind of token for the fabric: an id the route looks up
  * in the palette, never a texture URL. It is a parameter of its own rather than
- * a fifth element of the paint tuple, because `decodePaint` rejects any entry
- * that is not exactly four long and that string is the cache key for both the
- * browser and the route — growing it would make every URL issued before this
- * change answer 400. Omitted when there is no textured swatch, so those URLs
- * stay byte-identical to the ones already cached.
+ * a fifth element of each zone's tuple, because `decodePaint` requires every
+ * entry to be exactly four long and that string is the cache key for both the
+ * browser and the route — widening the entries would make every URL issued
+ * before this change answer 400. (Adding a whole *zone* is safe, and is why
+ * `PRESENTATION_ZONES` is append-only: a short outer array still decodes.)
+ * Omitted when there is no textured swatch.
  */
 export function arModelUrl(
   key: string,

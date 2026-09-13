@@ -272,15 +272,38 @@ across a single combined GLB.
    invisible to the runtime, and a swatch asking for `repeat: [1,1]` still tiles
    — for reasons nothing in the config can express. A dev-only warning fires when
    a matched mesh's UVs run past 1.0, naming the mesh and material.
-7. **Material names are an API.** Swatches target materials by name
+7. **Name the groups.** A furniture GLB is not one object — the couch, its
+   scatter cushions and a throw each sit under their own node, and a configurator
+   that cannot tell them apart dresses all three in the same cloth. Give each a
+   stable group name (`Couch`, `Cushions`, `Shawl`) and list it in `parts`:
+
+   ```jsonc
+   "parts": [
+     { "id": "couch",   "label": "بدنه مبل", "zone": "cover",   "objects": ["couch", "seat"] },
+     { "id": "cushion", "label": "کوسن",     "zone": "cushion", "objects": ["cushion", "pillow"] },
+     { "id": "shawl",   "label": "شال",      "zone": "shawl",   "objects": ["shawl", "throw"] }
+   ]
+   ```
+
+   **A match claims the whole subtree**, so naming the group is enough — the
+   forty meshes under it do not need listing. A nested part beats its ancestor,
+   so a `Cushions` group inside `Couch` still reads as cushions. Each part drives
+   its own `palettes[zone]`, which is what makes couch / cushion / shawl
+   independently choosable.
+
+   Read the names off your own file rather than guessing: open any product page
+   with **`?debug`** and the console prints the loaded tree, its materials, and
+   which part claimed each node. A rule that matches nothing is warned about
+   there too — that failure is otherwise silent.
+8. **Material names are an API.** Swatches target materials by name
    (`"materials": ["Fabric_1", …]`), because mesh names in the optimised exports
    carry nothing — they are `rene_sofa-004` and `Node_67`. Name the upholstery
    material something stable and deliberate, and re-check it after
    `scripts/optimize-glb.sh`: `gltf-transform dedup` merges identical materials
    and can collapse the name a swatch was written against.
-8. Every cover variant should occupy the same volume, so switching material
+9. Every cover variant should occupy the same volume, so switching material
    doesn't change the silhouette.
-9. **No shadow-only geometry and no lights.** The page renders with no shadow
+10. **No shadow-only geometry and no lights.** The page renders with no shadow
    maps at all; a shadow-catcher plane would show up as a grey slab.
 
 ## The room

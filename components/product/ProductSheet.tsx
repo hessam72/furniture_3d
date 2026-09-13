@@ -33,10 +33,35 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'ar', label: 'واقعیت افزوده' },
 ]
 
+/** Fallback row labels, for a manifest with no `parts` block of its own. */
 const ZONE_LABELS: Record<PresentationZone, string> = {
   wood: 'چوب بدنه',
   cover: 'رویه',
   cushion: 'کوسن',
+  shawl: 'شال',
+}
+
+/**
+ * The swatch rows to show, in manifest order.
+ *
+ * A `parts` block is the piece describing its own anatomy — couch, cushions,
+ * shawl — so it names the rows too. Two parts pointing at one zone collapse into
+ * a single row, because they *are* a single control: they share a paint slot and
+ * would otherwise render as two chips fighting over the same state.
+ *
+ * With no parts, this is the old behaviour exactly: wood and cover, plus cushion
+ * where a soft layer exists to wear it.
+ */
+function swatchRows(config: ResolvedPresentation['config']): { zone: PresentationZone; label: string }[] {
+  if (config.parts?.length) {
+    const seen = new Set<PresentationZone>()
+    return config.parts
+      .filter((part) => (seen.has(part.zone) ? false : (seen.add(part.zone), true)))
+      .filter((part) => (config.palettes[part.zone]?.length ?? 0) > 0)
+      .map((part) => ({ zone: part.zone, label: part.label }))
+  }
+  const zones: PresentationZone[] = config.layers.soft ? ['wood', 'cover', 'cushion'] : ['wood', 'cover']
+  return zones.map((zone) => ({ zone, label: ZONE_LABELS[zone] }))
 }
 
 interface Props {
@@ -83,11 +108,10 @@ export default function ProductSheet({
 }: Props) {
   const { product, config } = presentation
 
-  // No cushion row without a soft layer — the swatches would paint nothing.
-  const zones = useMemo<PresentationZone[]>(
-    () => (config.layers.soft ? ['wood', 'cover', 'cushion'] : ['wood', 'cover']),
-    [config.layers.soft]
-  )
+  // One row per named part, or the old zone list where a manifest has none.
+  // A row whose palette is empty is dropped — swatches that paint nothing read
+  // as a broken control rather than a deliberate one.
+  const rows = useMemo(() => swatchRows(config), [config])
   const [activeTab, setActiveTab] = useState<Tab>('specs')
   // Opens collapsed: the piece is the hero, details are one tap away.
   const [expanded, setExpanded] = useState(false)
@@ -284,11 +308,11 @@ export default function ProductSheet({
 
               {activeTab === 'colors' && (
                 <div className="space-y-5">
-                  {zones.map((zone) => (
+                  {rows.map(({ zone, label }) => (
                     <SwatchRow
                       key={zone}
                       zone={zone}
-                      label={ZONE_LABELS[zone]}
+                      label={label}
                       swatches={palettes(zone)}
                       activeId={paint[zone].swatchId}
                       activeHex={paint[zone].color}
