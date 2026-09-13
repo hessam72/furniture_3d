@@ -11,7 +11,7 @@ import { useAssetProbe } from '@/hooks/useAssetProbe'
 import { useDeviceClass } from '@/hooks/useDeviceClass'
 import { usePresentation } from '@/stores/presentationStore'
 import { isARCapable } from '@/lib/device-utils'
-import { arModelUrl } from '@/lib/ar/arSource'
+import { arModelUrl, swatchIdsFromPaint } from '@/lib/ar/arSource'
 import { AR_GLB_MAX_BYTES, AR_GLB_WARN_BYTES, AR_TRIANGLE_WARN, countTriangles } from '@/lib/ar/budget'
 import {
   arModelPath,
@@ -250,10 +250,11 @@ function Viewer({
   const openAR = useCallback(async () => {
     const layer = showingFrame ? 'frame' : coverId ?? 'default'
     const { paint } = usePresentation.getState()
-    // The swatch id travels beside the paint, so the route can put the chosen
-    // fabric in the file. Undefined for a plain colour swatch, which keeps those
-    // URLs byte-identical to the ones already in every cache.
-    const url = arModelUrl(productKey, layer, zone, paint, paint[zone]?.maps ? paint[zone].swatchId : null)
+    // Every zone's swatch id travels beside the paint, so the route can put each
+    // chosen fabric in the file — the couch's, the cushions', the shawl's. It
+    // used to send only the active zone's, which is why colour reached the room
+    // and cloth did not. Zones wearing a plain colour contribute nothing.
+    const url = arModelUrl(productKey, layer, zone, paint, swatchIdsFromPaint(paint))
     const debug = new URLSearchParams(window.location.search).has('debug')
 
     setArBuilding(true)
@@ -262,12 +263,20 @@ function Viewer({
       const head = await fetch(url, { method: 'HEAD' })
       const size = Number(head.headers.get('content-length') ?? 0)
       const triangles = source.current ? countTriangles(source.current) : 0
+      // What the route found in the file AR is about to be handed. `ok` means
+      // the room shows what this canvas shows; anything else is a list of
+      // extensions Scene Viewer or Quick Look drop without an error, and the
+      // reason to look at how the asset was exported. @see arHazards
+      const compat = head.headers.get('x-ar-compat')
 
       if (debug) {
         console.log(
           `[AR] ${arModelPath(config, layer)} → ${(size / 1048576).toFixed(1)} MB, ` +
-            `${triangles ? triangles.toLocaleString() : '?'} triangles`
+            `${triangles ? triangles.toLocaleString() : '?'} triangles, compat ${compat ?? '?'}`
         )
+      }
+      if (compat && compat !== 'ok') {
+        console.warn(`[AR] this file cannot reach AR unchanged — ${compat}`)
       }
       if (!head.ok) throw new Error(`configured model unavailable (${head.status})`)
       if (size > AR_GLB_MAX_BYTES) throw new Error(`configured model is ${size} bytes`)

@@ -55,6 +55,20 @@ export type InjectableSlot = 'baseColorTexture' | 'normalTexture'
  * an image is not a number, and naming a different one means adding it to the
  * file. @see patchGlbMaterials
  */
+export interface InjectedMap {
+  /**
+   * Stable identity for these bytes — the manifest path they were read from.
+   *
+   * Load-bearing once more than one zone is dressed at a time, which is the
+   * normal case: every fabric in the palette shares one normal map, and the
+   * cushion and the couch may be wearing the same cloth. Appending it once per
+   * zone would put three identical megabytes in a file a phone has to download.
+   */
+  source: string
+  /** The `.ktx2` bytes. */
+  bytes: Uint8Array
+}
+
 export interface TextureInjection {
   /**
    * Material indices to repoint, resolved from the swatch's material *names*.
@@ -65,8 +79,8 @@ export interface TextureInjection {
    * resolver; use it rather than a second walk.
    */
   materials: Set<number>
-  /** The `.ktx2` bytes, per slot. */
-  maps: Partial<Record<InjectableSlot, Uint8Array>>
+  /** The fabric, per slot. */
+  maps: Partial<Record<InjectableSlot, InjectedMap>>
 }
 
 interface GlbChunk {
@@ -263,14 +277,22 @@ function textureRef(material: any, slot: InjectableSlot): any | null {
  * rule for free — `vray_rene_sofa_012` keeps its 90° rotation, `fabric_03` its
  * 3×3 — with no second copy of that logic to drift.
  *
- * Returns the bytes to append to the BIN chunk.
+ * `byPath` is what keeps a three-zone configuration from carrying three copies
+ * of one cloth: an image already appended under this `source` is pointed at
+ * again rather than added a second time. The sampler comes from the first
+ * reference that claimed it, which is the same sampler in practice — these
+ * exports carry exactly one.
+ *
+ * Returns the bytes to append to the BIN chunk, or null when there was nothing
+ * to do or nothing to add.
  */
 function injectTexture(
   json: any,
   binLength: number,
   slot: InjectableSlot,
-  ktx2: Uint8Array,
-  materialIndices: Set<number>
+  map: InjectedMap,
+  materialIndices: Set<number>,
+  byPath: Map<string, number>
 ): Uint8Array | null {
   const materials: any[] = json.materials ?? []
   const refs = [...materialIndices]
@@ -281,10 +303,23 @@ function injectTexture(
     .filter((ref): ref is { index: number } => !!ref)
   if (!refs.length) return null
 
+  const repoint = (textureIndex: number) => {
+    refs.forEach((ref) => {
+      ref.index = textureIndex
+    })
+  }
+
+  const already = byPath.get(map.source)
+  if (already !== undefined) {
+    repoint(already)
+    return null
+  }
+
   const bufferViews: any[] = (json.bufferViews ??= [])
   const images: any[] = (json.images ??= [])
   const textures: any[] = (json.textures ??= [])
   const buffers: any[] = (json.buffers ??= [{ byteLength: 0 }])
+  const ktx2 = map.bytes
 
   // glTF requires 4-byte alignment on a bufferView's offset.
   const padding = (4 - (binLength % 4)) % 4
@@ -300,9 +335,8 @@ function injectTexture(
   })
 
   const textureIndex = textures.length - 1
-  refs.forEach((ref) => {
-    ref.index = textureIndex
-  })
+  byPath.set(map.source, textureIndex)
+  repoint(textureIndex)
 
   buffers[0].byteLength = byteOffset + ktx2.byteLength
 
@@ -324,12 +358,17 @@ function injectTexture(
  *
  * Everything after the JSON chunk — the BIN chunk, and any extra chunk a tool
  * may have appended — is copied through untouched, except for the fabric bytes
- * `injection` adds to the end of BIN.
+ * `injections` add to the end of BIN.
+ *
+ * One injection per zone, because a customer dresses the couch, its cushions and
+ * the shawl separately and all three have to arrive. Distinct cloths append
+ * distinct images; a cloth two zones share, or the normal map the whole palette
+ * shares, is appended once. @see injectTexture
  */
 export function patchGlbMaterials(
   bytes: ArrayBuffer,
   edits: Map<number, MaterialEdit>,
-  injection?: TextureInjection
+  injections?: TextureInjection[]
 ): ArrayBuffer {
   const chunks = readChunks(bytes)
   const json = JSON.parse(new TextDecoder().decode(chunks[0].data))
@@ -368,15 +407,21 @@ export function patchGlbMaterials(
    */
   const binIndex = chunks.findIndex((chunk) => chunk.type === CHUNK_BIN)
   const appended: Uint8Array[] = []
-  if (injection && binIndex > 0) {
+  if (injections?.length && binIndex > 0) {
     let binLength = chunks[binIndex].data.byteLength
-    ;(['baseColorTexture', 'normalTexture'] as InjectableSlot[]).forEach((slot) => {
-      const ktx2 = injection.maps[slot]
-      if (!ktx2) return
-      const chunk = injectTexture(json, binLength, slot, ktx2, injection.materials)
-      if (!chunk) return
-      appended.push(chunk)
-      binLength += chunk.byteLength
+    // Source path → the texture index it was appended as, across every zone.
+    const byPath = new Map<string, number>()
+    injections.forEach((injection) => {
+      ;(['baseColorTexture', 'normalTexture'] as InjectableSlot[]).forEach((slot) => {
+        const map = injection.maps[slot]
+        if (!map) return
+        const chunk = injectTexture(json, binLength, slot, map, injection.materials, byPath)
+        // Null is the already-appended case as well as the nothing-to-do one;
+        // either way the references are repointed and no bytes are added.
+        if (!chunk) return
+        appended.push(chunk)
+        binLength += chunk.byteLength
+      })
     })
   }
   const appendedLength = appended.reduce((sum, chunk) => sum + chunk.byteLength, 0)
@@ -471,4 +516,47 @@ export function zoneEditsFromJson(
     if (edit) edits.set(materialIndex, edit)
   })
   return edits
+}
+
+/**
+ * What each AR runtime drops on the floor, keyed by the glTF extension that
+ * triggers it.
+ *
+ * None of these is an error anywhere. Scene Viewer and three's `USDZExporter`
+ * both carry on and render *something*, which is how a piece can come back from
+ * AR wearing a finish the page never showed with nothing in the console to say
+ * so — the same silence that let one zone's fabric travel and the other two's
+ * stay behind for as long as it did.
+ *
+ * The patcher cannot remove any of them: preserving the file byte for byte is
+ * the whole point of it. They are a property of how the asset was authored and
+ * exported, so this reports them and the fix is upstream.
+ */
+export const AR_HAZARDS: Record<string, string> = {
+  KHR_texture_transform:
+    'Quick Look mis-maps transformed textures — three writes a UsdTransform2d and documents that Quick Look reads it wrong (FB10036297), so a tiled or rotated map lands at the wrong scale and reads as flat colour. Export those materials with the transform baked into their UVs.',
+  KHR_texture_basisu:
+    'Scene Viewer has no Basis transcoder, so an Android phone without WebXR cannot open this file at all. It needs a PNG/JPEG twin.',
+  EXT_texture_webp: 'Scene Viewer cannot decode WebP; it needs a PNG/JPEG twin.',
+  EXT_mesh_gpu_instancing:
+    'neither AR runtime reads it, and it is only ever listed in extensionsUsed — so every instance but the first vanishes without an error. Export the copies as real nodes.',
+  KHR_materials_sheen: 'USDZ has no sheen; the cloth reads flatter in Quick Look',
+  KHR_materials_specular: 'USDZ has no specular extension; Quick Look uses the base PBR values',
+  KHR_materials_iridescence: 'dropped by the USDZ exporter',
+  KHR_materials_anisotropy: 'dropped by the USDZ exporter',
+  KHR_materials_transmission: 'dropped by the USDZ exporter; glass reads opaque',
+  KHR_materials_volume: 'dropped by the USDZ exporter',
+}
+
+/**
+ * The hazards a GLB actually declares — the gap between what the page renders
+ * and what AR will.
+ *
+ * Read off the JSON chunk the route has already parsed in order to patch it, so
+ * it costs nothing. An empty array means the file says the same thing in both
+ * places.
+ */
+export function arHazards(json: any): string[] {
+  const declared = new Set<string>([...(json?.extensionsUsed ?? []), ...(json?.extensionsRequired ?? [])])
+  return Object.keys(AR_HAZARDS).filter((name) => declared.has(name))
 }
