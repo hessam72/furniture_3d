@@ -111,6 +111,15 @@ export function extendGltfLoader(loader: GLTFLoader): void {
  * wait rather than race the transcoder's initialisation. Returns a cancel
  * function, because a page that unmounts mid-wait should not go on to parse
  * GLBs nobody is going to look at.
+ *
+ * **`useDraco` is `false`, and it has to match the components exactly.** drei
+ * keys its cache on the loader configuration, so `true` here preloads into an
+ * entry no `useGLTF(path, false, …)` ever reads — the warm is thrown away and
+ * the file is parsed a second time on mount. Worse, `true` is the branch where
+ * drei installs *its own* DRACOLoader over ours after `extendLoader` has run,
+ * which sends the decoder fetch to `gstatic.com` instead of `/draco/`: a
+ * network round trip for a file already sitting in `public/`, and a hard
+ * failure anywhere that CDN is not reachable.
  */
 export function preloadGltf(
   paths: string[],
@@ -119,7 +128,7 @@ export function preloadGltf(
   let cancelled = false
   void ready.then(() => {
     if (cancelled) return
-    paths.forEach((path) => preload(path, true, true, extendGltfLoader))
+    paths.forEach((path) => preload(path, false, true, extendGltfLoader))
   })
   return () => {
     cancelled = true

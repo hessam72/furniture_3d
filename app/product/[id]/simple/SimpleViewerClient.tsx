@@ -10,9 +10,6 @@ import { QualityProvider } from '@/contexts/QualityContext'
 import { useAssetProbe } from '@/hooks/useAssetProbe'
 import { useDeviceClass } from '@/hooks/useDeviceClass'
 import { usePresentation } from '@/stores/presentationStore'
-import { useShop } from '@/stores/storeShopStore'
-import { findCatalogItemBySceneObject, type Catalog } from '@/lib/store/catalog'
-import catalog from '@/public/config/catalog.json'
 import { isARCapable } from '@/lib/device-utils'
 import { arModelUrl } from '@/lib/ar/arSource'
 import { AR_GLB_MAX_BYTES, AR_GLB_WARN_BYTES, AR_TRIANGLE_WARN, countTriangles } from '@/lib/ar/budget'
@@ -33,7 +30,7 @@ import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
 import { useContextRecovery, type ContextRecovery } from '@/hooks/useContextRecovery'
 import { useGltfCacheEviction, useSwatchCacheEviction } from '@/hooks/useGltfCacheEviction'
 import { preloadGltf } from '@/lib/three/gltfLoaders'
-import ProductSheet from '@/components/product/ProductSheet'
+import ViewerDock from '@/components/product/ViewerDock'
 import QualityChips from '@/components/product/QualityChips'
 
 const SimpleViewer = dynamic(() => import('@/components/product/SimpleViewer'), {
@@ -43,11 +40,6 @@ const SimpleViewer = dynamic(() => import('@/components/product/SimpleViewer'), 
 
 const ARProductViewer = dynamic(() => import('@/components/store/ARProductViewer'), { ssr: false })
 
-/** Said once in the sheet, because a swatch that paints nothing on the layer
- *  currently mounted reads as a broken control rather than a deliberate one. */
-const ZONE_NOTE =
-  'این نما هر بار یک لایه را نشان می‌دهد: رنگ چوب روی «اسکلت چوبی» و رنگ رویه روی نمای نهایی دیده می‌شود.'
-
 /**
  * A stripped viewer for the same piece the presentation page dresses.
  *
@@ -55,11 +47,12 @@ const ZONE_NOTE =
  * no reflection and no post — so the piece can be judged on its own and the
  * page runs the same everywhere.
  *
- * What it is *not* is a lesser product page: it carries the presentation
- * page's own bottom sheet, so every fact, swatch, layer and the AR button are
- * where a customer already knows to find them. The sheet writes to the shared
- * presentation store, which is what makes that possible — this page only has
- * to answer the store's state with the right file on screen.
+ * Where `/product/[id]` is a product page with a 3D view in it, this is the
+ * piece itself with the fewest controls that still let you configure it: pick a
+ * cloth for each part, look inside, put it in your room. @see ViewerDock, which
+ * is why this page no longer mounts `ProductSheet` — the two answer to different
+ * layouts and different priorities, and one component serving both would need a
+ * mode flag on every tab.
  */
 export default function SimpleViewerClient({ presentation }: { presentation: ResolvedPresentation }) {
   const { config } = presentation
@@ -110,12 +103,9 @@ function Viewer({
    * full presentation page's rig reads.
    */
   const coverage = usePresentation((s) => s.sheetCoverage)
-
-  const addToCart = useShop((s) => s.addToCart)
-  const catalogId = useMemo(
-    () => findCatalogItemBySceneObject(catalog as Catalog, productKey)?.id ?? null,
-    [productKey]
-  )
+  /** And how much of the width, once the dock is open on a screen wide enough to
+   *  give it any. The camera slides the piece clear rather than shrinking it. */
+  const dockCoverage = usePresentation((s) => s.dockCoverage)
 
   /**
    * The cover swap is a clip-plane wipe on the full page, played by the scene.
@@ -346,6 +336,7 @@ function Viewer({
           key={canvasKey}
           config={viewConfig}
           coverage={coverage}
+          dockCoverage={dockCoverage}
           zone={zone}
           sourceRef={source}
           onReady={handleReady}
@@ -375,21 +366,11 @@ function Viewer({
       </header>
 
       {live && (
-        <ProductSheet
+        <ViewerDock
           presentation={presentation}
           onViewAR={openAR}
-          onAddToCart={() => catalogId && addToCart(catalogId)}
-          // Always: the configured model is a URL, not something that has to be
-          // built first and can fail to be. `arLive` goes false only once a real
-          // attempt has fallen back to the published file.
-          arAvailable
           arCapable={arSupported}
-          arLive={!arStale}
           arBuilding={arBuilding}
-          // One file on screen at a time — there is no stack to pull apart,
-          // and each palette shows on the layer it belongs to.
-          explodable={false}
-          zoneNote={ZONE_NOTE}
           hidden={showAR}
         />
       )}

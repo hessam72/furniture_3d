@@ -71,6 +71,16 @@ export interface PresentationState {
    *  lifts the piece by half of it so "centred" means centred in the part of
    *  the screen the viewer can actually see. */
   sheetCoverage: number
+  /**
+   * The same idea sideways: the fraction of the viewport *width* a side dock
+   * hides.
+   *
+   * A panel that opens over the piece is a panel that hides what it is there to
+   * change. The rig narrows its horizontal half-angle by this and walks the
+   * frustum window across, which slides the piece clear of the dock instead of
+   * shrinking it — the customer keeps a full-size sofa and gains the controls.
+   */
+  dockCoverage: number
 
   /** `startStep` is which layer the page opens on — 1 (the finished piece) by
    *  default, 0 to open on the bare frame. */
@@ -86,6 +96,7 @@ export interface PresentationState {
   toggleExplode: () => void
   setLayerError: (layer: string, message: string | null) => void
   setSheetCoverage: (fraction: number) => void
+  setDockCoverage: (fraction: number) => void
   reset: () => void
 }
 
@@ -93,7 +104,15 @@ const EMPTY_PAINT: ZonePaint = { color: '#ffffff', metalness: 0, roughness: 0.6,
 
 const INITIAL = {
   productKey: null,
-  paint: { wood: EMPTY_PAINT, cover: EMPTY_PAINT, cushion: EMPTY_PAINT } as ZonePaintConfig,
+  // Every zone, or `paint[zone]` is undefined until initProduct lands and the
+  // first coat reads through a hole. The `as` cast below used to hide exactly
+  // that, which is why this is spelled out rather than partial.
+  paint: {
+    wood: EMPTY_PAINT,
+    cover: EMPTY_PAINT,
+    cushion: EMPTY_PAINT,
+    shawl: EMPTY_PAINT,
+  } satisfies ZonePaintConfig,
   activeZone: 'cover' as PresentationZone,
   coverId: null,
   pendingCoverId: null,
@@ -102,6 +121,7 @@ const INITIAL = {
   exploded: false,
   layerErrors: {} as Record<string, string>,
   sheetCoverage: 0,
+  dockCoverage: 0,
 }
 
 export const usePresentation = create<PresentationState>()(
@@ -120,11 +140,13 @@ export const usePresentation = create<PresentationState>()(
       // mount and then only from a ResizeObserver, and the sheet survives an AR
       // round trip untouched (its `hidden` state animates a transform, which
       // changes no box). Zeroing it here would leave nothing to restore it, and
-      // the camera would frame the piece behind the drawer.
+      // the camera would frame the piece behind the drawer. `dockCoverage` is
+      // measured the same way and carried through for the same reason.
       initProduct: (key, paint, coverId, startStep = 1) =>
         set((state) => ({
           ...INITIAL,
           sheetCoverage: state.sheetCoverage,
+          dockCoverage: state.dockCoverage,
           productKey: key,
           paint,
           coverId,
@@ -220,6 +242,13 @@ export const usePresentation = create<PresentationState>()(
         // animation would otherwise fire a store write every frame.
         const next = Math.round(Math.min(Math.max(fraction, 0), 0.9) * 40) / 40
         if (next !== get().sheetCoverage) set({ sheetCoverage: next })
+      },
+
+      setDockCoverage: (fraction) => {
+        // Same quantisation, same reason — the dock slides open over ~350ms and
+        // a re-frame per frame of that is a re-frame per frame.
+        const next = Math.round(Math.min(Math.max(fraction, 0), 0.6) * 40) / 40
+        if (next !== get().dockCoverage) set({ dockCoverage: next })
       },
 
       reset: () => set(INITIAL),

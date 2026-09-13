@@ -103,7 +103,8 @@
             "Fabric_1",
             "fabric_03",
             "vray_rene_sofa_011"
-          ]
+          ],
+          "thumbnail": "/images/fabrics/weave-ecru.png"
         },
         {
           "id": "wool-oat",
@@ -118,7 +119,8 @@
             "Fabric_1",
             "fabric_03",
             "vray_rene_sofa_011"
-          ]
+          ],
+          "thumbnail": "/images/fabrics/wool-oat.png"
         },
         {
           "id": "boucle-stone",
@@ -133,7 +135,8 @@
             "Fabric_1",
             "fabric_03",
             "vray_rene_sofa_011"
-          ]
+          ],
+          "thumbnail": "/images/fabrics/boucle-stone.png"
         },
         {
           "id": "linen-ash",
@@ -148,7 +151,8 @@
             "Fabric_1",
             "fabric_03",
             "vray_rene_sofa_011"
-          ]
+          ],
+          "thumbnail": "/images/fabrics/linen-ash.png"
         },
         {
           "id": "white",
@@ -190,7 +194,8 @@
           "maps": {
             "map": "/textures/covers/linen-ash.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
-          }
+          },
+          "thumbnail": "/images/fabrics/linen-ash.png"
         },
         {
           "id": "cushion-wool",
@@ -200,7 +205,8 @@
           "maps": {
             "map": "/textures/covers/wool-oat.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
-          }
+          },
+          "thumbnail": "/images/fabrics/wool-oat.png"
         },
         {
           "id": "cushion-weave",
@@ -210,7 +216,8 @@
           "maps": {
             "map": "/textures/covers/weave-ecru.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
-          }
+          },
+          "thumbnail": "/images/fabrics/weave-ecru.png"
         },
         {
           "id": "cushion-ivory",
@@ -232,7 +239,8 @@
           "maps": {
             "map": "/textures/covers/boucle-stone.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
-          }
+          },
+          "thumbnail": "/images/fabrics/boucle-stone.png"
         },
         {
           "id": "shawl-wool",
@@ -242,7 +250,8 @@
           "maps": {
             "map": "/textures/covers/wool-oat.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
-          }
+          },
+          "thumbnail": "/images/fabrics/wool-oat.png"
         },
         {
           "id": "shawl-grey",

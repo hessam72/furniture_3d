@@ -132,6 +132,18 @@ About 1.3 MB resident each on iOS, capped at 24 MB across the whole cache
 filename** — the script refuses to overwrite and tells you to bump `VERSION`.
 @see `arch-docs/TEXTURE_SWAP_PLAN.md`.
 
+The swatch chips are pictures of the cloth, taken from the cloth:
+
+```bash
+npm run tex:thumbs     # public/textures/covers/*.ktx2 → public/images/fabrics/*.png
+```
+
+It transcodes one mip with the same Basis decoder the browser loads and writes
+the PNG with node's own zlib, so it needs no image library — there is nothing to
+install. ~30 KB at 256², which carries both the chip and the preview beside it.
+Run it whenever a fabric is re-encoded: one asset per fabric means a chip cannot
+drift from the texture the piece is actually wearing.
+
 ### 3. Verify on the phone
 
 Open any of the four pages with **`?debug`**. An overlay appears in the corner:
