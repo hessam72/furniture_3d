@@ -27,6 +27,7 @@
  */
 
 import { DEFAULT_QUALITY, QUALITY_PRESETS, type QualityPreset } from '@/lib/config/quality'
+import type { GpuClass } from '@/lib/three/gpuClass'
 
 /**
  * Media query for "a phone", as opposed to a tablet or a small window.
@@ -189,6 +190,16 @@ export function writeStoredTier(tier: QualityPreset): void {
   }
 }
 
+/**
+ * The ceiling a measured GPU imposes, over and above the device class.
+ *
+ * The device class says how big the screen is and whether it is touched. It
+ * cannot say how old the hardware is, and a 2012 iPad and an M4 iPad Pro are
+ * both `tablet`. `low` is what the oldest thing that can still run WebGL2
+ * holds. @see lib/three/gpuClass
+ */
+const WEAK_GPU_CEILING: QualityPreset = 'low'
+
 export interface TierRequest {
   surface: RenderSurface
   device: DeviceClass
@@ -198,6 +209,9 @@ export interface TierRequest {
   stored?: QualityPreset | null
   /** Rungs surrendered to a lost context. Applied last, below the ceiling. */
   downgrades?: number
+  /** What the hardware itself measured, when a probe has run. `weak` caps to
+   *  `low` whatever the surface would otherwise allow. @see readGpuClass */
+  gpu?: GpuClass
 }
 
 /**
@@ -205,10 +219,21 @@ export interface TierRequest {
  *
  * `stored ?? manifest ?? fallback`, capped, then lowered by `downgrades`. The
  * order is the policy: a person's explicit choice outranks the manifest, the
- * manifest outranks the default, and the device outranks all three.
+ * manifest outranks the default, and the device outranks all three — with the
+ * measured GPU outranking even the device, because the device class is a guess
+ * about hardware made from the size of a window and this is not a guess.
  */
-export function resolveTier({ surface, device, manifest, stored, downgrades = 0 }: TierRequest): QualityPreset {
+export function resolveTier({
+  surface,
+  device,
+  manifest,
+  stored,
+  downgrades = 0,
+  gpu,
+}: TierRequest): QualityPreset {
   const policy = SURFACE_POLICY[surface]
   const asked = (policy.honoursStored ? stored : null) ?? manifest ?? policy.fallback[device]
-  return lowerTier(capTier(asked, policy.ceiling[device]), downgrades)
+  const capped = capTier(asked, policy.ceiling[device])
+  const held = gpu === 'weak' ? capTier(capped, WEAK_GPU_CEILING) : capped
+  return lowerTier(held, downgrades)
 }

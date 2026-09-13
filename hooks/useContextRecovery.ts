@@ -38,7 +38,8 @@ export interface ContextRecovery {
   /** Remount token for the Canvas — a context that died has to be rebuilt, not
    *  re-rendered. Bumped by `retry` and by `remount`. */
   canvasKey: number
-  /** Rungs surrendered this page view. Hand to `<QualityProvider downgrades>`. */
+  /** Rungs surrendered this page view, plus one standing rung if this device
+   *  has lost a context here before. Hand to `<QualityProvider downgrades>`. */
   downgrades: number
   /** False once the ladder has run out; show a dead end rather than a button
    *  that will fail the same way. */
@@ -57,6 +58,46 @@ export interface ContextRecovery {
 const FORGIVE_AFTER_MS = 60_000
 
 const storageKey = (surface: RenderSurface) => `furniture:downgrades:${surface}`
+
+/**
+ * A second, longer-lived record that this device has lost a context here.
+ *
+ * The rung above lives in `sessionStorage`, which is the right lifetime for
+ * *this tab* and survives the reload iOS performs on a canvas-memory abort. It
+ * does not survive the visitor coming back tomorrow — so a device that crashed
+ * twice yesterday opened at full tier again today and crashed a third time.
+ *
+ * This is deliberately coarser than the rung count: not "how many rungs did it
+ * cost" but "this hardware has failed on this surface at all", which is a
+ * property of the device rather than of the visit. It expires, because a
+ * browser update or a lighter product should not leave the page permanently
+ * dimmed, and because the visitor may simply be on a different device by then.
+ */
+const CRASHED_KEY = (surface: RenderSurface) => `furniture:crashed:${surface}`
+const CRASHED_TTL_MS = 7 * 24 * 60 * 60 * 1000
+
+function readCrashed(surface: RenderSurface): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const at = Number(window.localStorage.getItem(CRASHED_KEY(surface)))
+    if (!at) return false
+    if (Date.now() - at > CRASHED_TTL_MS) {
+      window.localStorage.removeItem(CRASHED_KEY(surface))
+      return false
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
+function writeCrashed(surface: RenderSurface): void {
+  try {
+    window.localStorage.setItem(CRASHED_KEY(surface), String(Date.now()))
+  } catch {
+    /* private mode: the memory is per-tab only, as it was before */
+  }
+}
 
 function readDowngrades(surface: RenderSurface): number {
   if (typeof window === 'undefined') return 0
@@ -97,13 +138,18 @@ export function useContextRecovery(options: {
   // differs between the server and client HTML is a hydration mismatch.
   useEffect(() => {
     const stored = readDowngrades(surface)
-    if (stored) setDowngrades(stored)
-  }, [surface])
+    // A device with a crash on its record opens one rung down even on a fresh
+    // tab, and never below the rungs this tab has already surrendered.
+    const floor = readCrashed(surface) ? step : 0
+    const next = Math.max(stored, floor)
+    if (next) setDowngrades(next)
+  }, [surface, step])
 
   const lostAt = useRef(0)
 
   const handleContextLost = useCallback(() => {
     lostAt.current = Date.now()
+    writeCrashed(surface)
     setLost(true)
     setLosses((n) => {
       onLost?.(n + 1)
@@ -133,6 +179,9 @@ export function useContextRecovery(options: {
   // Survived a minute at the lower tier: forget the rung for the next visit.
   // The current page view keeps it — moving the tier back up under a customer
   // who is looking at the piece is its own kind of broken.
+  // Note this forgives the *tab's* rung only. The `furniture:crashed:` record
+  // is not cleared here: surviving a minute at a lower tier proves the lower
+  // tier holds, which is precisely not evidence that the higher one would.
   useEffect(() => {
     if (!downgrades || lost) return
     const timer = window.setTimeout(() => writeDowngrades(surface, 0), FORGIVE_AFTER_MS)

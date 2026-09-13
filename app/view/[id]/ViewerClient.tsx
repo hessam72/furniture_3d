@@ -15,6 +15,7 @@ import type { UploadedAsset } from '@/lib/uploads/store'
 import QualityChips from '@/components/product/QualityChips'
 import { useDeviceClass } from '@/hooks/useDeviceClass'
 import { useContextRecovery } from '@/hooks/useContextRecovery'
+import { WEBGL_UNAVAILABLE_FA, webglUnavailable } from '@/lib/three/gpuClass'
 
 const SimpleViewer = dynamic(() => import('@/components/product/SimpleViewer'), {
   ssr: false,
@@ -60,6 +61,18 @@ export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
   }, [])
 
   useEffect(() => setArCapable(isARCapable()), [])
+
+  /**
+   * No WebGL2 on this device — three 0.180 has no WebGL1 path, so there is no
+   * renderer to build. Routed through `error`, which already gates the canvas,
+   * the loading plate and the AR button and draws the notice below; the point
+   * is that it is *not* the lost-context path, which would offer a retry that
+   * can only fail. Read in an effect because this shell server-renders.
+   * @see readGpuClass
+   */
+  useEffect(() => {
+    if (webglUnavailable()) setError(WEBGL_UNAVAILABLE_FA)
+  }, [])
 
   /** The uploaded environment, when one came with the model; otherwise the
    *  house HDR. @see uploadViewerConfig */
@@ -158,11 +171,26 @@ export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
         </div>
       )}
 
-      {error && (
+      {(error || recovery.lost) && (
         <div className="absolute inset-0 z-40 flex items-center justify-center p-6 text-center">
-          <div className="space-y-2">
-            <p className="text-[14px] text-neutral-800">این فایل قابل نمایش نیست.</p>
-            <p className="break-all text-[11px] text-neutral-500">{error}</p>
+          <div className="space-y-3">
+            <p className="text-[14px] text-neutral-800">
+              {recovery.lost && !error ? 'نمایش سه‌بعدی متوقف شد.' : 'این فایل قابل نمایش نیست.'}
+            </p>
+            <p className="break-all text-[11px] text-neutral-500">
+              {error ?? 'حافظه گرافیکی دستگاه پر شد'}
+            </p>
+            {/* The ladder unmounts the canvas on a loss, and this page drew
+                nothing in its place — a blank plate with no way back. */}
+            {!error && recovery.lost && recovery.retryable && (
+              <button
+                onClick={() => recovery.retry()}
+                className="rounded-lg border border-neutral-300 px-4 py-2 text-[13px] text-neutral-700
+                           transition-colors hover:border-neutral-500"
+              >
+                تلاش دوباره
+              </button>
+            )}
           </div>
         </div>
       )}

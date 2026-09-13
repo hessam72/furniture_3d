@@ -30,6 +30,7 @@ import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
 import { useContextRecovery } from '@/hooks/useContextRecovery'
 import { useGltfCacheEviction } from '@/hooks/useGltfCacheEviction'
 import { preloadGltf } from '@/lib/three/gltfLoaders'
+import { WEBGL_UNAVAILABLE_FA, webglUnavailable } from '@/lib/three/gpuClass'
 import PresentationLoading from '@/components/product/PresentationLoading'
 import type { Catalog } from '@/lib/store/catalog'
 
@@ -77,7 +78,6 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
    * before the canvas mounts behind the splash.
    */
   const device = useDeviceClass()
-  const phone = device === 'phone'
   /** What the manifest asks for, capped to the device. The rungs a lost context
    *  has cost are applied by the provider. @see resolveTier */
   const qualityPreset = useMemo(() => presentationQuality(config, device), [config, device])
@@ -94,6 +94,17 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
   }, [key])
 
   useEffect(() => setArSupported(isARCapable()), [])
+
+  /**
+   * No WebGL2 on this device at all — three 0.180 dropped the WebGL1 path in
+   * r163, so there is no renderer to build and no tier low enough to save it.
+   * Distinct from `layerError`'s lost-context copy on purpose: that one says
+   * the device ran out of room and offers a retry, and here there is nothing to
+   * retry. Read in an effect because this shell server-renders and a value that
+   * differed between the two would be a hydration mismatch. @see readGpuClass
+   */
+  const [noWebgl, setNoWebgl] = useState(false)
+  useEffect(() => setNoWebgl(webglUnavailable()), [])
 
   // Kills iOS pull-to-refresh over this page. @see .viewport-locked
   useEffect(() => {
@@ -153,12 +164,14 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
     // and a room GLB so `room.mode` can switch between them.
     if (roomMode(config) === 'image' && config.room.image) useTexture.preload(config.room.image)
 
-    // Not on a phone. Warming the other covers buys a swap that never suspends,
-    // and pays for it in exactly the currency a phone has least of: every warmed
-    // variant is a second full GLB parsed and held in drei's cache, on a device
-    // already at its ceiling with the one it is showing. There the swap
-    // suspends behind the wipe instead, which is what the wipe is for.
-    if (phone) return
+    // Desktop only. Warming the other covers buys a swap that never suspends,
+    // and pays for it in exactly the currency touch hardware has least of:
+    // every warmed variant is a second full GLB parsed and held in drei's
+    // cache, on a device already at its ceiling with the one it is showing.
+    // There the swap suspends behind the wipe instead, which is what the wipe
+    // is for. This read `phone` and so exempted every tablet, which is not a
+    // device class with memory to spare — only one with a wider window.
+    if (device !== 'desktop') return
 
     const rest = config.layers.cover.variants
       .filter((v) => v.id !== config.layers.cover.default)
@@ -177,7 +190,7 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
       stopWarm()
       stopPreload()
     }
-  }, [state, assets, config, phone])
+  }, [state, assets, config, device])
 
   const retry = useCallback(() => {
     setLayerError(null)
@@ -242,7 +255,7 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
         {/* Unmounted while AR is open: model-viewer takes a WebGL context of
             its own, and two live contexts plus the exported GLB is what tips a
             phone over. Remounting is cheap — the GLBs stay in drei's cache. */}
-        {state === 'ready' && !showAR && !contextLost && (
+        {state === 'ready' && !showAR && !contextLost && !noWebgl && (
           <PresentationScene
             key={canvasKey}
             config={config}
@@ -255,7 +268,7 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
         {/* Covers the probe *and* the streaming behind it. The canvas has to be
             mounted and rendering to load its own assets, so the splash is held
             over it and faded, rather than shown in its place. */}
-        {!layerError && state !== 'missing' && (
+        {!layerError && state !== 'missing' && !noWebgl && (
           <PresentationLoading productName={product.name} ready={state === 'ready' && sceneReady} />
         )}
 
@@ -277,12 +290,13 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
           />
         )}
 
-        {(state === 'missing' || layerError) && (
+        {(state === 'missing' || layerError || noWebgl) && (
           <MissingAssetsNotice
             productName={product.name}
-            kind={layerError ? 'error' : 'missing'}
-            missing={layerError ? [layerError] : missing}
-            onRetry={retry}
+            kind={layerError || noWebgl ? 'error' : 'missing'}
+            missing={noWebgl ? [WEBGL_UNAVAILABLE_FA] : layerError ? [layerError] : missing}
+            // Nothing to retry on a browser that cannot build a renderer.
+            onRetry={noWebgl ? undefined : retry}
           />
         )}
 

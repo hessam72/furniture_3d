@@ -116,9 +116,11 @@ export default function PresentationScene({ config, onLayerError, onReady, onCon
   })
 
   const dpr = useMemo<[number, number]>(() => {
-    const [min, max] = clampDprToBudget(settings.dpr)
+    // The canvas is single-sampled here (`antialias: false` below) — AA is the
+    // composer's job — so the budget is spent on pixels, not on samples.
+    const [min, max] = clampDprToBudget(settings.dpr, device)
     return [min, Math.max(min, +(max * perfScale).toFixed(2))]
-  }, [settings.dpr, perfScale])
+  }, [settings.dpr, device, perfScale])
 
   return (
     <div

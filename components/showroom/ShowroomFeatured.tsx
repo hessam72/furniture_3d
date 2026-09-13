@@ -18,6 +18,7 @@ import type { ShowroomConfig } from '@/lib/showroom/config'
 import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
 import { useContextRecovery } from '@/hooks/useContextRecovery'
 import { useGltfCacheEviction } from '@/hooks/useGltfCacheEviction'
+import { WEBGL_UNAVAILABLE_FA, webglUnavailable } from '@/lib/three/gpuClass'
 import Reveal from './Reveal'
 import { ArIcon, ArrowIcon, ChevronIcon, Icon, RotateIcon, SofaGhostIcon } from './icons'
 
@@ -121,7 +122,18 @@ export default function ShowroomFeatured({
   // Every cover the visitor toggled through, not just the one on screen. This
   // section re-probes and re-parses per toggle and never released any of them.
   useGltfCacheEviction(modelPath ? [modelPath] : [])
-  const canRender = !!config && !!modelPath && probe.state === 'ready' && !failed && !recovery.lost
+  /**
+   * No WebGL2 on this device — three 0.180 dropped the WebGL1 path in r163, so
+   * the stage can never mount here. Read in an effect rather than during
+   * render: this is a marketing section that server-renders, and a value that
+   * differs between the server's HTML and the client's first render is a
+   * hydration mismatch. @see readGpuClass
+   */
+  const [noWebgl, setNoWebgl] = useState(false)
+  useEffect(() => setNoWebgl(webglUnavailable()), [])
+
+  const canRender =
+    !!config && !!modelPath && probe.state === 'ready' && !failed && !recovery.lost && !noWebgl
 
   const handleError = useCallback(() => setFailed(true), [])
   const handleReady = useCallback(() => setReady(true), [])
@@ -307,7 +319,11 @@ export default function ShowroomFeatured({
               {!ready && (
                 <div className="sr-viewer-fallback">
                   <SofaGhostIcon size={64} />
-                  {recovery.lost ? (
+                  {/* Ordered by how final each is: an unsupported browser
+                      outranks a lost context, which outranks a missing file. */}
+                  {noWebgl ? (
+                    <span>{WEBGL_UNAVAILABLE_FA}.</span>
+                  ) : recovery.lost ? (
                     <span>نمایش سه‌بعدی متوقف شد — حافظه گرافیکی دستگاه پر شد.</span>
                   ) : probe.state === 'missing' || failed ? (
                     <span>مدل سه‌بعدی این محصول در دسترس نیست.</span>

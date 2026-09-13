@@ -31,6 +31,7 @@ import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
 import { useContextRecovery, type ContextRecovery } from '@/hooks/useContextRecovery'
 import { useGltfCacheEviction } from '@/hooks/useGltfCacheEviction'
 import { preloadGltf } from '@/lib/three/gltfLoaders'
+import { WEBGL_UNAVAILABLE_FA, webglUnavailable } from '@/lib/three/gpuClass'
 import ProductSheet from '@/components/product/ProductSheet'
 import QualityChips from '@/components/product/QualityChips'
 
@@ -94,6 +95,19 @@ function Viewer({
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const canvasKey = recovery.canvasKey
+
+  /**
+   * No WebGL2 on this device at all — three 0.180 dropped the WebGL1 path in
+   * r163, so there is no renderer to build and no tier low enough to save it.
+   *
+   * Read in an effect rather than the initialiser, unlike the tier: this is
+   * page chrome that *does* server-render, and a value that differs between the
+   * server's HTML and the client's first render is a hydration mismatch. The
+   * effect runs before paint and the canvas is gated behind the asset probe
+   * anyway, so nothing is allocated in the gap. @see readGpuClass
+   */
+  const [noWebgl, setNoWebgl] = useState(false)
+  useEffect(() => setNoWebgl(webglUnavailable()), [])
 
   const initProduct = usePresentation((s) => s.initProduct)
   const reset = usePresentation((s) => s.reset)
@@ -183,10 +197,14 @@ function Viewer({
   }, [])
 
   // Warm the layers the sheet can switch to, so a swap does not suspend behind
-  // a blank stage. Not on a phone: every warmed file is a second GLB parsed and
-  // held on a device already at its ceiling with the one it is showing.
+  // a blank stage. Desktop only: every warmed file is a second GLB parsed and
+  // held on a device already at its ceiling with the one it is showing, and
+  // that argument was never about phones — it was about the memory a touch
+  // device has, which a tablet does not have appreciably more of. The tablet
+  // was skipping it on a technicality: an iPad's short side is exactly 768, so
+  // PHONE_QUERY misses it and it warmed a second and third full GLB.
   useEffect(() => {
-    if (state !== 'ready' || device === 'phone') return
+    if (state !== 'ready' || device !== 'desktop') return
     const rest = [
       config.layers.frame.path,
       ...config.layers.cover.variants.map((v) => v.path),
@@ -267,9 +285,10 @@ function Viewer({
       }
 
       // Hand back what the sheet warmed but is not showing. The canvas is about
-      // to unmount and model-viewer is about to build a second scene; on a phone
-      // those two do not both fit alongside three parsed GLBs.
-      if (device === 'phone') {
+      // to unmount and model-viewer is about to build a second scene; on touch
+      // hardware those two do not both fit alongside three parsed GLBs — on a
+      // tablet as much as on a phone.
+      if (device !== 'desktop') {
         config.layers.cover.variants
           .filter((v) => v.path !== modelPath)
           .forEach((v) => useGLTF.clear(v.path))
@@ -317,7 +336,7 @@ function Viewer({
       className="font-persian viewport-fill relative w-screen overflow-hidden"
       style={{ background: view.background }}
     >
-      {live && !showAR && !recovery.lost && (
+      {live && !showAR && !recovery.lost && !noWebgl && (
         <SimpleViewer
           label="simple"
           key={canvasKey}
@@ -343,7 +362,8 @@ function Viewer({
             <ChevronRight className="h-4 w-4" />
             نمای کامل
           </Link>
-          {live && !showAR && <QualityChips />}
+          {/* A render-quality picker over a page that cannot render. */}
+          {live && !showAR && !noWebgl && <QualityChips />}
         </div>
 
         <h1 className="max-w-[55%] truncate pt-1 text-right text-[15px] font-semibold text-neutral-900">
@@ -371,22 +391,28 @@ function Viewer({
         />
       )}
 
-      {(blocked.length > 0 || error || recovery.lost) && (
+      {(blocked.length > 0 || error || recovery.lost || noWebgl) && (
         <Notice
           productName={product.name}
           detail={
-            recovery.lost
-              ? 'نمایش سه‌بعدی متوقف شد — حافظه گرافیکی دستگاه پر شد'
-              : error ?? `فایل‌های یافت‌نشده: ${blocked.join('، ')}`
+            // Ordered by how final each is. An unsupported browser outranks
+            // everything else: nothing else that is wrong can be fixed on it.
+            noWebgl
+              ? WEBGL_UNAVAILABLE_FA
+              : recovery.lost
+                ? 'نمایش سه‌بعدی متوقف شد — حافظه گرافیکی دستگاه پر شد'
+                : error ?? `فایل‌های یافت‌نشده: ${blocked.join('، ')}`
           }
           productKey={productKey}
-          onRetry={recovery.lost && recovery.retryable ? () => recovery.retry() : undefined}
+          onRetry={
+            !noWebgl && recovery.lost && recovery.retryable ? () => recovery.retry() : undefined
+          }
         />
       )}
 
       {/* Held over the canvas rather than shown in its place: the canvas has to
           be mounted and rendering to load its own model at all. */}
-      {!error && !blocked.length && (
+      {!error && !blocked.length && !noWebgl && (
         <div
           aria-hidden={ready}
           className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center transition-opacity duration-500"

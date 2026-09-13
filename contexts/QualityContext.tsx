@@ -26,6 +26,7 @@ import {
   type RenderSurface,
 } from '@/lib/config/deviceTier';
 import { useDeviceClass } from '@/hooks/useDeviceClass';
+import { readGpuClass, type GpuClass } from '@/lib/three/gpuClass';
 
 interface QualityContextType {
   preset: QualityPreset;
@@ -83,8 +84,19 @@ export function QualityProvider({
    */
   const [chosen, setChosen] = useState<QualityPreset | null>(() => readStoredTier());
 
-  const preset = resolveTier({ surface, device, manifest, stored: chosen, downgrades });
-  const ceiling = SURFACE_POLICY[surface].ceiling[device];
+  /**
+   * The measured hardware, read in the same initialiser and for the same
+   * reason: the canvas below sizes its buffers on the first render, so a probe
+   * that lands in an effect lands after the allocation it exists to prevent.
+   * One 1x1 context per tab, cached in sessionStorage. @see readGpuClass
+   */
+  const [gpu] = useState<GpuClass>(() => readGpuClass());
+
+  const preset = resolveTier({ surface, device, manifest, stored: chosen, downgrades, gpu });
+  // Capped the same way the resolver caps, or the picker offers rungs that
+  // resolve back down and read as a control that does nothing.
+  const surfaceCeiling = SURFACE_POLICY[surface].ceiling[device];
+  const ceiling = resolveTier({ surface, device, manifest: surfaceCeiling, stored: surfaceCeiling, gpu });
   const settings = QUALITY_PRESETS[preset];
 
   const [ssgiEnabled, setSsgiEnabledState] = useState(false);

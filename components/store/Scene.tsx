@@ -264,9 +264,11 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
   // Sustained-FPS ladder scale (same mechanism as /car)
   const [perfScale, setPerfScale] = useState(1)
   const dpr = useMemo<[number, number]>(() => {
-    const [min, max] = clampDprToBudget(settings.dpr)
+    // The canvas is single-sampled here (`antialias: false` below) — AA is the
+    // composer's job — so the budget is spent on pixels, not on samples.
+    const [min, max] = clampDprToBudget(settings.dpr, device)
     return [min, Math.max(min, +(max * perfScale).toFixed(2))]
-  }, [settings.dpr, perfScale])
+  }, [settings.dpr, device, perfScale])
 
   // Demand-loop idle state: physics pauses while parked
   const [idle, setIdle] = useState(false)
