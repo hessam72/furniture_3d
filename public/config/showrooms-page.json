@@ -121,7 +121,7 @@
         "category": "مبل راحتی",
         "title": "مدل لاین",
         "description": "پایه چوب راش، تشک قابل جداسازی از فوم سرد و کوسن‌های الیاف ویسکوز؛ ست هفت‌نفره با نشیمن راحت برای پذیرایی خانواده.",
-        "presentationKey": "test",
+        "presentationKey": "nilper",
         "chips": [
           {
             "icon": "rotate",
@@ -151,7 +151,7 @@
         },
         "cta": {
           "label": "مشاهده و شخصی‌سازی",
-          "href": "/product/test"
+          "href": "/product/nilper"
         },
         "specsLabel": "مشخصات کوتاه",
         "specs": [
@@ -176,18 +176,22 @@
           "path": "/images/showroom-stage.glb",
           "radiusScale": 1.22,
           "scale": 1,
-          "offset": [0, 0, 0]
+          "offset": [
+            0,
+            0,
+            0
+          ]
         },
         "viewer": {
           "frame": {
-            "path": "/models/presentation/test/frame.glb",
+            "path": "/models/presentation/nilper/frame.glb",
             "label": "اسکلت چوبی"
           },
           "covers": [
             {
               "id": "velvet",
               "name": "مخمل",
-              "path": "/models/presentation/test/single-sofa.glb",
+              "path": "/models/presentation/nilper/single-sofa.glb",
               "material": {
                 "roughness": 0.95,
                 "metalness": 0,
@@ -197,7 +201,7 @@
             {
               "id": "leather",
               "name": "چرم طبیعی",
-              "path": "/models/presentation/test/single-sofa.glb",
+              "path": "/ktx-optimized/Furniture high Test2-optimized.glb",
               "material": {
                 "roughness": 0.8,
                 "metalness": 0,
@@ -348,7 +352,6 @@
         },
         "image": null,
         "sideText": [
-          "REAL",
           "SPACES",
           "REAL",
           "PEOPLE",
