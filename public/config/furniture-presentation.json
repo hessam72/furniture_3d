@@ -91,6 +91,56 @@
       ],
       "cover": [
         {
+          "id": "weave-test",
+          "name": "مخمل زمردی",
+          "hex": "#cbbfae",
+          "roughness": 0.82,
+          "maps": {
+            "map": "/textures/covers/green_fabric_03_diffuse (2)_UASTC.ktx2",
+            "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/green_fabric.webp"
+        },
+         {
+          "id": "weave-blue",
+          "name": "آبی نفتی",
+          "hex": "#cbbfae",
+          "roughness": 0.82,
+          "maps": {
+            "map": "/textures/covers/blue_fabric_12_diffuse copy_UASTC.ktx2",
+            "normalMap": "/textures/covers/blue_fabric_12_normal copy_UASTC.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/blue_fabric.webp"
+        }, 
+      
+        {
+          "id": "weave-orange",
+          "name": "پرتقالی",
+          "hex": "#cbbfae",
+          "roughness": 0.82,
+          "maps": {
+            "map": "/textures/covers/orange_fabric_03_diffuse copy_UASTC.ktx2",
+            "normalMap": "/textures/covers/orange_fabric_03_normal copy_UASTC.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/orange_fabric.webp"
+        },
+        
+        {
           "id": "weave-ecru",
           "name": "بافت کرم",
           "hex": "#cbbfae",
@@ -108,7 +158,7 @@
         },
         {
           "id": "wool-oat",
-          "name": "پشم جو‌دوسر",
+          "name": "پشم ",
           "hex": "#b9ae9c",
           "roughness": 0.95,
           "maps": {
@@ -313,6 +363,56 @@
         }
       ],
       "cushion": [
+          {
+          "id": "weave-test",
+          "name": "مخمل زمردی",
+          "hex": "#cbbfae",
+          "roughness": 0.82,
+          "maps": {
+            "map": "/textures/covers/green_fabric_03_diffuse (2)_UASTC.ktx2",
+            "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/green_fabric.webp"
+        },
+         {
+          "id": "weave-blue",
+          "name": "آبی نفتی",
+          "hex": "#cbbfae",
+          "roughness": 0.82,
+          "maps": {
+            "map": "/textures/covers/blue_fabric_12_diffuse copy_UASTC.ktx2",
+            "normalMap": "/textures/covers/blue_fabric_12_normal copy_UASTC.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/blue_fabric.webp"
+        }, 
+      
+        {
+          "id": "weave-orange",
+          "name": "پرتقالی",
+          "hex": "#cbbfae",
+          "roughness": 0.82,
+          "maps": {
+            "map": "/textures/covers/orange_fabric_03_diffuse copy_UASTC.ktx2",
+            "normalMap": "/textures/covers/orange_fabric_03_normal copy_UASTC.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/orange_fabric.webp"
+        },
+        
         {
           "id": "cushion-linen",
           "name": "کتان",
@@ -401,6 +501,56 @@
         }
       ],
       "shawl": [
+          {
+          "id": "weave-test",
+          "name": "مخمل زمردی",
+          "hex": "#cbbfae",
+          "roughness": 0.82,
+          "maps": {
+            "map": "/textures/covers/green_fabric_03_diffuse (2)_UASTC.ktx2",
+            "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/green_fabric.webp"
+        },
+         {
+          "id": "weave-blue",
+          "name": "آبی نفتی",
+          "hex": "#cbbfae",
+          "roughness": 0.82,
+          "maps": {
+            "map": "/textures/covers/blue_fabric_12_diffuse copy_UASTC.ktx2",
+            "normalMap": "/textures/covers/blue_fabric_12_normal copy_UASTC.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/blue_fabric.webp"
+        }, 
+      
+        {
+          "id": "weave-orange",
+          "name": "پرتقالی",
+          "hex": "#cbbfae",
+          "roughness": 0.82,
+          "maps": {
+            "map": "/textures/covers/orange_fabric_03_diffuse copy_UASTC.ktx2",
+            "normalMap": "/textures/covers/orange_fabric_03_normal copy_UASTC.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/orange_fabric.webp"
+        },
+        
         {
           "id": "shawl-boucle",
           "name": "بوکله",
