@@ -12,7 +12,7 @@ import { isDebug } from '@/components/three/rendererStatsStore'
 import { extendGltfLoader } from '@/lib/three/gltfLoaders'
 import { useCanvasLifecycle } from '@/hooks/useCanvasLifecycle'
 import { PartErrorBoundary } from '@/components/three/PartErrorBoundary'
-import { clampDprToBudget } from '@/lib/three/dprBudget'
+import { COMPOSER_PIXEL_WEIGHT, clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
 import {
   collectZoneTargets,
@@ -443,11 +443,20 @@ interface Props {
  * render, so what the GPU spends goes entirely into the piece. Two consequences
  * worth naming:
  *
- *  - **Canvas MSAA, not SMAA.** With no composer to bypass it, `antialias` is
- *    live again — and on the tile-based GPU in every phone and every Apple
- *    machine, multisampling resolves inside tile memory, which is far cheaper
- *    than the two full-resolution targets an SMAA pass allocates. The page gets
- *    better edges for less than the heavy one pays.
+ *  - **Canvas MSAA on a desktop, and nowhere else.** With no composer to bypass
+ *    it, `antialias` is live again, and on a tile-based GPU the resolve itself
+ *    is genuinely cheap — cheaper than the two full-resolution targets an SMAA
+ *    pass allocates. That was the whole argument for switching it on, and it is
+ *    an argument about *bandwidth*. The cost that kills a tab is the *resident*
+ *    multisample store, which it never priced: a 4x buffer is colour and depth
+ *    at 4x plus the resolve, ~36 bytes a pixel against 8. At the `high` tier's
+ *    DPR on an iPad that is ~86MB of the ~256MB iOS lets a tab hold in canvases,
+ *    on the one page that has nothing else to spend it on — and it is why this
+ *    page lost its context where the far heavier /product did not.
+ *
+ *    So MSAA is a desktop setting now. Nothing replaces it on touch: an SMAA
+ *    pass needs a composer and two full-resolution targets, which is more than
+ *    it saves, and at DPR 1.5 and up the edges hold without either.
  *  - **A demand loop that genuinely parks.** Nothing here animates on its own.
  *    OrbitControls invalidates while it is damping and stops when it settles,
  *    so a viewer who is not touching the screen costs zero frames.
@@ -470,7 +479,7 @@ export default function SimpleViewer({
   label = 'viewer',
   onContextLost,
 }: Props) {
-  const { settings } = useQuality()
+  const { settings, device, gpu } = useQuality()
   const [perfScale, setPerfScale] = useState(1)
   const [fit, setFit] = useState<Fit>(EMPTY_FIT)
   const controls = useRef<OrbitControlsImpl | null>(null)
@@ -478,10 +487,17 @@ export default function SimpleViewer({
   const view = useMemo(() => simpleViewer(config), [config])
   const envIntensity = view.envIntensity ?? settings.envIntensity
 
+  /** MSAA is desktop-only below, and a multisampled buffer costs ~4.5x the
+   *  bytes per pixel — so the budget is told which of the two this is. */
+  const antialias = device === 'desktop'
+
   const dpr = useMemo<[number, number]>(() => {
-    const [min, max] = clampDprToBudget(settings.dpr)
+    // Weight 1 with MSAA off: this page holds a plain canvas and nothing else —
+    // no composer, no shadow map, no second scene render — which is exactly why
+    // it can afford the sharpest picture in the app.
+    const [min, max] = clampDprToBudget(settings.dpr, device, antialias ? COMPOSER_PIXEL_WEIGHT : 1, gpu)
     return [min, Math.max(min, +(max * perfScale).toFixed(2))]
-  }, [settings.dpr, perfScale])
+  }, [settings.dpr, device, gpu, antialias, perfScale])
 
   const handleFit = useCallback(
     (next: Fit) => {
@@ -505,11 +521,22 @@ export default function SimpleViewer({
       dpr={dpr}
       style={{ touchAction: embedded ? 'pan-y' : 'none', background: view.background }}
       gl={{
-        // Live, unlike every other scene in the app: those route their output
-        // through an EffectComposer, which renders past the canvas's own
-        // multisampled buffer and makes paying for it pure waste. @see the note
-        // on the component.
-        antialias: true,
+        // Live on a desktop, unlike every other scene in the app: those route
+        // their output through an EffectComposer, which renders past the
+        // canvas's own multisampled buffer and makes paying for it pure waste.
+        // Off on touch, where the resident multisample store is what takes the
+        // context out. @see the note on the component.
+        //
+        // Read once, at context creation — so this has to be right on the FIRST
+        // render, not corrected by an effect. It is: QualityProvider resolves
+        // `device` in a useState initialiser over useDeviceClass's
+        // useSyncExternalStore, and this component is `dynamic(ssr: false)`.
+        // Same reasoning as PresentationPostProcessing's `device` prop.
+        antialias,
+        // Deliberate: R3F merges `alpha: true` under whatever you pass, and the
+        // page paints an opaque clear colour and sits on an opaque plate. The
+        // channel composites nothing and the blend path is pure cost.
+        alpha: false,
         powerPreference: 'high-performance',
         toneMapping: NeutralToneMapping,
         toneMappingExposure: 1,

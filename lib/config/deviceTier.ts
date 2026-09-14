@@ -27,6 +27,7 @@
  */
 
 import { DEFAULT_QUALITY, QUALITY_PRESETS, type QualityPreset } from '@/lib/config/quality'
+import type { GpuClass } from '@/lib/three/gpuClass'
 
 /**
  * Media query for "a phone", as opposed to a tablet or a small window.
@@ -151,23 +152,54 @@ interface SurfacePolicy {
  */
 export const SURFACE_POLICY: Record<RenderSurface, SurfacePolicy> = {
   presentation: {
-    // Not a taste setting: the page's memory budget, and the fix for /product
-    // killing iPhones while /store — a far bigger scene — did not. At `high` a
-    // phone took DPR 1.75 (3x the pixels, and every full-screen pass with
-    // them), a 2048² shadow map (~32MB on its own) and an RGBA16F composer
-    // chain sized to those pixels, all at once. Past what iOS Safari lets a
-    // WebGL page hold, so the context went and the tab reloaded — repeatedly,
-    // since the retry came back at the same tier.
-    ceiling: { phone: 'high', tablet: 'high', desktop: 'ultra' },
-    fallback: { phone: 'low', tablet: 'low', desktop: 'medium' },
+    /**
+     * Every rung, on every device — and the reason is that the tier is no
+     * longer what holds this page inside its budget.
+     *
+     * It used to be. At `high` a phone took DPR 1.75 (3x the pixels, and every
+     * full-screen pass with them), a 2048² shadow map and an RGBA16F composer
+     * chain sized to those pixels, all at once, which is past what iOS lets a
+     * WebGL page hold. Capping the tier was the only lever there was.
+     *
+     * There are now three better ones, and each bounds its own cost per device
+     * rather than bundling them into one word:
+     *
+     *  - the drawing buffer, and the composer chain sized to it, by an absolute
+     *    pixel budget — @see clampDprToBudget, COMPOSER_PIXEL_WEIGHT
+     *  - the shadow map, by @see SHADOW_BUDGET, which the tier cannot raise
+     *  - MSAA and AO, switched off outright on touch — @see
+     *    PresentationPostProcessing
+     *
+     * With those in place `ultra` on a phone buys anisotropy 16 and a DPR the
+     * budget has already approved. That is a taste setting, which is what a
+     * picker should be offering; the memory is held somewhere the customer
+     * cannot overspend it.
+     */
+    ceiling: { phone: 'ultra', tablet: 'ultra', desktop: 'ultra' },
+    fallback: { phone: 'medium', tablet: 'high', desktop: 'high' },
     honoursStored: true,
   },
   viewer: {
-    ceiling: { phone: 'medium', tablet: 'high', desktop: 'ultra' },
+    // The cheapest surface in the app — one GLB on a ground, no shadow map, no
+    // composer, no second scene render — so if `presentation` can offer every
+    // rung then this certainly can. Capping it lower than the heavy page would
+    // be incoherent. Here the tier moves DPR (budget-capped) and anisotropy.
+    ceiling: { phone: 'ultra', tablet: 'ultra', desktop: 'ultra' },
     fallback: { phone: 'medium', tablet: 'high', desktop: 'high' },
     honoursStored: true,
   },
   walkthrough: {
+    /**
+     * Still capped, and deliberately the odd one out.
+     *
+     * /store is the one surface whose `ultra` costs something no per-device
+     * budget catches: `lampMaxLights: 24` real point lights with
+     * `lampShadowCasters: 2` casting cube shadows, and a 1024² MeshReflector
+     * that re-renders the whole scene every drawn frame. None of that scales
+     * with DPR, so the pixel budget never sees it — and a walkable room's cost
+     * is a function of what the visitor walks into, which is not known up front.
+     * Until those have ceilings of their own, this one stays.
+     */
     ceiling: { phone: 'medium', tablet: 'medium', desktop: 'ultra' },
     fallback: { phone: 'medium', tablet: DEFAULT_QUALITY, desktop: DEFAULT_QUALITY },
     honoursStored: true,
@@ -253,6 +285,16 @@ export function writeStoredTier(tier: QualityPreset): void {
   tierListeners.forEach((listener) => listener())
 }
 
+/**
+ * The ceiling a measured GPU imposes, over and above the device class.
+ *
+ * The device class says how big the screen is and whether it is touched. It
+ * cannot say how old the hardware is, and a 2012 iPad and an M4 iPad Pro are
+ * both `tablet`. `low` is what the oldest thing that can still run WebGL2
+ * holds. @see lib/three/gpuClass
+ */
+const WEAK_GPU_CEILING: QualityPreset = 'low'
+
 export interface TierRequest {
   surface: RenderSurface
   device: DeviceClass
@@ -262,6 +304,9 @@ export interface TierRequest {
   stored?: QualityPreset | null
   /** Rungs surrendered to a lost context. Applied last, below the ceiling. */
   downgrades?: number
+  /** What the hardware itself measured, when a probe has run. `weak` caps to
+   *  `low` whatever the surface would otherwise allow. @see readGpuClass */
+  gpu?: GpuClass
 }
 
 /**
@@ -269,10 +314,21 @@ export interface TierRequest {
  *
  * `stored ?? manifest ?? fallback`, capped, then lowered by `downgrades`. The
  * order is the policy: a person's explicit choice outranks the manifest, the
- * manifest outranks the default, and the device outranks all three.
+ * manifest outranks the default, and the device outranks all three — with the
+ * measured GPU outranking even the device, because the device class is a guess
+ * about hardware made from the size of a window and this is not a guess.
  */
-export function resolveTier({ surface, device, manifest, stored, downgrades = 0 }: TierRequest): QualityPreset {
+export function resolveTier({
+  surface,
+  device,
+  manifest,
+  stored,
+  downgrades = 0,
+  gpu,
+}: TierRequest): QualityPreset {
   const policy = SURFACE_POLICY[surface]
   const asked = (policy.honoursStored ? stored : null) ?? manifest ?? policy.fallback[device]
-  return lowerTier(capTier(asked, policy.ceiling[device]), downgrades)
+  const capped = capTier(asked, policy.ceiling[device])
+  const held = gpu === 'weak' ? capTier(capped, WEAK_GPU_CEILING) : capped
+  return lowerTier(held, downgrades)
 }

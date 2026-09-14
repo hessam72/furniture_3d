@@ -13,6 +13,8 @@
     "glb:budget": "node scripts/glb-budget.mjs",
     "glb:optimize": "scripts/optimize-glb.sh",
     "tex:optimize": "scripts/optimize-texture.sh",
+    "tex:fabric": "node scripts/make-fabric.mjs",
+    "tex:encode": "node scripts/ktx2-encode.mjs",
     "tex:thumbs": "node scripts/ktx2-thumb.mjs public/images/fabrics 256 public/textures/covers/*.ktx2"
   },
   "dependencies": {

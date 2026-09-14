@@ -37,6 +37,7 @@ import {
   type RenderSurface,
 } from '@/lib/config/deviceTier';
 import { useDeviceClass } from '@/hooks/useDeviceClass';
+import { getGpuClassOnServer, readGpuClass, subscribeGpuClass, type GpuClass } from '@/lib/three/gpuClass';
 
 interface QualityContextType {
   preset: QualityPreset;
@@ -47,6 +48,10 @@ interface QualityContextType {
   device: DeviceClass;
   /** The highest rung this device may be handed here. A picker offers no more. */
   ceiling: QualityPreset;
+  /** What the hardware measured. Consumers size their pixel budget from it —
+   *  the device class says how big the screen is, this says what is behind it.
+   *  @see clampDprToBudget */
+  gpu: GpuClass;
   /** Experimental SSGI/TRAA runtime toggle (only honored where settings.experimentalSSGI allows it) */
   ssgiEnabled: boolean;
   setSsgiEnabled: (enabled: boolean) => void;
@@ -98,8 +103,25 @@ export function QualityProvider({
    */
   const chosen = useSyncExternalStore(subscribeStoredTier, getStoredTier, getStoredTierOnServer);
 
-  const preset = resolveTier({ surface, device, manifest, stored: chosen, downgrades });
-  const ceiling = SURFACE_POLICY[surface].ceiling[device];
+  /**
+   * The measured hardware — a 1x1 probe context, once per tab, cached in
+   * `sessionStorage`.
+   *
+   * Read the same way `chosen` is, and for both of its reasons. The server
+   * cannot probe, so an initialiser would render the unprobed tier on the
+   * server and the probed one on the client — the hydration mismatch directly
+   * above, which took the picker down with it. And it must not be an effect
+   * either: the canvas sizes its buffers on the first render, so a probe that
+   * lands afterwards lands after the allocation it exists to prevent.
+   * @see readGpuClass
+   */
+  const gpu = useSyncExternalStore(subscribeGpuClass, readGpuClass, getGpuClassOnServer);
+
+  const preset = resolveTier({ surface, device, manifest, stored: chosen, downgrades, gpu });
+  // Capped the same way the resolver caps, or the picker offers rungs that
+  // resolve back down and read as a control that does nothing.
+  const surfaceCeiling = SURFACE_POLICY[surface].ceiling[device];
+  const ceiling = resolveTier({ surface, device, manifest: surfaceCeiling, stored: surfaceCeiling, gpu });
   const settings = QUALITY_PRESETS[preset];
 
   const [ssgiEnabled, setSsgiEnabledState] = useState(false);
@@ -130,8 +152,8 @@ export function QualityProvider({
    * a tier change is exactly when they should rebuild.
    */
   const value = useMemo(
-    () => ({ preset, settings, setPreset, device, ceiling, ssgiEnabled, setSsgiEnabled }),
-    [preset, settings, setPreset, device, ceiling, ssgiEnabled, setSsgiEnabled]
+    () => ({ preset, settings, setPreset, device, ceiling, gpu, ssgiEnabled, setSsgiEnabled }),
+    [preset, settings, setPreset, device, ceiling, gpu, ssgiEnabled, setSsgiEnabled]
   );
 
   return <QualityContext.Provider value={value}>{children}</QualityContext.Provider>;
@@ -148,6 +170,8 @@ const FALLBACK_QUALITY: QualityContextType = {
   // that never thought about its budget, and `low` is what every device holds.
   device: 'phone',
   ceiling: 'low',
+  // Matches `device: 'phone'` above: the safe assumption when nobody has said.
+  gpu: 'weak',
   ssgiEnabled: false,
   setSsgiEnabled: () => {},
 };

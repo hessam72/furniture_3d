@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Loader2, Scan } from 'lucide-react'
 import type * as THREE from 'three'
 import { useGLTF } from '@react-three/drei'
 import { QualityProvider } from '@/contexts/QualityContext'
@@ -30,6 +30,7 @@ import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
 import { useContextRecovery, type ContextRecovery } from '@/hooks/useContextRecovery'
 import { useGltfCacheEviction, useSwatchCacheEviction } from '@/hooks/useGltfCacheEviction'
 import { preloadGltf } from '@/lib/three/gltfLoaders'
+import { WEBGL_UNAVAILABLE_FA, webglUnavailable } from '@/lib/three/gpuClass'
 import ViewerDock from '@/components/product/ViewerDock'
 import QualityChips from '@/components/product/QualityChips'
 
@@ -89,6 +90,19 @@ function Viewer({
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const canvasKey = recovery.canvasKey
+
+  /**
+   * No WebGL2 on this device at all — three 0.180 dropped the WebGL1 path in
+   * r163, so there is no renderer to build and no tier low enough to save it.
+   *
+   * Read in an effect rather than the initialiser, unlike the tier: this is
+   * page chrome that *does* server-render, and a value that differs between the
+   * server's HTML and the client's first render is a hydration mismatch. The
+   * effect runs before paint and the canvas is gated behind the asset probe
+   * anyway, so nothing is allocated in the gap. @see readGpuClass
+   */
+  const [noWebgl, setNoWebgl] = useState(false)
+  useEffect(() => setNoWebgl(webglUnavailable()), [])
 
   const initProduct = usePresentation((s) => s.initProduct)
   const reset = usePresentation((s) => s.reset)
@@ -189,10 +203,14 @@ function Viewer({
   }, [])
 
   // Warm the layers the sheet can switch to, so a swap does not suspend behind
-  // a blank stage. Not on a phone: every warmed file is a second GLB parsed and
-  // held on a device already at its ceiling with the one it is showing.
+  // a blank stage. Desktop only: every warmed file is a second GLB parsed and
+  // held on a device already at its ceiling with the one it is showing, and
+  // that argument was never about phones — it was about the memory a touch
+  // device has, which a tablet does not have appreciably more of. The tablet
+  // was skipping it on a technicality: an iPad's short side is exactly 768, so
+  // PHONE_QUERY misses it and it warmed a second and third full GLB.
   useEffect(() => {
-    if (state !== 'ready' || device === 'phone') return
+    if (state !== 'ready' || device !== 'desktop') return
     const rest = [
       config.layers.frame.path,
       ...config.layers.cover.variants.map((v) => v.path),
@@ -289,9 +307,10 @@ function Viewer({
       }
 
       // Hand back what the sheet warmed but is not showing. The canvas is about
-      // to unmount and model-viewer is about to build a second scene; on a phone
-      // those two do not both fit alongside three parsed GLBs.
-      if (device === 'phone') {
+      // to unmount and model-viewer is about to build a second scene; on touch
+      // hardware those two do not both fit alongside three parsed GLBs — on a
+      // tablet as much as on a phone.
+      if (device !== 'desktop') {
         config.layers.cover.variants
           .filter((v) => v.path !== modelPath)
           .forEach((v) => useGLTF.clear(v.path))
@@ -337,9 +356,12 @@ function Viewer({
     <div
       dir="rtl"
       className="font-persian viewport-fill relative w-screen overflow-hidden"
-      style={{ background: view.background }}
+      /* `--dock-w` is declared here rather than inside the dock because two
+         things need to agree on it: the dock's own width, and the padding that
+         keeps the header's controls from sliding underneath it. */
+      style={{ background: view.background, ['--dock-w' as string]: 'clamp(20rem, 29vw, 25rem)' }}
     >
-      {live && !showAR && !recovery.lost && (
+      {live && !showAR && !recovery.lost && !noWebgl && (
         <SimpleViewer
           label="simple"
           key={canvasKey}
@@ -354,52 +376,88 @@ function Viewer({
         />
       )}
 
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
-        <div className="flex flex-col items-start gap-2">
-          <Link
-            href={`/product/${productKey}`}
-            aria-label="نمای کامل محصول"
-            className="pointer-events-auto flex h-9 items-center gap-1 rounded-full border border-neutral-200
-                       bg-white/85 px-3 text-[13px] text-neutral-700 backdrop-blur-sm transition-colors
-                       hover:border-neutral-300 hover:text-neutral-900"
-          >
-            <ChevronRight className="h-4 w-4" />
-            نمای کامل
-          </Link>
-          {live && !showAR && <QualityChips />}
-        </div>
+      {/* The page's own name lives in the dock, where it is already shown at the
+          head of the panel. Repeating it over the piece would be a second title
+          competing with the product for the only part of the screen the piece
+          has. Here it stays for the document outline and for a screen reader. */}
+      <h1 className="sr-only">{product.name}</h1>
 
-        <h1 className="max-w-[55%] truncate pt-1 text-right text-[15px] font-semibold text-neutral-900">
-          {product.name}
-        </h1>
+      {/* Every control up here is a dark glass pill rather than a tinted one:
+          `simple.background` is a manifest value and may be white for the next
+          product, and a dark pill is the one treatment that reads on both. */}
+      <header
+        /* On a wide screen the dock owns the trailing edge, so the header stops
+           short of it — a back link tucked behind a panel is a back link the
+           customer does not have. On a phone the dock is a bottom sheet and the
+           whole width is free. */
+        className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between
+                   gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))]
+                   md:ps-[calc(var(--dock-w)+1.5rem)]"
+      >
+        <Link
+          href={`/product/${productKey}`}
+          aria-label="نمای کامل محصول"
+          className="pointer-events-auto flex h-9 items-center gap-1.5 rounded-full border border-white/10
+                     bg-[#0a0e15]/70 px-3.5 text-[12px] text-white/70 backdrop-blur-xl
+                     transition-colors duration-200 hover:border-white/20 hover:text-white
+                     md:h-10 md:px-4 md:text-[12.5px]"
+        >
+          <ChevronRight className="h-4 w-4" />
+          نمای کامل
+        </Link>
+
+        <div className="flex flex-col items-end gap-2">
+          {live && !showAR && !noWebgl && (
+            <button
+              type="button"
+              onClick={openAR}
+              disabled={arBuilding}
+              className="pointer-events-auto flex h-9 items-center gap-2 rounded-full border border-white/10
+                         bg-[#0a0e15]/70 py-1 pl-3.5 pr-1 text-[12px] font-medium text-white
+                         backdrop-blur-xl transition-colors duration-200 hover:border-blue-400/40
+                         disabled:opacity-60 md:h-10 md:pl-4 md:text-[12.5px]"
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500 text-white md:h-8 md:w-8">
+                {arBuilding ? (
+                  <Loader2 className="h-[15px] w-[15px] animate-spin" />
+                ) : (
+                  <Scan className="h-[15px] w-[15px]" strokeWidth={2} />
+                )}
+              </span>
+              {arBuilding ? 'در حال آماده‌سازی…' : arSupported ? 'مشاهده در فضای خانه' : 'پیش‌نمای سه‌بعدی'}
+            </button>
+          )}
+          {/* A render-quality picker over a page that cannot render. */}
+          {live && !showAR && !noWebgl && <QualityChips />}
+        </div>
       </header>
 
       {live && (
-        <ViewerDock
-          presentation={presentation}
-          onViewAR={openAR}
-          arCapable={arSupported}
-          arBuilding={arBuilding}
-          hidden={showAR}
-        />
+        <ViewerDock presentation={presentation} arBuilding={arBuilding} hidden={showAR} />
       )}
 
-      {(blocked.length > 0 || error || recovery.lost) && (
+      {(blocked.length > 0 || error || recovery.lost || noWebgl) && (
         <Notice
           productName={product.name}
           detail={
-            recovery.lost
-              ? 'نمایش سه‌بعدی متوقف شد — حافظه گرافیکی دستگاه پر شد'
-              : error ?? `فایل‌های یافت‌نشده: ${blocked.join('، ')}`
+            // Ordered by how final each is. An unsupported browser outranks
+            // everything else: nothing else that is wrong can be fixed on it.
+            noWebgl
+              ? WEBGL_UNAVAILABLE_FA
+              : recovery.lost
+                ? 'نمایش سه‌بعدی متوقف شد — حافظه گرافیکی دستگاه پر شد'
+                : error ?? `فایل‌های یافت‌نشده: ${blocked.join('، ')}`
           }
           productKey={productKey}
-          onRetry={recovery.lost && recovery.retryable ? () => recovery.retry() : undefined}
+          onRetry={
+            !noWebgl && recovery.lost && recovery.retryable ? () => recovery.retry() : undefined
+          }
         />
       )}
 
       {/* Held over the canvas rather than shown in its place: the canvas has to
           be mounted and rendering to load its own model at all. */}
-      {!error && !blocked.length && (
+      {!error && !blocked.length && !noWebgl && (
         <div
           aria-hidden={ready}
           className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center transition-opacity duration-500"
@@ -451,24 +509,32 @@ function Notice({
   onRetry?: () => void
 }) {
   // Transparent: the page root behind it already carries the ground colour.
+  // Its own dark card rather than bare text on the page root: `simple.background`
+  // is a manifest value, and a message that is only legible on one of the two
+  // grounds it may be drawn over is not a message.
   return (
     <div className="absolute inset-0 z-40 flex items-center justify-center p-6">
-      <div className="max-w-sm space-y-3 text-center">
-        <h2 className="text-[15px] font-semibold text-neutral-900">{productName}</h2>
-        <p className="text-[13px] leading-7 text-neutral-500">نمایش سه‌بعدی این محصول در دسترس نیست.</p>
-        <p className="break-all text-[11px] leading-6 text-neutral-400">{detail}</p>
-        <div className="flex items-center justify-center gap-2">
+      <div
+        className="max-w-sm space-y-3 rounded-3xl border border-white/10 bg-[#0a0e15]/85 p-7 text-center
+                   shadow-[0_30px_80px_-30px_rgb(0_0_0/0.95)] backdrop-blur-2xl"
+      >
+        <h2 className="text-[15px] font-semibold text-white">{productName}</h2>
+        <p className="text-[13px] leading-7 text-white/55">نمایش سه‌بعدی این محصول در دسترس نیست.</p>
+        <p className="break-all text-[11px] leading-6 text-white/30">{detail}</p>
+        <div className="flex items-center justify-center gap-2 pt-1">
           {onRetry && (
             <button
               onClick={onRetry}
-              className="rounded-lg border border-neutral-300 px-4 py-2 text-[13px] text-neutral-700 transition-colors hover:border-neutral-500"
+              className="rounded-xl bg-blue-500 px-4 py-2 text-[13px] font-medium text-white
+                         transition-colors hover:bg-blue-400"
             >
               تلاش دوباره
             </button>
           )}
           <Link
             href={`/product/${productKey}`}
-            className="inline-block rounded-lg border border-neutral-300 px-4 py-2 text-[13px] text-neutral-700 transition-colors hover:border-neutral-500"
+            className="inline-block rounded-xl border border-white/15 px-4 py-2 text-[13px] text-white/75
+                       transition-colors hover:border-white/30 hover:text-white"
           >
             نمای کامل محصول
           </Link>

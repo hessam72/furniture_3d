@@ -16,6 +16,8 @@ Why iPhones were reloading the tab on every 3D page, and how the budget is held 
 | Loader configuration (DRACO + KTX2) | `lib/three/gltfLoaders.ts` |
 | Tier ceilings, per surface | `lib/config/deviceTier.ts` |
 | Device class | `hooks/useDeviceClass.ts` |
+| Hardware class | `lib/three/gpuClass.ts` |
+| Drawing-buffer budget | `lib/three/dprBudget.ts` |
 | Context teardown | `lib/three/releaseRenderer.ts` · `hooks/useCanvasLifecycle.ts` |
 | Crash recovery | `hooks/useContextRecovery.ts` |
 | Cache eviction | `hooks/useGltfCacheEviction.ts` |
@@ -436,6 +438,116 @@ No local GLBs, so the loop is: `npx tsc --noEmit`, `npx next build`,
 
 The behavioural pass/fail: `/product/test` on the iPhone survives ten cover swaps
 and five AR round trips without reloading.
+
+For the drawing-buffer work below, add:
+
+- `renderer.getContext().getContextAttributes()` on `/simple` under touch
+  emulation — `antialias: false`, `alpha: false`. On a desktop, both the other
+  way round.
+- `/product/test/simple?debug` on a real iPad: `dpr` at or under the budget, and
+  `/simple` no longer the heavier of the two pages.
+- `sessionStorage['furniture:gpu-class']` is written once and reused on the next
+  3D page in the visit.
+- Force a loss, then close and reopen the tab: `furniture:crashed:viewer` holds
+  the page one rung down rather than opening at full tier again.
+- Desktop DPR must not move. That is the regression this work is most likely to
+  ship by accident.
+
+---
+
+## The drawing buffer, and why `/simple` went on crashing
+
+The textures were the thousand-megabyte problem and the pipeline fixed them.
+What was left was the one buffer nobody had priced, and it lived on the page
+the whole document had been calling cheap.
+
+`/simple` was the only `<Canvas>` in the app asking for `antialias: true`. The
+argument for it was written down and is correct as far as it goes: with no
+composer to render past it, canvas MSAA resolves inside tile memory and beats
+the two full-resolution targets an SMAA pass allocates. That is an argument
+about **bandwidth**. It never priced the **resident** multisample store, and on
+iOS that store is counted against the same ~256MB canvas cap as everything else.
+
+A 4x multisampled buffer is colour and depth at 4x plus the resolve target:
+~36 bytes a pixel against 8. On a 1024x768 iPad at the `viewer` surface's
+tablet ceiling — `high`, DPR 1.75, 1792x1344 — that is **86MB**, on a page whose
+whole scene is one GLB. `/product` on the same device sits at `low` with
+`antialias: false`, DPR 1, and spends **6MB**. Fourteen times, on the lighter
+page. On a 1366x1024 iPad Pro the same canvas is 4.3MP and **154MB**.
+
+Three things let it through:
+
+- **`PIXEL_BUDGET` was one number.** `4.5e6`, for every device. On a 1024x768
+  iPad `sqrt(4.5e6 / 786432)` is 2.39, so it never clamped anything a tablet
+  asked for. It is per-`DeviceClass` now — phone 1.6MP, tablet 2.2MP, desktop
+  4.5MP — and takes a `samples` divisor on touch, because multisampling
+  multiplies bytes per pixel rather than pixel count. Desktop is exempt from
+  that divisor on purpose: its number is a *fill-rate* ceiling, not a memory
+  one, and dividing it would have dropped a 1080p desktop from DPR 1.47 to 1.0
+  to save memory no desktop GPU notices.
+
+  A DPR **ratio** was always the wrong unit. 1.75 is 1.2MP on an iPhone SE,
+  2.4MP on an iPad and 4.3MP on an iPad Pro. The cap has to be stated in pixels
+  or it stops holding the moment a screen gets bigger.
+
+- **`PerfLadder` cannot help here.** It reacts to sustained FPS, and the tab
+  dies at allocation time, before a frame is drawn. `AdaptiveDpr` is off on this
+  page deliberately. There was no downward pressure on the first allocation at
+  all — and the first allocation is the one that failed.
+
+- **Nothing measured the hardware.** `readDeviceClass` is two media queries, and
+  an iPad's short side is exactly 768, so every iPad ever made is `tablet` and
+  gets an identical ceiling. `mobile-3d-op-roadmap.md` has had "a GPU tier probe
+  is a better ceiling input than a media query" as an open recommendation since
+  the tier work landed.
+
+### `lib/three/gpuClass.ts`
+
+A throwaway 1x1 WebGL2 context, read once per tab and cached in `sessionStorage`.
+It has to be a separate context because the answer is needed *before* the real
+Canvas sizes its buffers, and the renderer's own capabilities arrive in
+`onCreated` — one allocation too late. It is handed back with
+`WEBGL_lose_context` immediately rather than left to the collector, for the same
+reason `releaseRenderer` exists.
+
+`weak` when `MAX_TEXTURE_SIZE <= 4096`, `MAX_SAMPLES <= 4`,
+`MAX_RENDERBUFFER_SIZE <= 4096`, two cores or fewer, or 2GB of device memory or
+less. The unmasked renderer string is a **hint only** — Safari 17+ masks it and
+many browsers drop the extension — so it may raise the verdict and is never
+required to reach it. `weak` caps every surface to `low` through one new `gpu`
+field on `TierRequest`, so no page changed.
+
+`none` is the case that had no answer at all: **three 0.180 is WebGL2-only**
+since r163, so a browser without it cannot build a renderer, and every one of
+those devices was being shown «حافظه گرافیکی دستگاه پر شد» — a message that says
+the device ran out of room, invites a retry, and is wrong on both counts. All
+four 3D pages now say plainly that the browser does not support 3D, and offer no
+retry.
+
+### The rest of it
+
+- **Every "protect the weak device" guard tested `device === 'phone'`.** Cover
+  variant warming on both product routes and the pre-AR `useGLTF.clear` — so a
+  tablet, which is not a device class with memory to spare but one with a wider
+  window, parsed and held two and three full GLBs. All three are `!== 'desktop'`
+  now.
+- **A crash is remembered for a week.** `furniture:downgrades:` is
+  `sessionStorage`, which is right for a tab and survives the reload iOS
+  performs on its own — but not the visitor coming back tomorrow, who opened at
+  full tier and crashed again. `furniture:crashed:${surface}` in `localStorage`
+  holds one standing rung for 7 days. The 60-second forgiveness still applies to
+  the tab's rung and deliberately does not clear this: surviving a minute at a
+  *lower* tier is not evidence the higher one would have held.
+
+Measured, on a 1024x768 iPad at the `viewer` surface:
+
+```
+                      before      after
+/simple drawing buffer  86MB        18MB     MSAA off, DPR 1.75 -> 1.67
+/simple on an iPad Pro 154MB        18MB     DPR 1.75 -> 1.25
+parsed GLBs held           3           1
+desktop DPR             1.47        1.47     unchanged, by design
+```
 
 ---
 

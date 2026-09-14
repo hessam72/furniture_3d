@@ -12,6 +12,7 @@ import {
   subscribeDebug,
   subscribeSamples,
 } from './rendererStatsStore'
+import { getGpuClassOnServer, readGpuClass, subscribeGpuClass } from '@/lib/three/gpuClass'
 
 /**
  * `?debug` — the GPU budget, on the screen of the device that is running out of
@@ -33,6 +34,19 @@ export function RendererStatsOverlay({ tier }: { tier?: string }) {
   // @see debugSnapshot
   const debug = useSyncExternalStore(subscribeDebug, debugSnapshot, debugServerSnapshot)
 
+  /**
+   * The hardware verdict, because a wrong one is otherwise invisible.
+   *
+   * `weak` caps every surface to `low` and shrinks the tier picker with it, and
+   * the page gives no sign that it happened — a downgrade looks exactly like a
+   * page that was always this way. That is how a bad `MAX_SAMPLES` threshold
+   * dimmed every Apple device and was only caught by someone noticing the
+   * picker had one chip in it. Read here rather than passed in, so the pages
+   * that mount the overlay without a `tier` get it too. `gpuClass` imports
+   * nothing, so this keeps the module's no-`three` rule.
+   */
+  const gpu = useSyncExternalStore(subscribeGpuClass, readGpuClass, getGpuClassOnServer)
+
   if (!debug) return null
 
   const total = rows.reduce((sum, row) => sum + row.vram, 0)
@@ -53,6 +67,13 @@ export function RendererStatsOverlay({ tier }: { tier?: string }) {
           · {rows.length} renderer{rows.length === 1 ? '' : 's'} · {canvases} canvas
           {canvases === 1 ? '' : 'es'}
           {tier ? ` · ${tier}` : ''}
+        </span>
+        {/* Amber and red on the same idiom the VRAM line uses: `weak` is a
+            ceiling the visitor did not choose, `none` is a page that cannot
+            render at all. `normal` stays grey — it is the unremarkable case. */}
+        <span style={{ color: gpu === 'none' ? '#f87171' : gpu === 'weak' ? '#fbbf24' : undefined }}>
+          <span className="text-neutral-500"> · gpu </span>
+          {gpu}
         </span>
       </div>
 

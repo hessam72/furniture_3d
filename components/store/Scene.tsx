@@ -50,7 +50,7 @@ import { CameraTransition } from './CameraTransition'
 import { ParticleReveal } from './ParticleReveal'
 import { ActivityGovernor, markStoreActivity } from './activityGovernor'
 import { PerfLadder } from '@/components/three/PerfLadder'
-import { clampDprToBudget } from '@/lib/three/dprBudget'
+import { COMPOSER_PIXEL_WEIGHT, clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
 import { RendererStatsProbe } from '@/components/three/RendererStatsProbe'
 import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
@@ -222,7 +222,7 @@ type PendingFocus = {
 
 export default function Scene({ recovery }: { recovery: ContextRecovery }) {
   const { config, loading, error } = useStoreConfig()
-  const { settings, preset, device } = useQuality()
+  const { settings, preset, device, gpu } = useQuality()
 
 
   // Listeners, transcoder priming and — the part R3F skips — a real
@@ -264,9 +264,14 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
   // Sustained-FPS ladder scale (same mechanism as /car)
   const [perfScale, setPerfScale] = useState(1)
   const dpr = useMemo<[number, number]>(() => {
-    const [min, max] = clampDprToBudget(settings.dpr)
+    // The canvas is single-sampled here (`antialias: false` below), but AA is
+    // the composer's job and the composer allocates far more than the canvas
+    // does — two RGBA16F buffers, SMAA's pair and a bloom mip chain, every one
+    // of them sized to this DPR. Priced accordingly, or the budget would be
+    // protecting the cheapest page in the app and not this one.
+    const [min, max] = clampDprToBudget(settings.dpr, device, COMPOSER_PIXEL_WEIGHT, gpu)
     return [min, Math.max(min, +(max * perfScale).toFixed(2))]
-  }, [settings.dpr, perfScale])
+  }, [settings.dpr, device, gpu, perfScale])
 
   // Demand-loop idle state: physics pauses while parked
   const [idle, setIdle] = useState(false)
