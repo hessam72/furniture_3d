@@ -155,6 +155,132 @@
           "thumbnail": "/images/fabrics/linen-ash.png"
         },
         {
+          "id": "velvet-emerald",
+          "name": "مخمل زمردی",
+          "hex": "#1f5f4a",
+          "roughness": 0.42,
+          "maps": {
+            "map": "/textures/covers/velvet-emerald.v1.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/velvet-emerald.png"
+        },
+        {
+          "id": "chenille-sand",
+          "name": "شنیل شنی",
+          "hex": "#c4b49b",
+          "roughness": 0.88,
+          "maps": {
+            "map": "/textures/covers/chenille-sand.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/chenille-sand.png"
+        },
+        {
+          "id": "corduroy-rust",
+          "name": "مخمل کبریتی زنگاری",
+          "hex": "#9c5230",
+          "roughness": 0.72,
+          "maps": {
+            "map": "/textures/covers/corduroy-rust.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/corduroy-rust.png"
+        },
+        {
+          "id": "tweed-charcoal",
+          "name": "توید ذغالی",
+          "hex": "#3c3f44",
+          "roughness": 0.95,
+          "maps": {
+            "map": "/textures/covers/tweed-charcoal.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/tweed-charcoal.png"
+        },
+        {
+          "id": "herringbone-slate",
+          "name": "جناغی دودی",
+          "hex": "#6b727a",
+          "roughness": 0.9,
+          "maps": {
+            "map": "/textures/covers/herringbone-slate.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/herringbone-slate.png"
+        },
+        {
+          "id": "jacquard-ivory",
+          "name": "ژاکارد عاجی",
+          "hex": "#d8cdb8",
+          "roughness": 0.85,
+          "maps": {
+            "map": "/textures/covers/jacquard-ivory.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/jacquard-ivory.png"
+        },
+        {
+          "id": "twill-navy",
+          "name": "سرژه سرمه‌ای",
+          "hex": "#2b3a52",
+          "roughness": 0.88,
+          "maps": {
+            "map": "/textures/covers/twill-navy.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/twill-navy.png"
+        },
+        {
+          "id": "leather-cognac",
+          "name": "چرم عسلی",
+          "hex": "#8d5a33",
+          "roughness": 0.55,
+          "maps": {
+            "map": "/textures/covers/leather-cognac.v1.ktx2"
+          },
+          "materials": [
+            "Fabric_1",
+            "fabric_03",
+            "vray_rene_sofa_011"
+          ],
+          "thumbnail": "/images/fabrics/leather-cognac.png"
+        },
+        {
           "id": "white",
           "name": "کرم",
           "hex": "#ffffff"
@@ -220,6 +346,49 @@
           "thumbnail": "/images/fabrics/weave-ecru.png"
         },
         {
+          "id": "cushion-velvet-emerald",
+          "name": "مخمل زمردی",
+          "hex": "#1f5f4a",
+          "roughness": 0.42,
+          "maps": {
+            "map": "/textures/covers/velvet-emerald.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/velvet-emerald.png"
+        },
+        {
+          "id": "cushion-chenille-sand",
+          "name": "شنیل شنی",
+          "hex": "#c4b49b",
+          "roughness": 0.88,
+          "maps": {
+            "map": "/textures/covers/chenille-sand.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/chenille-sand.png"
+        },
+        {
+          "id": "cushion-tweed-charcoal",
+          "name": "توید ذغالی",
+          "hex": "#3c3f44",
+          "roughness": 0.95,
+          "maps": {
+            "map": "/textures/covers/tweed-charcoal.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/tweed-charcoal.png"
+        },
+        {
+          "id": "cushion-jacquard-ivory",
+          "name": "ژاکارد عاجی",
+          "hex": "#d8cdb8",
+          "roughness": 0.85,
+          "maps": {
+            "map": "/textures/covers/jacquard-ivory.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/jacquard-ivory.png"
+        },
+        {
           "id": "cushion-ivory",
           "name": "استخوانی",
           "hex": "#e8e0d2"
@@ -252,6 +421,49 @@
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
           "thumbnail": "/images/fabrics/wool-oat.png"
+        },
+        {
+          "id": "shawl-velvet-emerald",
+          "name": "مخمل زمردی",
+          "hex": "#1f5f4a",
+          "roughness": 0.42,
+          "maps": {
+            "map": "/textures/covers/velvet-emerald.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/velvet-emerald.png"
+        },
+        {
+          "id": "shawl-herringbone-slate",
+          "name": "جناغی دودی",
+          "hex": "#6b727a",
+          "roughness": 0.9,
+          "maps": {
+            "map": "/textures/covers/herringbone-slate.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/herringbone-slate.png"
+        },
+        {
+          "id": "shawl-tweed-charcoal",
+          "name": "توید ذغالی",
+          "hex": "#3c3f44",
+          "roughness": 0.95,
+          "maps": {
+            "map": "/textures/covers/tweed-charcoal.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/tweed-charcoal.png"
+        },
+        {
+          "id": "shawl-jacquard-ivory",
+          "name": "ژاکارد عاجی",
+          "hex": "#d8cdb8",
+          "roughness": 0.85,
+          "maps": {
+            "map": "/textures/covers/jacquard-ivory.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/jacquard-ivory.png"
         },
         {
           "id": "shawl-grey",
