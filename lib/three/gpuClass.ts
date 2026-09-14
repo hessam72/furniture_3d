@@ -27,17 +27,35 @@
 
 export type GpuClass = 'none' | 'weak' | 'normal'
 
-const STORAGE_KEY = 'furniture:gpu-class'
+/**
+ * Versioned, because the *rule* can be wrong and not just the hardware.
+ *
+ * v1 marked every Apple device `weak`. A tab that had already cached that
+ * verdict would go on reading it after the fix shipped, so the deploy would
+ * look like it had not worked. Bumping the key retires the stale answer;
+ * bump it again whenever `probe` changes what it means.
+ */
+const STORAGE_KEY = 'furniture:gpu-class:2'
 
 let cached: GpuClass | null = null
 
-/** Below this a GPU is old enough that the tier table's assumptions do not
- *  hold. Every WebGL2 implementation is required to reach 2048; 4096 is the
- *  line between the PowerVR/Adreno 3xx era and everything since. */
+/** The WebGL2 floor. A device that reports this and nothing more is old enough
+ *  that no other signal has to agree. */
+const FLOOR_MAX_TEXTURE = 2048
+/** Suggestive, not conclusive: 4096 is roughly the PowerVR/Adreno 3xx era, and
+ *  also what some perfectly healthy drivers report. Needs corroboration. */
 const WEAK_MAX_TEXTURE = 4096
-/** A WebGL2 context must offer 4. More than that means a GPU with real
- *  framebuffer headroom. */
-const WEAK_MAX_SAMPLES = 4
+
+/**
+ * `MAX_SAMPLES` is deliberately **not** a signal here, and must not become one.
+ *
+ * 4 is the WebGL2 specification minimum, and every Apple GPU reports exactly 4
+ * — M-series Macs, every modern iPad, every modern iPhone. Testing `<= 4` was
+ * therefore true on the majority of this site's traffic: it classified those
+ * devices `weak`, capped every surface to `low`, and collapsed the tier picker
+ * on /simple to a single chip. A reading of 4 means the implementation is
+ * conformant. It says nothing at all about how fast the GPU is.
+ */
 
 /** Renderer families that are weak whatever the limits say. A *hint only*:
  *  Safari 17+ masks the unmasked renderer and many browsers drop the
@@ -69,7 +87,6 @@ function probe(): GpuClass {
 
   try {
     const maxTexture = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number
-    const maxSamples = gl.getParameter(gl.MAX_SAMPLES) as number
     const maxRenderbuffer = gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) as number
 
     const info = gl.getExtension('WEBGL_debug_renderer_info')
@@ -78,16 +95,34 @@ function probe(): GpuClass {
     const cores = navigator.hardwareConcurrency ?? 0
     const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 0
 
-    const weak =
-      maxTexture <= WEAK_MAX_TEXTURE ||
-      maxSamples <= WEAK_MAX_SAMPLES ||
-      maxRenderbuffer <= WEAK_MAX_TEXTURE ||
-      // `?? 0` above means "not reported", which must not read as weak.
-      (cores > 0 && cores <= 2) ||
-      (memory > 0 && memory <= 2) ||
-      (renderer !== '' && WEAK_RENDERER.test(renderer))
+    // Conclusive on their own: a GPU at the spec floor, or one that names itself
+    // as a family we already know cannot hold the tier table's assumptions.
+    if (maxTexture <= FLOOR_MAX_TEXTURE) return 'weak'
+    if (renderer !== '' && WEAK_RENDERER.test(renderer)) return 'weak'
 
-    return weak ? 'weak' : 'normal'
+    /**
+     * Everything else needs a second opinion.
+     *
+     * Any one of these firing on its own used to be enough, and that is how a
+     * bad threshold dimmed the page for every Apple device at once — silently,
+     * because a downgrade looks exactly like a page that was always this way.
+     * Each of these readings is suggestive and none is proof: healthy drivers
+     * under-report `MAX_RENDERBUFFER_SIZE`, and `hardwareConcurrency` is capped
+     * by some browsers for fingerprinting reasons rather than by the hardware.
+     *
+     * Two agreeing is a different claim from one firing. A 2012-era iPad trips
+     * three of the four; a current one trips none.
+     *
+     * `?? 0` above means "not reported", which must not read as weak.
+     */
+    const hints = [
+      maxTexture <= WEAK_MAX_TEXTURE,
+      maxRenderbuffer <= WEAK_MAX_TEXTURE,
+      cores > 0 && cores <= 2,
+      memory > 0 && memory <= 2,
+    ].filter(Boolean).length
+
+    return hints >= 2 ? 'weak' : 'normal'
   } catch {
     // A context we could create but cannot question is not evidence of
     // anything. Assume normal and let the pixel budget and the lost-context
