@@ -1,8 +1,8 @@
 {
-  "test": {
+  "nilper": {
     "room": {
       "mode": "model",
-      "image": "/models/presentation/test/backdrop.jpeg",
+      "image": "/models/presentation/nilper/backdrop.jpeg",
       "path": "/ktx-optimized/final-scene.glb",
       "imageDistance": 2,
       "imageOffsetY": 0,
@@ -19,7 +19,7 @@
     },
     "layers": {
       "frame": {
-        "path": "/models/presentation/test/frame.glb",
+        "path": "/models/presentation/nilper/frame.glb",
         "arPath": "",
         "label": "اسکلت چوبی",
         "desc": "چوب راش خشک‌شده با اتصالات فاق و زبانه"
@@ -58,7 +58,7 @@
         ]
       },
       "stage": {
-        "path": "/models/presentation/test/stage.glb",
+        "path": "/models/presentation/nilper/stage.glb",
         "liftPiece": true
       }
     },
