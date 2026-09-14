@@ -12,7 +12,7 @@ import { isDebug } from '@/components/three/rendererStatsStore'
 import { extendGltfLoader } from '@/lib/three/gltfLoaders'
 import { useCanvasLifecycle } from '@/hooks/useCanvasLifecycle'
 import { PartErrorBoundary } from '@/components/three/PartErrorBoundary'
-import { clampDprToBudget } from '@/lib/three/dprBudget'
+import { COMPOSER_PIXEL_WEIGHT, clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
 import {
   collectZoneTargets,
@@ -479,7 +479,7 @@ export default function SimpleViewer({
   label = 'viewer',
   onContextLost,
 }: Props) {
-  const { settings, device } = useQuality()
+  const { settings, device, gpu } = useQuality()
   const [perfScale, setPerfScale] = useState(1)
   const [fit, setFit] = useState<Fit>(EMPTY_FIT)
   const controls = useRef<OrbitControlsImpl | null>(null)
@@ -492,9 +492,12 @@ export default function SimpleViewer({
   const antialias = device === 'desktop'
 
   const dpr = useMemo<[number, number]>(() => {
-    const [min, max] = clampDprToBudget(settings.dpr, device, antialias ? 4 : 1)
+    // Weight 1 with MSAA off: this page holds a plain canvas and nothing else —
+    // no composer, no shadow map, no second scene render — which is exactly why
+    // it can afford the sharpest picture in the app.
+    const [min, max] = clampDprToBudget(settings.dpr, device, antialias ? COMPOSER_PIXEL_WEIGHT : 1, gpu)
     return [min, Math.max(min, +(max * perfScale).toFixed(2))]
-  }, [settings.dpr, device, antialias, perfScale])
+  }, [settings.dpr, device, gpu, antialias, perfScale])
 
   const handleFit = useCallback(
     (next: Fit) => {

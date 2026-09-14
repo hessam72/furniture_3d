@@ -37,7 +37,7 @@ import {
   type RenderSurface,
 } from '@/lib/config/deviceTier';
 import { useDeviceClass } from '@/hooks/useDeviceClass';
-import { getGpuClassOnServer, readGpuClass, subscribeGpuClass } from '@/lib/three/gpuClass';
+import { getGpuClassOnServer, readGpuClass, subscribeGpuClass, type GpuClass } from '@/lib/three/gpuClass';
 
 interface QualityContextType {
   preset: QualityPreset;
@@ -48,6 +48,10 @@ interface QualityContextType {
   device: DeviceClass;
   /** The highest rung this device may be handed here. A picker offers no more. */
   ceiling: QualityPreset;
+  /** What the hardware measured. Consumers size their pixel budget from it —
+   *  the device class says how big the screen is, this says what is behind it.
+   *  @see clampDprToBudget */
+  gpu: GpuClass;
   /** Experimental SSGI/TRAA runtime toggle (only honored where settings.experimentalSSGI allows it) */
   ssgiEnabled: boolean;
   setSsgiEnabled: (enabled: boolean) => void;
@@ -148,8 +152,8 @@ export function QualityProvider({
    * a tier change is exactly when they should rebuild.
    */
   const value = useMemo(
-    () => ({ preset, settings, setPreset, device, ceiling, ssgiEnabled, setSsgiEnabled }),
-    [preset, settings, setPreset, device, ceiling, ssgiEnabled, setSsgiEnabled]
+    () => ({ preset, settings, setPreset, device, ceiling, gpu, ssgiEnabled, setSsgiEnabled }),
+    [preset, settings, setPreset, device, ceiling, gpu, ssgiEnabled, setSsgiEnabled]
   );
 
   return <QualityContext.Provider value={value}>{children}</QualityContext.Provider>;
@@ -166,6 +170,8 @@ const FALLBACK_QUALITY: QualityContextType = {
   // that never thought about its budget, and `low` is what every device holds.
   device: 'phone',
   ceiling: 'low',
+  // Matches `device: 'phone'` above: the safe assumption when nobody has said.
+  gpu: 'weak',
   ssgiEnabled: false,
   setSsgiEnabled: () => {},
 };

@@ -5,7 +5,7 @@ import { Canvas, type RootState } from '@react-three/fiber'
 import { ACESFilmicToneMapping, NeutralToneMapping, type Box3 } from 'three'
 import { PerfLadder } from '@/components/three/PerfLadder'
 import { PartErrorBoundary } from '@/components/three/PartErrorBoundary'
-import { clampDprToBudget } from '@/lib/three/dprBudget'
+import { COMPOSER_PIXEL_WEIGHT, clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
 import {
   lightingMode,
@@ -63,7 +63,7 @@ interface Props {
  * `useQuality`, `roomBox` arriving, the store for the ones that read it.
  */
 export default function PresentationScene({ config, onLayerError, onReady, onContextLost }: Props) {
-  const { settings, device } = useQuality()
+  const { settings, device, gpu } = useQuality()
   const backdrop = roomMode(config)
   const needsIBL = needsEnvironment(config)
   // A room GLB is authored and checked under /store's renderer. Its materials
@@ -116,11 +116,14 @@ export default function PresentationScene({ config, onLayerError, onReady, onCon
   })
 
   const dpr = useMemo<[number, number]>(() => {
-    // The canvas is single-sampled here (`antialias: false` below) — AA is the
-    // composer's job — so the budget is spent on pixels, not on samples.
-    const [min, max] = clampDprToBudget(settings.dpr, device)
+    // The canvas is single-sampled here (`antialias: false` below), but AA is
+    // the composer's job and the composer allocates far more than the canvas
+    // does — two RGBA16F buffers, SMAA's pair and a bloom mip chain, every one
+    // of them sized to this DPR. Priced accordingly, or the budget would be
+    // protecting the cheapest page in the app and not this one.
+    const [min, max] = clampDprToBudget(settings.dpr, device, COMPOSER_PIXEL_WEIGHT, gpu)
     return [min, Math.max(min, +(max * perfScale).toFixed(2))]
-  }, [settings.dpr, device, perfScale])
+  }, [settings.dpr, device, gpu, perfScale])
 
   return (
     <div

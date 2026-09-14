@@ -315,8 +315,8 @@
       }
     },
     "quality": {
-      "preset": "low",
-      "mobile": "low"
+      "preset": "high",
+      "mobile": "medium"
     },
     "simple": {
       "path": "/ktx-optimized/Furniture high Test3-optimized.glb",

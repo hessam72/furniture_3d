@@ -4,7 +4,18 @@ export type N8AOQuality = 'performance' | 'medium' | 'high';
 export type GroundShadowMode = 'contact' | 'accumulative';
 
 export interface QualitySettings {
-  /** Device pixel ratio [min, max] — capped by DPR pixel budget on high-res screens */
+  /**
+   * Device pixel ratio [min, max].
+   *
+   * `low` is the only rung that renders *below* native — its 0.5 floor is what
+   * makes it the rung a struggling device falls back to, and what makes it look
+   * like the compromise it is. Every rung above it starts at 1.0 (native CSS
+   * resolution) and differs in how far above that it may go.
+   *
+   * The max is a ceiling, not a promise: `clampDprToBudget` holds it to an
+   * absolute pixel budget per device class, weighted by what the page allocates
+   * per pixel, so raising it here cannot overspend a phone. @see dprBudget.ts
+   */
   dpr: [number, number];
   /** Drop DPR during camera movement, snap back on idle frame (hidden by motion) */
   adaptiveDpr: boolean;
@@ -78,7 +89,7 @@ export const QUALITY_PRESETS: Record<QualityPreset, QualitySettings> = {
     experimentalSSGI: false,
   },
   medium: {
-    dpr: [1, 1.5],
+    dpr: [1, 1.6],
     adaptiveDpr: true,
     shadowResolution: 1024,
     floorReflectionsEnabled: true,
@@ -100,7 +111,7 @@ export const QUALITY_PRESETS: Record<QualityPreset, QualitySettings> = {
     experimentalSSGI: false,
   },
   high: {
-    dpr: [1, 1.75],
+    dpr: [1, 2],
     adaptiveDpr: true,
     shadowResolution: 2048,
 
