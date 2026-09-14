@@ -373,6 +373,7 @@
             "map": "/textures/covers/wool-oat.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
+         
           "thumbnail": "/images/fabrics/wool-oat.png"
         },
           {
@@ -384,11 +385,7 @@
             "map": "/textures/covers/green_fabric_03_diffuse (2)_UASTC.ktx2",
             "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+          
           "thumbnail": "/images/fabrics/green_fabric.webp"
         },
          {
@@ -400,11 +397,7 @@
             "map": "/textures/covers/blue_fabric_12_diffuse copy_UASTC.ktx2",
             "normalMap": "/textures/covers/blue_fabric_12_normal copy_UASTC.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+        
           "thumbnail": "/images/fabrics/blue_fabric.webp"
         }, 
       
@@ -417,11 +410,7 @@
             "map": "/textures/covers/orange_fabric_03_diffuse copy_UASTC.ktx2",
             "normalMap": "/textures/covers/orange_fabric_03_normal copy_UASTC.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+         
           "thumbnail": "/images/fabrics/orange_fabric.webp"
         },
         
@@ -434,6 +423,7 @@
             "map": "/textures/covers/linen-ash.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
+          
           "thumbnail": "/images/fabrics/linen-ash.png"
         },
         {
@@ -445,6 +435,7 @@
             "map": "/textures/covers/wool-oat.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
+          
           "thumbnail": "/images/fabrics/wool-oat.png"
         },
         {
@@ -456,6 +447,7 @@
             "map": "/textures/covers/weave-ecru.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
+           
           "thumbnail": "/images/fabrics/weave-ecru.png"
         },
         {
@@ -466,6 +458,7 @@
           "maps": {
             "map": "/textures/covers/velvet-emerald.v1.ktx2"
           },
+          
           "thumbnail": "/images/fabrics/velvet-emerald.png"
         },
         {
@@ -477,6 +470,7 @@
             "map": "/textures/covers/chenille-sand.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
+          
           "thumbnail": "/images/fabrics/chenille-sand.png"
         },
         {
@@ -488,6 +482,7 @@
             "map": "/textures/covers/tweed-charcoal.v1.ktx2",
             "normalMap": "/textures/covers/twill-normal.v1.ktx2"
           },
+          
           "thumbnail": "/images/fabrics/tweed-charcoal.png"
         },
         {
@@ -499,6 +494,7 @@
             "map": "/textures/covers/jacquard-ivory.v1.ktx2",
             "normalMap": "/textures/covers/twill-normal.v1.ktx2"
           },
+          
           "thumbnail": "/images/fabrics/jacquard-ivory.png"
         },
         {
@@ -514,7 +510,7 @@
       ],
       "shawl": [
         {
-          "id": "shawl-boucle",
+          "id": "shawl-boucle3223",
           "name": "بوکله",
           "hex": "#a9a49c",
           "roughness": 0.9,
@@ -533,11 +529,7 @@
             "map": "/textures/covers/green_fabric_03_diffuse (2)_UASTC.ktx2",
             "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+         
           "thumbnail": "/images/fabrics/green_fabric.webp"
         },
          {
@@ -549,11 +541,7 @@
             "map": "/textures/covers/blue_fabric_12_diffuse copy_UASTC.ktx2",
             "normalMap": "/textures/covers/blue_fabric_12_normal copy_UASTC.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+          
           "thumbnail": "/images/fabrics/blue_fabric.webp"
         }, 
       
@@ -566,11 +554,7 @@
             "map": "/textures/covers/orange_fabric_03_diffuse copy_UASTC.ktx2",
             "normalMap": "/textures/covers/orange_fabric_03_normal copy_UASTC.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+          
           "thumbnail": "/images/fabrics/orange_fabric.webp"
         },
         
