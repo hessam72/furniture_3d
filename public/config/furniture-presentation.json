@@ -192,7 +192,7 @@
           "roughness": 0.72,
           "maps": {
             "map": "/textures/covers/corduroy-rust.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+            "normalMap": "/textures/covers/corduroy-normal.v1.ktx2"
           },
           "materials": [
             "Fabric_1",
@@ -208,7 +208,7 @@
           "roughness": 0.95,
           "maps": {
             "map": "/textures/covers/tweed-charcoal.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+            "normalMap": "/textures/covers/twill-normal.v1.ktx2"
           },
           "materials": [
             "Fabric_1",
@@ -224,7 +224,7 @@
           "roughness": 0.9,
           "maps": {
             "map": "/textures/covers/herringbone-slate.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+            "normalMap": "/textures/covers/herringbone-normal.v1.ktx2"
           },
           "materials": [
             "Fabric_1",
@@ -240,7 +240,7 @@
           "roughness": 0.85,
           "maps": {
             "map": "/textures/covers/jacquard-ivory.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+            "normalMap": "/textures/covers/twill-normal.v1.ktx2"
           },
           "materials": [
             "Fabric_1",
@@ -256,7 +256,7 @@
           "roughness": 0.88,
           "maps": {
             "map": "/textures/covers/twill-navy.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+            "normalMap": "/textures/covers/twill-normal.v1.ktx2"
           },
           "materials": [
             "Fabric_1",
@@ -271,7 +271,8 @@
           "hex": "#8d5a33",
           "roughness": 0.55,
           "maps": {
-            "map": "/textures/covers/leather-cognac.v1.ktx2"
+            "map": "/textures/covers/leather-cognac.v1.ktx2",
+            "normalMap": "/textures/covers/pebble-normal.v1.ktx2"
           },
           "materials": [
             "Fabric_1",
@@ -373,7 +374,7 @@
           "roughness": 0.95,
           "maps": {
             "map": "/textures/covers/tweed-charcoal.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+            "normalMap": "/textures/covers/twill-normal.v1.ktx2"
           },
           "thumbnail": "/images/fabrics/tweed-charcoal.png"
         },
@@ -384,7 +385,7 @@
           "roughness": 0.85,
           "maps": {
             "map": "/textures/covers/jacquard-ivory.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+            "normalMap": "/textures/covers/twill-normal.v1.ktx2"
           },
           "thumbnail": "/images/fabrics/jacquard-ivory.png"
         },
@@ -439,7 +440,7 @@
           "roughness": 0.9,
           "maps": {
             "map": "/textures/covers/herringbone-slate.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+            "normalMap": "/textures/covers/herringbone-normal.v1.ktx2"
           },
           "thumbnail": "/images/fabrics/herringbone-slate.png"
         },
@@ -450,7 +451,7 @@
           "roughness": 0.95,
           "maps": {
             "map": "/textures/covers/tweed-charcoal.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+            "normalMap": "/textures/covers/twill-normal.v1.ktx2"
           },
           "thumbnail": "/images/fabrics/tweed-charcoal.png"
         },
@@ -461,7 +462,7 @@
           "roughness": 0.85,
           "maps": {
             "map": "/textures/covers/jacquard-ivory.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+            "normalMap": "/textures/covers/twill-normal.v1.ktx2"
           },
           "thumbnail": "/images/fabrics/jacquard-ivory.png"
         },

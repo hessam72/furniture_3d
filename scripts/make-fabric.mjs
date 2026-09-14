@@ -2,7 +2,8 @@
 /**
  * Seamless upholstery basecolours, drawn from the construction up.
  *
- *   node scripts/make-fabric.mjs out/                 # all eight, 1024²
+ *   node scripts/make-fabric.mjs out/                 # all eight basecolours, 1024²
+ *   NORMALS=1 node scripts/make-fabric.mjs out/       # the four normal maps
  *   SIZE=512 node scripts/make-fabric.mjs out/ velvet-emerald
  *
  * These are **generated, not photographed**, and the distinction matters enough
@@ -347,6 +348,137 @@ export const FABRICS = [
   },
 ]
 
+/* -------------------------------------------------------------- normals --- */
+
+/**
+ * Height fields, and the normal maps derived from them.
+ *
+ * Four rather than one, because a shared normal is what made switching fabrics
+ * feel like a recolour: every cloth wore the same weave relief, so the only
+ * thing that changed under the light was the hue. Relief is most of what tells
+ * a corduroy from a hide before you have read either label.
+ *
+ * Each height field reuses the *same* construction as the basecolour that will
+ * sit on it — the same `over()` predicate, the same wale period, the same
+ * pebble lattice — so the bumps land on the threads rather than beside them. A
+ * normal map drawn independently of its colour map is worse than none: the
+ * lighting says one weave and the pixels say another, and the eye picks the
+ * disagreement up long before it can name it.
+ *
+ * `strength` is per surface. A hide's grain is deep, a twill's float is barely
+ * a thread proud of its neighbour, and flattening both to one number is the
+ * other half of the same mistake.
+ */
+export const NORMALS = [
+  {
+    id: 'twill-normal',
+    strength: 1.7,
+    /** A 2/2 twill: whichever yarn floats on top stands a little proud, so the
+     *  ridges run diagonally. Worn by the twills and by the jacquard, whose
+     *  ground is a twill. */
+    height(x, y) {
+      const pitch = 8
+      const up = TWILL(Math.floor(x / pitch), Math.floor(y / pitch))
+      const across = (((up ? x : y) % pitch) / pitch) * 2 - 1
+      return (up ? 1 : 0.5) - 0.34 * across * across + 0.05 * fbm(x, y, 256, 2, 71)
+    },
+  },
+  {
+    id: 'herringbone-normal',
+    strength: 1.9,
+    /** The same float, reversing every eight ends — the chevron is a relief
+     *  before it is a pattern, which is why it reads across a room. */
+    height(x, y) {
+      const pitch = 8
+      const up = herringbone(8)(Math.floor(x / pitch), Math.floor(y / pitch))
+      const across = (((up ? x : y) % pitch) / pitch) * 2 - 1
+      return (up ? 1 : 0.46) - 0.36 * across * across + 0.05 * fbm(x, y, 256, 2, 53)
+    },
+  },
+  {
+    id: 'corduroy-normal',
+    strength: 3.4,
+    /** Wales. The deepest relief of the four by a distance: a cord is a real
+     *  ridge with a real channel beside it, not a thread crossing another. */
+    height(x, y) {
+      const wale = SIZE / 32
+      const t = ((x % wale) / wale) * 2 - 1
+      const crown = 1 - 0.9 * t * t * t * t - 0.08 * t * t
+      return crown + 0.04 * fbm(x, y, 384, 2, 31)
+    },
+  },
+  {
+    id: 'pebble-normal',
+    strength: 2.6,
+    /** Leather grain: domed cells with a crease between them. Not a weave at
+     *  all, which is the point of it having its own map. */
+    height(x, y) {
+      const cells = 40
+      const sz = SIZE / cells
+      const cx = Math.floor(x / sz)
+      const cy = Math.floor(y / sz)
+      let best = 1e9
+      let second = 1e9
+      const wrap = (v) => ((v % cells) + cells) % cells
+      for (let j = -1; j <= 1; j++) {
+        for (let i = -1; i <= 1; i++) {
+          const gx = cx + i
+          const gy = cy + j
+          const jx = (gx + hash(wrap(gx), wrap(gy), 81)) * sz
+          const jy = (gy + hash(wrap(gx), wrap(gy), 83)) * sz
+          const d = Math.hypot(x - jx, y - jy)
+          if (d < best) {
+            second = best
+            best = d
+          } else if (d < second) second = d
+        }
+      }
+      const edge = Math.min(1, (second - best) / (sz * 0.55))
+      return Math.sqrt(edge) + 0.05 * fbm(x, y, 512, 2, 87)
+    },
+  },
+]
+
+/**
+ * Height field → tangent-space normal map, in the convention three expects.
+ *
+ * Central differences, wrapped — which is what keeps the normal map seamless on
+ * the same edges the basecolour is seamless on. Sampling with a clamp instead
+ * would put a hard line of flat normals around the border that lights up as a
+ * grid the moment the texture repeats.
+ *
+ * The channel signs are the part worth stating rather than guessing at. three
+ * reads GLTF tangent space in the OpenGL convention: +X right, **+Y up**, and
+ * image rows run *down*, so the vertical derivative is negated on the way into
+ * green. Get that backwards and every bump is a dent — which is invisible in
+ * the raw image, where it just looks like a slightly different mauve, and
+ * obvious the moment anything is lit. @see the lit preview in the commit.
+ */
+function heightToNormal(height, strength) {
+  const px = new Uint8Array(SIZE * SIZE * 3)
+  const at = (x, y) => height(((x % SIZE) + SIZE) % SIZE, ((y % SIZE) + SIZE) % SIZE)
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const dx = (at(x + 1, y) - at(x - 1, y)) * 0.5 * strength
+      const dy = (at(x, y + 1) - at(x, y - 1)) * 0.5 * strength
+      // Both axes negate, and the second one is the trap. Tangent +Y points up
+      // while image rows run down, so a height that rises as the row index
+      // grows is a surface falling away from the light. Getting this wrong
+      // turns every bump into a pit — which looks like nothing at all in the
+      // raw map, where it is a marginally different mauve, and is unmistakable
+      // the moment it is lit. Checked by rendering, not by reasoning.
+      const nx = -dx
+      const ny = -dy
+      const len = Math.hypot(nx, ny, 1)
+      const o = (y * SIZE + x) * 3
+      px[o] = Math.round(((nx / len) * 0.5 + 0.5) * 255)
+      px[o + 1] = Math.round(((ny / len) * 0.5 + 0.5) * 255)
+      px[o + 2] = Math.round((1 / len) * 0.5 * 255 + 127.5)
+    }
+  }
+  return Buffer.from(px)
+}
+
 /* ------------------------------------------------------------------ png --- */
 
 function crc32(buf) {
@@ -405,8 +537,17 @@ if (!outDir) {
 }
 mkdirSync(outDir, { recursive: true })
 
-for (const fabric of FABRICS) {
-  if (only.length && !only.includes(fabric.id)) continue
+const wantNormals = process.env.NORMALS === '1'
+
+for (const spec of wantNormals ? NORMALS : FABRICS) {
+  if (only.length && !only.includes(spec.id)) continue
+  if (wantNormals) {
+    const buf = png(heightToNormal(spec.height, spec.strength), SIZE, SIZE)
+    writeFileSync(path.join(outDir, `${spec.id}.png`), buf)
+    console.log(`${spec.id.padEnd(20)} ${SIZE}×${SIZE}  ${(buf.length / 1024).toFixed(0)}KB  normal`)
+    continue
+  }
+  const fabric = spec
   const base = hex(fabric.hex)
   const rgb = Buffer.alloc(SIZE * SIZE * 3)
   for (let y = 0; y < SIZE; y++) {
