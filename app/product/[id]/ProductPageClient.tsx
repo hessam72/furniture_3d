@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { useEnvironment, useGLTF, useTexture } from '@react-three/drei'
 import { QualityProvider } from '@/contexts/QualityContext'
 import { useAssetProbe } from '@/hooks/useAssetProbe'
+import { useDeviceClass } from '@/hooks/useDeviceClass'
 import { usePresentation } from '@/stores/presentationStore'
 import { useShop } from '@/stores/storeShopStore'
 import { findCatalogItemBySceneObject } from '@/lib/store/catalog'
@@ -13,14 +14,13 @@ import { isARCapable } from '@/lib/device-utils'
 import {
   arModelPath,
   defaultPaint,
+  openingSwatchMaps,
+  restSwatchMaps,
   lowerTier,
   needsEnvironment,
-  PHONE_QUERY,
   presentationQuality,
-  readDeviceClass,
   requiredAssets,
   roomMode,
-  TOUCH_QUERY,
   type DeviceClass,
   type PresentationConfig,
   type ResolvedPresentation,
@@ -28,12 +28,16 @@ import {
 import ProductSheet from '@/components/product/ProductSheet'
 import PresentationTopBar from '@/components/product/PresentationTopBar'
 import MissingAssetsNotice from '@/components/product/MissingAssetsNotice'
+import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
+import { useContextRecovery } from '@/hooks/useContextRecovery'
+import { useGltfCacheEviction, useSwatchCacheEviction } from '@/hooks/useGltfCacheEviction'
+import { preloadGltf } from '@/lib/three/gltfLoaders'
+import { WEBGL_UNAVAILABLE_FA, webglUnavailable } from '@/lib/three/gpuClass'
 import PresentationLoading from '@/components/product/PresentationLoading'
 import type { Catalog } from '@/lib/store/catalog'
 
-// Must run before any preload in this chunk — drei otherwise reaches for its
-// CDN decoder. Same reason CarPageClient sets it at module scope.
-useGLTF.setDecoderPath('/draco/')
+// DRACO's path, the KTX2 transcoder's path and the one-instance-each rule all
+// live in lib/three/gltfLoaders now. @see extendGltfLoader
 
 const PresentationScene = dynamic(() => import('@/components/product/PresentationScene'), {
   ssr: false,
@@ -47,27 +51,19 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
   const [showAR, setShowAR] = useState(false)
   const [arSupported, setArSupported] = useState(false)
   const [probeKey, setProbeKey] = useState(0)
-  /** Bumped by `retry` to force a fresh WebGL context — a Canvas whose context
-   *  died has to be remounted, not re-rendered. */
-  const [canvasKey, setCanvasKey] = useState(0)
-  /** Set the instant the GPU drops the context; gates the Canvas out of the
-   *  tree. @see handleContextLost */
-  const [contextLost, setContextLost] = useState(false)
   /** A GLB that exists but fails to parse never reaches the probe — the error
    *  boundaries in the scene report it here so it still gets a way out. */
   const [layerError, setLayerError] = useState<string | null>(null)
   /** Raised by the scene once the piece and room are actually drawn — the probe
    *  below only proves the files exist. */
   const [sceneReady, setSceneReady] = useState(false)
-  /**
-   * How many rungs the tier has been dropped by lost contexts this session.
-   *
-   * A context is lost because the device ran out of room for what we asked it
-   * to draw, so coming back at the same tier asks for it again — which is the
-   * loop the page was stuck in on iPhones: crash, reload, crash. Each loss
-   * costs a rung, permanently for this page view.
-   */
-  const [downgrades, setDowngrades] = useState(0)
+  /** The lost-context ladder — unmount, drop a rung, offer a retry. Shared
+   *  with /simple, /showroom, /view and /store. @see useContextRecovery */
+  const recovery = useContextRecovery({
+    surface: 'presentation',
+    onLost: () => setLayerError('نمایش سه‌بعدی متوقف شد — حافظه گرافیکی دستگاه پر شد'),
+  })
+  const { lost: contextLost, canvasKey } = recovery
 
   const initProduct = usePresentation((s) => s.initProduct)
   const reset = usePresentation((s) => s.reset)
@@ -83,25 +79,16 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
    * desktop tier and a phone with a `quality.mobile` override settles onto it
    * before the canvas mounts behind the splash.
    */
-  const [device, setDevice] = useState<DeviceClass>('desktop')
-  const phone = device === 'phone'
-  useEffect(() => {
-    const queries = [window.matchMedia(PHONE_QUERY), window.matchMedia(TOUCH_QUERY)]
-    const apply = () => setDevice(readDeviceClass())
-    apply()
-    // matchMedia rather than a resize listener: this only ever needs to know
-    // which side of the query we are on, and a resize handler would re-render
-    // the page on every frame of a window drag. It also keeps up with a phone
-    // being turned, which the query is written to answer either way round.
-    queries.forEach((mq) => mq.addEventListener('change', apply))
-    return () => queries.forEach((mq) => mq.removeEventListener('change', apply))
-  }, [])
-  const qualityPreset = useMemo(
-    () => lowerTier(presentationQuality(config, device), downgrades),
-    [config, device, downgrades]
-  )
+  const device = useDeviceClass()
+  /** What the manifest asks for, capped to the device. The rungs a lost context
+   *  has cost are applied by the provider. @see resolveTier */
+  const qualityPreset = useMemo(() => presentationQuality(config, device), [config, device])
 
   const assets = useMemo(() => requiredAssets(config), [config])
+
+  // Everything this page parsed goes back when the visitor leaves it.
+  useGltfCacheEviction(assets.filter((path) => path.endsWith('.glb')))
+  useSwatchCacheEviction()
   const { state, missing } = useAssetProbe(useMemo(() => assets, [assets, probeKey]))
 
   const catalogId = useMemo(() => {
@@ -110,6 +97,17 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
   }, [key])
 
   useEffect(() => setArSupported(isARCapable()), [])
+
+  /**
+   * No WebGL2 on this device at all — three 0.180 dropped the WebGL1 path in
+   * r163, so there is no renderer to build and no tier low enough to save it.
+   * Distinct from `layerError`'s lost-context copy on purpose: that one says
+   * the device ran out of room and offers a retry, and here there is nothing to
+   * retry. Read in an effect because this shell server-renders and a value that
+   * differed between the two would be a hydration mismatch. @see readGpuClass
+   */
+  const [noWebgl, setNoWebgl] = useState(false)
+  useEffect(() => setNoWebgl(webglUnavailable()), [])
 
   // Kills iOS pull-to-refresh over this page. @see .viewport-locked
   useEffect(() => {
@@ -155,9 +153,13 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
     if (state !== 'ready') return
     // Only the GLBs go through drei's loader cache; the backdrop image is a
     // plain texture and the HDR has its own loader.
-    assets
-      .filter((path) => path.endsWith('.glb'))
-      .forEach((path) => useGLTF.preload(path))
+    // Waits on the transcoder rather than racing it: a KTX2 texture parsed
+    // before `detectSupport` throws, and it throws into a Suspense boundary,
+    // where it reads as a model that simply never arrives. @see preloadGltf
+    const stopPreload = preloadGltf(
+      assets.filter((path) => path.endsWith('.glb')),
+      useGLTF.preload
+    )
     if (needsEnvironment(config) && config.room.hdr) {
       useEnvironment.preload({ files: config.room.hdr })
     }
@@ -165,17 +167,43 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
     // and a room GLB so `room.mode` can switch between them.
     if (roomMode(config) === 'image' && config.room.image) useTexture.preload(config.room.image)
 
-    // Not on a phone. Warming the other covers buys a swap that never suspends,
-    // and pays for it in exactly the currency a phone has least of: every warmed
-    // variant is a second full GLB parsed and held in drei's cache, on a device
-    // already at its ceiling with the one it is showing. There the swap
-    // suspends behind the wipe instead, which is what the wipe is for.
-    if (phone) return
+    // The opening fabric, warmed with the GLBs rather than on idle: it is what
+    // the page renders with, so a late arrival is a visible change of cloth
+    // rather than a swap that was already going to animate.
+    const opening = openingSwatchMaps(config)
+    let stopSwatches = () => {}
+    if (opening.length) {
+      void import('@/lib/three/swatchTextures').then(({ preloadSwatchMaps }) => {
+        stopSwatches = preloadSwatchMaps(opening)
+      })
+    }
+
+    // Desktop only. Warming the other covers buys a swap that never suspends,
+    // and pays for it in exactly the currency touch hardware has least of:
+    // every warmed variant is a second full GLB parsed and held in drei's
+    // cache, on a device already at its ceiling with the one it is showing.
+    // There the swap suspends behind the wipe instead, which is what the wipe
+    // is for. This read `phone`, and so exempted every tablet — which is not a
+    // device class with memory to spare, only one with a wider window.
+    if (device !== 'desktop') {
+      return () => {
+        stopSwatches()
+        stopPreload()
+      }
+    }
 
     const rest = config.layers.cover.variants
       .filter((v) => v.id !== config.layers.cover.default)
       .map((v) => v.path)
-    const warm = () => rest.forEach((path) => useGLTF.preload(path))
+    let stopWarm = () => {}
+    const warm = () => {
+      stopWarm = preloadGltf(rest, useGLTF.preload)
+      // The rest of the palette, on the same terms as the rest of the covers:
+      // a courtesy bought with desktop memory, and one a phone does not get.
+      void import('@/lib/three/swatchTextures').then(({ preloadSwatchMaps }) => {
+        preloadSwatchMaps(restSwatchMaps(config))
+      })
+    }
 
     const idle = (window as any).requestIdleCallback
     const handle = idle ? idle(warm) : window.setTimeout(warm, 1500)
@@ -183,29 +211,31 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
       const cancel = (window as any).cancelIdleCallback
       if (idle && cancel) cancel(handle)
       else window.clearTimeout(handle as number)
+      stopWarm()
+      stopSwatches()
+      stopPreload()
     }
-  }, [state, assets, config, phone])
+  }, [state, assets, config, device])
 
   const retry = useCallback(() => {
-    // Purge the cache only when the *files* are the problem — a 404, or a GLB
-    // that would not parse. A lost context is the opposite case: the files are
-    // fine and only the GPU's copy of them is gone, so a remount re-uploads
-    // them. Clearing there re-suspends every layer and the stack never
-    // republishes `framing`, which leaves the camera rig with nothing to solve
-    // from — an unsolved camera and a black stage.
-    if (!contextLost) {
-      assets.filter((path) => path.endsWith('.glb')).forEach((path) => useGLTF.clear(path))
-      setProbeKey((n) => n + 1)
-    }
     setLayerError(null)
-    setContextLost(false)
-    setCanvasKey((n) => n + 1)
+    // The purge runs only when the *files* are the problem — a 404, or a GLB
+    // that would not parse. @see the note on `retry` in useContextRecovery for
+    // what clearing on a lost context costs.
+    recovery.retry(
+      contextLost
+        ? undefined
+        : () => {
+            assets.filter((path) => path.endsWith('.glb')).forEach((path) => useGLTF.clear(path))
+            setProbeKey((n) => n + 1)
+          }
+    )
     // `sceneReady` is deliberately left true. The splash exists to hide the
     // first load's pop-in; here the assets are warm and the error notice was
     // already covering the canvas. Clearing it made the page wait on a fresh
     // SceneReady signal that a rebuilt scene does not always send, which parked
     // the splash until the 20s failsafe.
-  }, [assets, contextLost])
+  }, [assets, contextLost, recovery])
 
   const handleLayerError = useCallback((category: string, error: Error) => {
     setLayerError(`${category}: ${error.message}`)
@@ -226,23 +256,6 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
     initProduct(key, defaultPaint(config), config.layers.cover.default, config.layers.startStep ?? 1)
   }, [initProduct, key, config])
 
-  /**
-   * A lost context is not a React error, so no error boundary sees it — and
-   * drawing a notice over the live Canvas is not enough. The next render of the
-   * R3F tree calls into EffectComposer against the dead context, which throws
-   * out of React and replaces the whole page with "Application error: a
-   * client-side exception". That was the visible crash. Unmounting the Canvas
-   * in the same state update means React tears the subtree down instead of
-   * re-rendering it, and `retry` builds a new one.
-   */
-  const handleContextLost = useCallback(() => {
-    setContextLost(true)
-    // Whatever we asked for was too much for this GPU, so `retry` must not ask
-    // for it again. @see downgrades
-    setDowngrades((n) => n + 1)
-    setLayerError('نمایش سه‌بعدی متوقف شد — حافظه گرافیکی دستگاه پر شد')
-  }, [])
-
   // Failsafe. The splash is dismissed by the scene reporting itself drawn, and
   // an asset that resolves but never measures — a frame GLB with no geometry,
   // say — would otherwise leave it up for good. A half-dressed scene beats a
@@ -257,7 +270,7 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
   }, [state, sceneReady])
 
   return (
-    <QualityProvider preset={qualityPreset}>
+    <QualityProvider surface="presentation" preset={qualityPreset} downgrades={recovery.downgrades}>
       {/* `viewport-fill`, not `h-screen`: iOS reads `100vh` as the height with
           the address bar retracted, so a full-screen container is taller than
           the screen. Here that only cost the canvas ~13% of its pixels to draw
@@ -267,20 +280,20 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
         {/* Unmounted while AR is open: model-viewer takes a WebGL context of
             its own, and two live contexts plus the exported GLB is what tips a
             phone over. Remounting is cheap — the GLBs stay in drei's cache. */}
-        {state === 'ready' && !showAR && !contextLost && (
+        {state === 'ready' && !showAR && !contextLost && !noWebgl && (
           <PresentationScene
             key={canvasKey}
             config={config}
             onLayerError={handleLayerError}
             onReady={() => setSceneReady(true)}
-            onContextLost={handleContextLost}
+            onContextLost={recovery.handleContextLost}
           />
         )}
 
         {/* Covers the probe *and* the streaming behind it. The canvas has to be
             mounted and rendering to load its own assets, so the splash is held
             over it and faded, rather than shown in its place. */}
-        {!layerError && state !== 'missing' && (
+        {!layerError && state !== 'missing' && !noWebgl && (
           <PresentationLoading productName={product.name} ready={state === 'ready' && sceneReady} />
         )}
 
@@ -302,12 +315,13 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
           />
         )}
 
-        {(state === 'missing' || layerError) && (
+        {(state === 'missing' || layerError || noWebgl) && (
           <MissingAssetsNotice
             productName={product.name}
-            kind={layerError ? 'error' : 'missing'}
-            missing={layerError ? [layerError] : missing}
-            onRetry={retry}
+            kind={layerError || noWebgl ? 'error' : 'missing'}
+            missing={noWebgl ? [WEBGL_UNAVAILABLE_FA] : layerError ? [layerError] : missing}
+            // Nothing to retry on a browser that cannot build a renderer.
+            onRetry={noWebgl ? undefined : retry}
           />
         )}
 
@@ -323,6 +337,8 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
             onClose={closeAR}
           />
         )}
+
+        <RendererStatsOverlay tier={lowerTier(qualityPreset, recovery.downgrades)} />
       </div>
     </QualityProvider>
   )

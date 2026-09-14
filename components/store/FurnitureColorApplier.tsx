@@ -7,9 +7,40 @@ import { findSceneObject, describeSceneNames } from '@/lib/store/sceneObject'
 import * as THREE from 'three'
 
 interface PaintTarget {
+  /** Kept so the clone can be handed back and freed. @see releasePaintTargets */
+  mesh: THREE.Mesh
   material: THREE.MeshPhysicalMaterial | THREE.MeshStandardMaterial
   initialColor: THREE.Color
   meshName: string
+}
+
+/**
+ * Put a piece back the way it was found, and dispose what we made.
+ *
+ * The clone below is mandatory — the room GLB is drei-cached, so painting a
+ * material in place would leak the colour into every other user of that asset —
+ * but nothing was ever undoing it. Every furniture selection cloned a fresh
+ * material set and dropped the last one on the floor, and a material holds a
+ * compiled program and a slot in the renderer's property maps until something
+ * calls `dispose()`. Selecting six sofas leaked six sets.
+ *
+ * The restore is what makes disposing safe: `userData.originalMaterial` is the
+ * cached asset's own material, so putting it back means the mesh is not left
+ * pointing at something we just freed.
+ *
+ * The paired pattern this is modelled on is `collectZoneTargets` +
+ * `disposeTargets` in lib/three/layerMaterials, which /product has used all
+ * along. Same problem, same shape, two files.
+ */
+function releasePaintTargets(targets: PaintTarget[]) {
+  targets.forEach(({ mesh, material }) => {
+    const original = mesh.userData.originalMaterial as THREE.Material | undefined
+    if (original) {
+      mesh.material = original
+      delete mesh.userData.originalMaterial
+    }
+    material.dispose()
+  })
 }
 
 export function FurnitureColorApplier() {
@@ -29,6 +60,7 @@ export function FurnitureColorApplier() {
   // Collect paintable materials when furniture is selected
   useEffect(() => {
     if (!selectedFurnitureId) {
+      releasePaintTargets(paintTargetsRef.current)
       paintTargetsRef.current = []
       console.log('[FurnitureColorApplier] No furniture ID selected')
       return
@@ -46,6 +78,7 @@ export function FurnitureColorApplier() {
         `[FurnitureColorApplier] Furniture object "${selectedFurnitureId}" not found in scene. Scene names:`,
         describeSceneNames(scene)
       )
+      releasePaintTargets(paintTargetsRef.current)
       paintTargetsRef.current = []
       return
     }
@@ -105,6 +138,7 @@ export function FurnitureColorApplier() {
 
           const material = child.material as THREE.MeshPhysicalMaterial | THREE.MeshStandardMaterial
           targets.push({
+            mesh: child,
             material,
             initialColor: material.color.clone(),
             meshName: child.name,
@@ -129,6 +163,7 @@ export function FurnitureColorApplier() {
           }
           const material = child.material as THREE.MeshPhysicalMaterial | THREE.MeshStandardMaterial
           targets.push({
+            mesh: child,
             material,
             initialColor: material.color.clone(),
             meshName: child.name,
@@ -148,9 +183,16 @@ export function FurnitureColorApplier() {
       setColor(originalColorHex)
     }
 
+    releasePaintTargets(paintTargetsRef.current)
     paintTargetsRef.current = targets
     firstPaintRef.current = true
   }, [selectedFurnitureId, scene, setOriginalColor, setColor])
+
+  // The last selection's set, on the way out.
+  useEffect(() => {
+    const targets = paintTargetsRef
+    return () => releasePaintTargets(targets.current)
+  }, [])
 
   // Apply color change
   useEffect(() => {

@@ -6,6 +6,8 @@ import { ChevronRight, Heart, SlidersHorizontal } from 'lucide-react'
 import QualitySelector from '@/components/car/QualitySelector'
 import { useShop } from '@/stores/storeShopStore'
 import type { QualityPreset } from '@/lib/config/quality'
+import { useQuality } from '@/contexts/QualityContext'
+import { tiersUpTo } from '@/lib/config/deviceTier'
 
 interface Props {
   productName: string
@@ -26,6 +28,9 @@ export default function PresentationTopBar({ productName, catalogId }: Props) {
   const isLiked = !!catalogId && liked.includes(catalogId)
 
   const [qualityOpen, setQualityOpen] = useState(false)
+  /** Only the rungs this device can hold. One rung is not a choice. */
+  const { ceiling } = useQuality()
+  const tiers = tiersUpTo(ceiling)
   const qualityRef = useRef<HTMLDivElement>(null)
 
   // Same dismissal contract as the car bar's popover.
@@ -72,9 +77,15 @@ export default function PresentationTopBar({ productName, catalogId }: Props) {
       </span>
 
       <div className="flex items-center gap-2">
-        {/* The tier is pinned from the manifest, so this is a runtime override:
-            somewhere to turn the render down on a device that is struggling,
-            without leaving the page. */}
+        {/* The manifest sets where the tier starts; this is the runtime
+            override — somewhere to turn the render down on a device that is
+            struggling, without leaving the page.
+
+            Hidden outright where the device ceiling leaves a single rung, which
+            on a phone is the whole of this page's budget. A picker with one
+            option is not a choice, and offering it invites a tap that cannot do
+            anything. @see SURFACE_POLICY */}
+        {tiers.length > 1 && (
         <div ref={qualityRef} className="relative">
           <button
             onClick={() => setQualityOpen((v) => !v)}
@@ -98,6 +109,7 @@ export default function PresentationTopBar({ productName, catalogId }: Props) {
             </div>
           )}
         </div>
+        )}
 
         {catalogId ? (
           <button

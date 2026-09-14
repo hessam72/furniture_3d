@@ -9,12 +9,19 @@ import { useAssetProbe } from '@/hooks/useAssetProbe'
 import { isARCapable } from '@/lib/device-utils'
 import {
   arModelPath,
+  coverPalette,
   defaultPaint,
   findCoverVariant,
+  isTextureSwatch,
+  swatchPaint,
   type ResolvedPresentation,
   type ZoneSwatch,
 } from '@/lib/product/presentation'
 import type { ShowroomConfig } from '@/lib/showroom/config'
+import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
+import { useContextRecovery } from '@/hooks/useContextRecovery'
+import { useGltfCacheEviction, useSwatchCacheEviction } from '@/hooks/useGltfCacheEviction'
+import { WEBGL_UNAVAILABLE_FA, webglUnavailable } from '@/lib/three/gpuClass'
 import Reveal from './Reveal'
 import { ArIcon, ArrowIcon, ChevronIcon, Icon, RotateIcon, SofaGhostIcon } from './icons'
 
@@ -24,6 +31,7 @@ const ShowroomStage = dynamic(() => import('./ShowroomStage'), {
 })
 
 const ARProductViewer = dynamic(() => import('@/components/store/ARProductViewer'), { ssr: false })
+
 
 /** The bare frame, shown by the "structure" toggle. Not a cover id, so it
  *  cannot collide with one. */
@@ -57,6 +65,9 @@ export default function ShowroomFeatured({
   const [specsOpen, setSpecsOpen] = useState(false)
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
+  /** A lost context reuses the section's existing fallback plate; it only ever
+   *  lacked a signal. @see useContextRecovery */
+  const recovery = useContextRecovery({ surface: 'viewer' })
 
   const [arSupported, setArSupported] = useState(false)
   const [arOpen, setArOpen] = useState(false)
@@ -64,6 +75,9 @@ export default function ShowroomFeatured({
   const setPaint = usePresentation((s) => s.setPaint)
   const initProduct = usePresentation((s) => s.initProduct)
   const activeColor = usePresentation((s) => s.paint.cover.color)
+  const activeSwatchId = usePresentation((s) => s.paint.cover.swatchId)
+  /** The swatch whose textures are still in flight, for the chip's busy state. */
+  const [pendingSwatch, setPendingSwatch] = useState<string | null>(null)
 
   /** The raw cached GLB behind the canvas, published by SimpleViewer. */
   const source = useRef<THREE.Object3D | null>(null)
@@ -76,11 +90,41 @@ export default function ShowroomFeatured({
   const modelPath = showingFrame ? config?.layers.frame.path : variant?.path
 
   /** Wood on the frame, upholstery on a cover — the viewer paints whatever it
-   *  mounts as the `cover` zone, so the palette has to follow the layer. */
+   *  mounts as the `cover` zone, so the palette has to follow the layer. Once a
+   *  swatch is a cloth rather than a tint it has to follow the *variant* too:
+   *  `coverPalette` hands back the variant's own list where it carries one. */
   const swatches: ZoneSwatch[] = useMemo(() => {
     if (!config) return []
-    return (showingFrame ? config.palettes.wood : config.palettes.cover) ?? []
-  }, [config, showingFrame])
+    return (showingFrame ? config.palettes.wood : coverPalette(config, variant)) ?? []
+  }, [config, showingFrame, variant])
+
+  /**
+   * Shared by the follow-the-layer effect and the chips: warm the textures
+   * before the store changes, so the map and the colour damp start together.
+   *
+   * `swatchTextures` is imported *inside*, and only for a swatch that actually
+   * carries maps — it reaches `three`, and a static import from this file put
+   * the whole library into /showroom's first-load bundle: 163KB to 300KB on a
+   * page that is mostly marketing copy. Same measured trap `useGltfCacheEviction`
+   * documents, same fix. By the time anyone taps a swatch the canvas has mounted
+   * and the module is already in memory.
+   */
+  const applySwatch = useCallback(
+    async (swatch: ZoneSwatch) => {
+      if (isTextureSwatch(swatch)) {
+        const { ensureSwatchMaps, peekSwatchMaps } = await import('@/lib/three/swatchTextures')
+        if (!peekSwatchMaps(swatch.maps!)) {
+          setPendingSwatch(swatch.id)
+          await ensureSwatchMaps(swatch.maps!)
+          setPendingSwatch(null)
+        }
+      }
+      // 0.6 preserves this section's existing fallback: ProductSheet leaves
+      // roughness alone when a swatch carries none, the showroom forces it.
+      setPaint(swatchPaint(swatch, 0.6), 'cover')
+    },
+    [setPaint]
+  )
 
   // Seed the shared store with the manifest's opening finish, once.
   useEffect(() => {
@@ -89,12 +133,12 @@ export default function ShowroomFeatured({
   }, [config, presentation, initProduct])
 
   // Follow the layer with its palette's first swatch, so the frame never opens
-  // wearing the upholstery colour.
+  // wearing the upholstery colour — or, now, the upholstery's cloth.
   useEffect(() => {
     const first = swatches[0]
     if (!first) return
-    setPaint({ color: first.hex, roughness: first.roughness ?? 0.6 }, 'cover')
-  }, [swatches, setPaint])
+    void applySwatch(first)
+  }, [swatches, applySwatch])
 
   useEffect(() => setArSupported(isARCapable()), [])
 
@@ -110,7 +154,24 @@ export default function ShowroomFeatured({
   }, [arOpen])
 
   const probe = useAssetProbe(useMemo(() => (modelPath ? [modelPath] : []), [modelPath]))
-  const canRender = !!config && !!modelPath && probe.state === 'ready' && !failed
+
+  // Every cover the visitor toggled through, not just the one on screen. This
+  // section re-probes and re-parses per toggle and never released any of them.
+  useGltfCacheEviction(modelPath ? [modelPath] : [])
+  useSwatchCacheEviction()
+
+  /**
+   * No WebGL2 on this device — three 0.180 dropped the WebGL1 path in r163, so
+   * the stage can never mount here. Read in an effect rather than during
+   * render: this is a marketing section that server-renders, and a value that
+   * differs between the server's HTML and the client's first render is a
+   * hydration mismatch. @see readGpuClass
+   */
+  const [noWebgl, setNoWebgl] = useState(false)
+  useEffect(() => setNoWebgl(webglUnavailable()), [])
+
+  const canRender =
+    !!config && !!modelPath && probe.state === 'ready' && !failed && !recovery.lost && !noWebgl
 
   const handleError = useCallback(() => setFailed(true), [])
   const handleReady = useCallback(() => setReady(true), [])
@@ -185,12 +246,24 @@ export default function ShowroomFeatured({
                       key={swatch.id}
                       type="button"
                       className="sr-swatch"
-                      style={{ background: swatch.hex }}
+                      /* The hex stays under a thumbnail, so a chip whose image
+                         has not loaded reads as the right colour, not a hole. */
+                      style={{
+                        background: swatch.hex,
+                        ...(swatch.thumbnail
+                          ? { backgroundImage: `url(${swatch.thumbnail})`, backgroundSize: 'cover' }
+                          : {}),
+                      }}
                       aria-label={swatch.name}
-                      aria-pressed={activeColor.toLowerCase() === swatch.hex.toLowerCase()}
-                      onClick={() =>
-                        setPaint({ color: swatch.hex, roughness: swatch.roughness ?? 0.6 }, 'cover')
+                      aria-busy={pendingSwatch === swatch.id}
+                      /* By id, not by hex: a palette can offer one colour in two
+                         cloths, and a textured swatch's hex is only its chip. */
+                      aria-pressed={
+                        activeSwatchId
+                          ? activeSwatchId === swatch.id
+                          : activeColor.toLowerCase() === swatch.hex.toLowerCase()
                       }
+                      onClick={() => void applySwatch(swatch)}
                     />
                   ))}
                 </div>
@@ -277,7 +350,10 @@ export default function ShowroomFeatured({
                 piece. `-wheel` only: touch is left to the browser, which the
                 viewer's `touch-action: pan-y` already shares correctly. */}
             <div className="sr-stage" data-lenis-prevent-wheel>
-              {canRender && config && modelPath && (
+              {/* `!arOpen`: the AR overlay brings model-viewer's own WebGL
+                  context, and this stage's would otherwise sit live underneath
+                  it. @see the same gate on /product and /store. */}
+              {canRender && !arOpen && config && modelPath && (
                 <ShowroomStage
                   config={config}
                   modelPath={modelPath}
@@ -285,13 +361,21 @@ export default function ShowroomFeatured({
                   plinth={featured.stage}
                   background={featured.viewer?.background}
                   onReady={handleReady}
+                  onContextLost={recovery.handleContextLost}
+                  downgrades={recovery.downgrades}
                   onError={handleError}
                 />
               )}
               {!ready && (
                 <div className="sr-viewer-fallback">
                   <SofaGhostIcon size={64} />
-                  {probe.state === 'missing' || failed ? (
+                  {/* Ordered by how final each is: an unsupported browser
+                      outranks a lost context, which outranks a missing file. */}
+                  {noWebgl ? (
+                    <span>{WEBGL_UNAVAILABLE_FA}.</span>
+                  ) : recovery.lost ? (
+                    <span>نمایش سه‌بعدی متوقف شد — حافظه گرافیکی دستگاه پر شد.</span>
+                  ) : probe.state === 'missing' || failed ? (
                     <span>مدل سه‌بعدی این محصول در دسترس نیست.</span>
                   ) : (
                     <span>در حال بارگذاری مدل سه‌بعدی…</span>
@@ -324,6 +408,8 @@ export default function ShowroomFeatured({
           />
         </div>
       )}
+
+      <RendererStatsOverlay />
     </section>
   )
 }

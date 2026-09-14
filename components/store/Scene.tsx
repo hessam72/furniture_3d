@@ -1,9 +1,10 @@
 'use client'
+import dynamic from 'next/dynamic'
 import { Canvas, useLoader, useFrame } from '@react-three/fiber'
 import type { RootState } from '@react-three/fiber'
 import { Environment } from '@react-three/drei'
 import * as THREE from 'three'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { GLTFLoader } from 'three-stdlib'
 import { Suspense, useMemo } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { Physics } from '@react-three/rapier'
@@ -34,7 +35,10 @@ import {
   type FocusOverride
 } from '@/lib/store/catalog'
 import { useShop } from '@/stores/storeShopStore'
-import ARProductViewer from './ARProductViewer'
+// Lazily, like every other AR call site. A static import puts model-viewer —
+// which inlines its own copy of three — in this page's critical path, for an
+// overlay most visitors never open.
+const ARProductViewer = dynamic(() => import('./ARProductViewer'), { ssr: false })
 import { FurnitureColorApplier } from './FurnitureColorApplier'
 import { useFurnitureConfig } from '@/stores/furnitureConfigStore'
 import { LoadingScreen } from './LoadingScreen'
@@ -46,9 +50,15 @@ import { CameraTransition } from './CameraTransition'
 import { ParticleReveal } from './ParticleReveal'
 import { ActivityGovernor, markStoreActivity } from './activityGovernor'
 import { PerfLadder } from '@/components/three/PerfLadder'
-import { clampDprToBudget } from '@/lib/three/dprBudget'
+import { COMPOSER_PIXEL_WEIGHT, clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
-import { PartErrorBoundary } from '@/components/car/PartErrorBoundary'
+import { RendererStatsProbe } from '@/components/three/RendererStatsProbe'
+import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
+import { isDebug } from '@/components/three/rendererStatsStore'
+import { useCanvasLifecycle } from '@/hooks/useCanvasLifecycle'
+import type { ContextRecovery } from '@/hooks/useContextRecovery'
+import { SHADOW_BUDGET } from '@/lib/config/deviceTier'
+import { PartErrorBoundary } from '@/components/three/PartErrorBoundary'
 
 // Demand frameloop with idle physics pause — the /car performance model
 // adapted for a walkable scene. Kill-switch: set to false to restore
@@ -210,9 +220,20 @@ type PendingFocus = {
   object?: THREE.Object3D | null
 }
 
-export default function Scene() {
+export default function Scene({ recovery }: { recovery: ContextRecovery }) {
   const { config, loading, error } = useStoreConfig()
-  const { settings } = useQuality()
+  const { settings, preset, device, gpu } = useQuality()
+
+
+  // Listeners, transcoder priming and — the part R3F skips — a real
+  // `gl.dispose()` on unmount. @see useCanvasLifecycle
+  const handleCanvasCreated = useCanvasLifecycle({
+    label: 'store',
+    onContextLost: recovery.handleContextLost,
+    onCreated: useCallback((state: RootState) => {
+      r3fRef.current = state
+    }, []),
+  })
   const [joystickInputRef, setJoystickInputRef] = useState<React.RefObject<{ x: number; y: number }> | null>(null)
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('loading')
   const [loadedCount, setLoadedCount] = useState(0)
@@ -243,9 +264,14 @@ export default function Scene() {
   // Sustained-FPS ladder scale (same mechanism as /car)
   const [perfScale, setPerfScale] = useState(1)
   const dpr = useMemo<[number, number]>(() => {
-    const [min, max] = clampDprToBudget(settings.dpr)
+    // The canvas is single-sampled here (`antialias: false` below), but AA is
+    // the composer's job and the composer allocates far more than the canvas
+    // does — two RGBA16F buffers, SMAA's pair and a bloom mip chain, every one
+    // of them sized to this DPR. Priced accordingly, or the budget would be
+    // protecting the cheapest page in the app and not this one.
+    const [min, max] = clampDprToBudget(settings.dpr, device, COMPOSER_PIXEL_WEIGHT, gpu)
     return [min, Math.max(min, +(max * perfScale).toFixed(2))]
-  }, [settings.dpr, perfScale])
+  }, [settings.dpr, device, gpu, perfScale])
 
   // Demand-loop idle state: physics pauses while parked
   const [idle, setIdle] = useState(false)
@@ -420,7 +446,17 @@ export default function Scene() {
           if (e.buttons !== 0) wake()
         }}
       >
+      {/* Not mounted while AR is open.
+          model-viewer takes a WebGL context of its own, and this page used to
+          keep its own — plus a rapier world and the room GLB — alive underneath
+          it. Two live contexts on a phone is what /product and /simple fixed
+          long ago by gating the canvas; /store never did. The visitor keeps
+          their place: `playerStartPosRef` already tracks the body's position
+          for the product-focus camera, so the remount starts them where they
+          were rather than back at the entrance. */}
+      {!showAR && !recovery.lost && (
       <Canvas
+        key={recovery.canvasKey}
         shadows
         style={{ touchAction: 'none' }}
         frameloop={IDLE_DEMAND ? 'demand' : 'always'}
@@ -434,9 +470,7 @@ export default function Scene() {
           toneMappingExposure: 0.3,
         }}
         camera={{ position: config.camera?.playerStart ?? [0, 2, 5], fov: 60, near: 0.1, far: 200 }}
-        onCreated={(state) => {
-          r3fRef.current = state
-        }}
+        onCreated={handleCanvasCreated}
       >
         <Physics
           gravity={[0, -30, 0]}
@@ -475,10 +509,16 @@ export default function Scene() {
             <>
               <ShadowSystem
                 size={config.sun.soft?.size ?? 20}
-                samples={config.sun.soft?.samples ?? 16}
+                // stores.json asks for 16, which is a desktop number: every
+                // shadow-receiving fragment pays a blocker search plus a PCF
+                // loop of that many taps. /product halves it on a phone; this
+                // page was trusting the file. @see SHADOW_BUDGET
+                samples={Math.min(config.sun.soft?.samples ?? 16, SHADOW_BUDGET[device].samples)}
                 focus={config.sun.soft?.focus ?? 0}
               />
-              <SunLight sun={config.sun} />
+              {/* A 2048² map is ~32MB of FBO on a device that has nothing like
+                  that to spare. */}
+              <SunLight sun={config.sun} maxResolution={SHADOW_BUDGET[device].resolution} />
             </>
           )}
 
@@ -515,7 +555,11 @@ export default function Scene() {
             <PhysicsManager
               onJoystickInputReady={setJoystickInputRef}
               gyroEnabled={gyroEnabled}
-              playerStart={config.camera?.playerStart ?? [0, 2, 5]}
+              playerStart={
+                playerStartPosRef.current
+                  ? [playerStartPosRef.current.x, 2, playerStartPosRef.current.z]
+                  : config.camera?.playerStart ?? [0, 2, 5]
+              }
               cameraHeight={config.camera?.cameraHeight}
               focusTarget={focusTarget}
               focusId={pendingFocus?.id}
@@ -578,9 +622,13 @@ export default function Scene() {
           */}
           {/* Post-Processing (tier-driven; SSGI lazy on ultra opt-in) */}
           <PostProcessing />
+          {isDebug() && <RendererStatsProbe label="store" />}
         </Physics>
       </Canvas>
+      )}
       </div>
+
+      <RendererStatsOverlay tier={preset} />
 
       {/* Product Drawer - 2D bottom sheet. No backdrop: the canvas below stays
           interactive so look-drag and the joystick keep working while it's open */}
@@ -624,19 +672,25 @@ export default function Scene() {
       )}
 
       {/* Gallery model failed — styled recovery instead of a dead black stage */}
-      {galleryError && (
+      {(galleryError || recovery.lost) && (
         <div className="absolute inset-0 z-[60] flex flex-col items-center justify-center gap-4 bg-[#060608]/95 px-6 text-center">
           <p className="text-[10px] uppercase tracking-[0.45em] text-[#d4af37]/70">Gallery</p>
           <h2 className="text-xl font-extralight uppercase tracking-[0.2em] text-white">
-            Gallery could not be loaded
+            {recovery.lost ? 'Graphics memory ran out' : 'Gallery could not be loaded'}
           </h2>
-          <p className="max-w-sm text-sm text-white/40">{galleryError}</p>
-          <button
-            onClick={retryGallery}
-            className="mt-2 rounded-full border border-white/15 px-6 py-2.5 text-xs uppercase tracking-[0.2em] text-white/70 transition-colors hover:border-white/40 hover:text-white"
-          >
-            Try again
-          </button>
+          <p className="max-w-sm text-sm text-white/40">
+            {recovery.lost
+              ? 'The scene will come back at a lighter setting.'
+              : galleryError}
+          </p>
+          {(recovery.lost ? recovery.retryable : true) && (
+            <button
+              onClick={recovery.lost ? () => recovery.retry() : retryGallery}
+              className="mt-2 rounded-full border border-white/15 px-6 py-2.5 text-xs uppercase tracking-[0.2em] text-white/70 transition-colors hover:border-white/40 hover:text-white"
+            >
+              Try again
+            </button>
+          )}
         </div>
       )}
 

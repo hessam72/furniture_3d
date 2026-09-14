@@ -5,17 +5,17 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { QualityProvider } from '@/contexts/QualityContext'
 import {
-  PHONE_QUERY,
-  readDeviceClass,
   simpleViewer,
   simpleViewerQuality,
-  TOUCH_QUERY,
   type DeviceClass,
 } from '@/lib/product/presentation'
 import { isARCapable } from '@/lib/device-utils'
 import { assetHdrUrl, assetUrl, uploadViewerConfig } from '@/lib/uploads/viewer'
 import type { UploadedAsset } from '@/lib/uploads/store'
 import QualityChips from '@/components/product/QualityChips'
+import { useDeviceClass } from '@/hooks/useDeviceClass'
+import { useContextRecovery } from '@/hooks/useContextRecovery'
+import { WEBGL_UNAVAILABLE_FA, webglUnavailable } from '@/lib/three/gpuClass'
 
 const SimpleViewer = dynamic(() => import('@/components/product/SimpleViewer'), {
   ssr: false,
@@ -42,22 +42,15 @@ const ARProductViewer = dynamic(() => import('@/components/store/ARProductViewer
  * tier, which on this viewer only moves DPR and anisotropy. @see QualityChips
  */
 export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
-  const [device, setDevice] = useState<DeviceClass>('desktop')
+  const device = useDeviceClass()
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showAR, setShowAR] = useState(false)
   const [arCapable, setArCapable] = useState(false)
-  /** Remounts the canvas after AR: it is unmounted to give the overlay the GPU,
-   *  and a Canvas whose context went with it has to be rebuilt. */
-  const [canvasKey, setCanvasKey] = useState(0)
-
-  useEffect(() => {
-    const queries = [window.matchMedia(PHONE_QUERY), window.matchMedia(TOUCH_QUERY)]
-    const apply = () => setDevice(readDeviceClass())
-    apply()
-    queries.forEach((mq) => mq.addEventListener('change', apply))
-    return () => queries.forEach((mq) => mq.removeEventListener('change', apply))
-  }, [])
+  /** Remounts the canvas after AR — it is unmounted to give the overlay the
+   *  GPU — and carries the lost-context ladder. @see useContextRecovery */
+  const recovery = useContextRecovery({ surface: 'viewer' })
+  const canvasKey = recovery.canvasKey
 
   // Same full-screen, non-scrolling shape as the simple page, so it needs the
   // same guard against an iOS swipe becoming a pull-to-refresh.
@@ -68,6 +61,18 @@ export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
   }, [])
 
   useEffect(() => setArCapable(isARCapable()), [])
+
+  /**
+   * No WebGL2 on this device — three 0.180 has no WebGL1 path, so there is no
+   * renderer to build. Routed through `error`, which already gates the canvas,
+   * the loading plate and the AR button and draws the notice below; the point
+   * is that it is *not* the lost-context path, which would offer a retry that
+   * can only fail. Read in an effect because this shell server-renders.
+   * @see readGpuClass
+   */
+  useEffect(() => {
+    if (webglUnavailable()) setError(WEBGL_UNAVAILABLE_FA)
+  }, [])
 
   /** The uploaded environment, when one came with the model; otherwise the
    *  house HDR. @see uploadViewerConfig */
@@ -87,20 +92,22 @@ export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
   return (
     // The provider wraps the whole page, not just the canvas: the tier picker
     // is chrome over it and reads the same context.
-    <QualityProvider preset={simpleViewerQuality(config, device)}>
+    <QualityProvider surface="viewer" preset={simpleViewerQuality(config, device)} downgrades={recovery.downgrades}>
     <div
       dir="rtl"
       className="font-persian viewport-fill relative w-screen overflow-hidden"
       style={{ background: view.background }}
     >
-      {!error && !showAR && (
+      {!error && !showAR && !recovery.lost && (
         <SimpleViewer
+          label="upload"
           key={canvasKey}
           config={config}
           coverage={0}
           paintable={false}
           onReady={handleReady}
           onError={handleError}
+          onContextLost={recovery.handleContextLost}
         />
       )}
 
@@ -143,7 +150,7 @@ export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
           arScale="fixed"
           onClose={() => {
             setShowAR(false)
-            setCanvasKey((n) => n + 1)
+            recovery.remount()
           }}
         />
       )}
@@ -164,11 +171,26 @@ export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
         </div>
       )}
 
-      {error && (
+      {(error || recovery.lost) && (
         <div className="absolute inset-0 z-40 flex items-center justify-center p-6 text-center">
-          <div className="space-y-2">
-            <p className="text-[14px] text-neutral-800">این فایل قابل نمایش نیست.</p>
-            <p className="break-all text-[11px] text-neutral-500">{error}</p>
+          <div className="space-y-3">
+            <p className="text-[14px] text-neutral-800">
+              {recovery.lost && !error ? 'نمایش سه‌بعدی متوقف شد.' : 'این فایل قابل نمایش نیست.'}
+            </p>
+            <p className="break-all text-[11px] text-neutral-500">
+              {error ?? 'حافظه گرافیکی دستگاه پر شد'}
+            </p>
+            {/* The ladder unmounts the canvas on a loss, and this page drew
+                nothing in its place — a blank plate with no way back. */}
+            {!error && recovery.lost && recovery.retryable && (
+              <button
+                onClick={() => recovery.retry()}
+                className="rounded-lg border border-neutral-300 px-4 py-2 text-[13px] text-neutral-700
+                           transition-colors hover:border-neutral-500"
+              >
+                تلاش دوباره
+              </button>
+            )}
           </div>
         </div>
       )}

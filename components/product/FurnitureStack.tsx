@@ -6,9 +6,11 @@ import { Html, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { applyMatte, collectZoneTargets, disposeTargets, preparePresentationObject } from '@/lib/three/layerMaterials'
 import { applyFirstCoat, useZonePaint } from '@/hooks/useZonePaint'
+import { applyFirstSwatch, useSwatchTextures } from '@/hooks/useSwatchTextures'
 import { usePresentation } from '@/stores/presentationStore'
 import { useQuality } from '@/contexts/QualityContext'
-import { PartErrorBoundary } from '@/components/car/PartErrorBoundary'
+import { PartErrorBoundary } from '@/components/three/PartErrorBoundary'
+import { extendGltfLoader } from '@/lib/three/gltfLoaders'
 import {
   findCoverVariant,
   isMatte,
@@ -49,7 +51,7 @@ interface FurnitureStackProps {
 
 /** One GLB layer: cloned, prepared, its colourable subset tagged with a zone. */
 function useLayer(path: string, zone: PresentationZone, matte: boolean, shadows: boolean, match?: string) {
-  const gltf = useGLTF(path)
+  const gltf = useGLTF(path, false, true, extendGltfLoader)
   const { settings } = useQuality()
 
   const { scene, targets } = useMemo(() => {
@@ -60,12 +62,17 @@ function useLayer(path: string, zone: PresentationZone, matte: boolean, shadows:
       shadows,
     })
     const collected = collectZoneTargets(clone, { zone, match })
-    applyFirstCoat(collected, usePresentation.getState().paint)
+    const { paint } = usePresentation.getState()
+    applyFirstCoat(collected, paint)
+    // Same first-frame rule as the coat: a layer remounting into an already
+    // chosen fabric must not show one frame of the cloth its GLB shipped with.
+    applyFirstSwatch(collected, paint, settings.anisotropyLevel)
     if (matte) applyMatte(collected)
     return { scene: clone, targets: collected }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gltf.scene, path, matte, shadows])
 
+  useSwatchTextures(targets)
   useZonePaint(targets)
   useEffect(() => () => disposeTargets(targets), [targets])
 
@@ -83,7 +90,7 @@ function useLayer(path: string, zone: PresentationZone, matte: boolean, shadows:
  * It reads the same drei cache CoverLayer does, so this costs no extra fetch.
  */
 function CoverSource({ path, onBounds }: { path: string; onBounds: (box: THREE.Box3) => void }) {
-  const { scene } = useGLTF(path)
+  const { scene } = useGLTF(path, false, true, extendGltfLoader)
   useEffect(() => {
     onBounds(new THREE.Box3().setFromObject(scene))
   }, [scene, onBounds])

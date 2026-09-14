@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from 'react'
 import { useThree } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
+import { extendGltfLoader } from '@/lib/three/gltfLoaders'
 import * as THREE from 'three'
 import { preparePresentationObject } from '@/lib/three/layerMaterials'
 import { useQuality } from '@/contexts/QualityContext'
@@ -38,7 +39,7 @@ export default function PresentationStage({
   /** The stage's top, measured from `floorY`. Drives `liftPiece`. */
   onHeight?: (height: number) => void
 }) {
-  const gltf = useGLTF(meta.path)
+  const gltf = useGLTF(meta.path, false, true, extendGltfLoader)
   const invalidate = useThree((s) => s.invalidate)
   const { settings } = useQuality()
 

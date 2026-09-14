@@ -54,7 +54,20 @@ function PresentationPostProcessingImpl({
   // SMAA carries it wherever MSAA is not.
   const smaa = multisampling === 0
 
-  if (config.quality?.ao ?? settings.enableN8AO) {
+  /**
+   * AO is a desktop effect, on the same terms as MSAA above.
+   *
+   * It is the last thing `ultra` unlocks that a per-device budget does not
+   * already bound — an extra depth-aware pass plus its half-resolution target,
+   * every frame — and the tier picker now offers `ultra` on a handset. Like
+   * MSAA this is not a knob the manifest gets to spend on touch hardware:
+   * `quality.ao` still forces it on a desktop, where it was always aimed.
+   *
+   * No loss worth arguing over either way. The note above already records that
+   * N8AO haloes off a large silhouette and reads as a shadow hanging in the air
+   * behind the piece, which is why every tier below `ultra` has it off.
+   */
+  if (!touch && (config.quality?.ao ?? settings.enableN8AO)) {
     effects.push(
       <N8AO
         key="n8ao"

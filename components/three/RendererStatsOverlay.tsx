@@ -1,0 +1,118 @@
+'use client'
+
+import { useSyncExternalStore } from 'react'
+import {
+  SWATCH_CACHE_BUDGET_BYTES,
+  TEXTURE_VRAM_MAX_BYTES,
+  TEXTURE_VRAM_WARN_BYTES,
+  debugServerSnapshot,
+  debugSnapshot,
+  formatBytes,
+  readSamples,
+  subscribeDebug,
+  subscribeSamples,
+} from './rendererStatsStore'
+import { getGpuClassOnServer, readGpuClass, subscribeGpuClass } from '@/lib/three/gpuClass'
+
+/**
+ * `?debug` — the GPU budget, on the screen of the device that is running out of
+ * it. Safari Web Inspector needs a Mac, and the phones that crash are not
+ * attached to one.
+ *
+ * The line that matters is **VRAM**. Everything else here — DPR, programs,
+ * geometries — moves in tens of megabytes; textures move in hundreds, and are
+ * invisible in every other tool because the *file* is small.
+ * @see lib/three/textureBudget.ts
+ *
+ * Imports nothing from `three`, deliberately: this renders at page level, and a
+ * transitive dependency on the library would land the whole of it in the bundle
+ * of every page that mounts it.
+ */
+export function RendererStatsOverlay({ tier }: { tier?: string }) {
+  const rows = useSyncExternalStore(subscribeSamples, readSamples, readSamples)
+  // Hydration-safe: false on the server and during hydration, real afterwards.
+  // @see debugSnapshot
+  const debug = useSyncExternalStore(subscribeDebug, debugSnapshot, debugServerSnapshot)
+
+  /**
+   * The hardware verdict, because a wrong one is otherwise invisible.
+   *
+   * `weak` caps every surface to `low` and shrinks the tier picker with it, and
+   * the page gives no sign that it happened — a downgrade looks exactly like a
+   * page that was always this way. That is how a bad `MAX_SAMPLES` threshold
+   * dimmed every Apple device and was only caught by someone noticing the
+   * picker had one chip in it. Read here rather than passed in, so the pages
+   * that mount the overlay without a `tier` get it too. `gpuClass` imports
+   * nothing, so this keeps the module's no-`three` rule.
+   */
+  const gpu = useSyncExternalStore(subscribeGpuClass, readGpuClass, getGpuClassOnServer)
+
+  if (!debug) return null
+
+  const total = rows.reduce((sum, row) => sum + row.vram, 0)
+  const level = total > TEXTURE_VRAM_MAX_BYTES ? '#f87171' : total > TEXTURE_VRAM_WARN_BYTES ? '#fbbf24' : '#4ade80'
+  const canvases = typeof document !== 'undefined' ? document.getElementsByTagName('canvas').length : 0
+
+  return (
+    <div
+      dir="ltr"
+      className="pointer-events-none fixed right-2 top-[max(4rem,env(safe-area-inset-top))] z-[9999]
+                 max-w-[min(22rem,92vw)] rounded-lg bg-black/80 px-2.5 py-2 font-mono text-[10px]
+                 leading-[1.45] text-neutral-200 backdrop-blur-sm"
+    >
+      <div style={{ color: level }}>
+        VRAM {formatBytes(total)}
+        <span className="text-neutral-500">
+          {' '}
+          · {rows.length} renderer{rows.length === 1 ? '' : 's'} · {canvases} canvas
+          {canvases === 1 ? '' : 'es'}
+          {tier ? ` · ${tier}` : ''}
+        </span>
+        {/* Amber and red on the same idiom the VRAM line uses: `weak` is a
+            ceiling the visitor did not choose, `none` is a page that cannot
+            render at all. `normal` stays grey — it is the unremarkable case. */}
+        <span style={{ color: gpu === 'none' ? '#f87171' : gpu === 'weak' ? '#fbbf24' : undefined }}>
+          <span className="text-neutral-500"> · gpu </span>
+          {gpu}
+        </span>
+      </div>
+
+      {rows.map((row) => (
+        <div key={row.label} className="mt-1 border-t border-white/10 pt-1">
+          <div className="text-neutral-400">
+            {row.label} · {row.fps.toFixed(0)}fps · dpr {row.dpr.toFixed(2)} · {formatBytes(row.vram)}
+          </div>
+          <div className="text-neutral-500">
+            geo {row.geometries} · tex {row.textures} · prog {row.programs} · calls {row.calls} ·{' '}
+            {(row.triangles / 1000).toFixed(0)}k tris
+          </div>
+          {!!row.swatchSets && (
+            <div
+              /* Amber past the cache's own budget, the same idiom the VRAM line
+                 uses — these bytes are real and the scene walk above misses them. */
+              style={{
+                color: (row.swatchBytes ?? 0) > SWATCH_CACHE_BUDGET_BYTES ? '#fbbf24' : undefined,
+              }}
+              className="text-neutral-500"
+            >
+              swatch {row.swatchSets} · {formatBytes(row.swatchBytes ?? 0)}/
+              {formatBytes(SWATCH_CACHE_BUDGET_BYTES)}
+              {row.swatchInflight ? ` · ${row.swatchInflight} in flight` : ''}
+            </div>
+          )}
+          {row.worst.map((line) => (
+            <div key={line} className="truncate text-neutral-600">
+              {line}
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {rows.length > 1 && (
+        <div className="mt-1 border-t border-white/10 pt-1 text-[#f87171]">
+          ⚠ more than one live WebGL context
+        </div>
+      )}
+    </div>
+  )
+}

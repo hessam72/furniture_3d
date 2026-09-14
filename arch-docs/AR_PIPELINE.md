@@ -60,13 +60,14 @@ Nothing the configurator does touches geometry or textures. The whole of it is `
       rebuilt            rewritten              copied verbatim
 ```
 
-So Draco stays Draco, KTX2 would stay KTX2, no canvas is involved, and the output is the input's size.
+So Draco stays Draco, KTX2 stays KTX2, no canvas is involved, and the output is the input's size — **plus the fabrics the customer chose**, where they chose any. See *Injecting a texture* below; nothing is ever decompressed or re-encoded either way.
 
 | Function | Does |
 |---|---|
 | `readGlbJson(bytes)` | Parses the container, returns the glTF JSON |
 | `zoneEditsFromJson(json, zone, paint)` | glTF material index → `MaterialEdit`, honouring per-mesh zone overrides |
-| `patchGlbMaterials(bytes, edits)` | Applies the edits and re-emits the GLB |
+| `materialIndicesByName(json, names)` | Material *names* → indices, so AR dresses what the page dressed |
+| `patchGlbMaterials(bytes, edits, injection?)` | Applies the edits, appends any injected texture, and re-emits the GLB |
 | `hexToLinearRgb(hex)` | sRGB → linear-sRGB, the space `baseColorFactor` is defined in |
 
 Written with **no `three` import** on purpose: the same module runs in the browser and in the route handler, so there is one implementation and no chance of the two drifting.
@@ -80,17 +81,59 @@ Details that matter:
 - **Zone overrides** are read from glTF `extras` on the mesh *and* on the node, because `GLTFLoader` merges both into `userData`, which is what `zoneOverride` (`lib/three/layerMaterials.ts:78`) reads. The mesh-name `match` rule is deliberately **not** reimplemented — the plain viewer never passes one, and a second copy of that rule would silently diverge.
 - **Known limit.** One glTF material shared by two meshes tagged with *different* zones cannot be split by a byte patch; three clones per mesh and can. Not reachable on `/simple`, where a file is one zone.
 
+### 1b. Injecting a texture
+
+A colour is a number and fits in the JSON chunk. A **fabric is an image**, and showing the customer the cloth they picked means putting it in the file. `TextureInjection` does that — **one per zone**, so the couch, its cushions and the shawl all arrive dressed — and it is still all append:
+
+```
+[ header ][ JSON ][ BIN ................................ | ktx2 | ktx2 ]
+            rewritten   copied verbatim, byte for byte      appended
+```
+
+Per injected map: a `bufferViews` entry over the appended bytes, an `images` entry (`image/ktx2`), a `textures` entry carrying `KHR_texture_basisu`, a rewritten `index` on the material's existing texture reference, and `buffers[0].byteLength` bumped to match. Nothing already in the file moves.
+
+Details that matter:
+
+- **The reference's `extensions` object is left alone, and that is load-bearing.** `KHR_texture_transform` lives on the material's texture *reference*, not on the texture — so repointing `index` and nothing else reproduces the page's inherit rule for free. `vray_rene_sofa_012` keeps its 90° rotation, `fabric_03` its 3×3, with no second copy of that logic to drift.
+- **The BIN chunk is found by type** (`0x004E4942`), never by position. `readChunks` tolerates a trailing chunk some tool appended, and `chunks[1]` would put the fabric inside it.
+- **A material with nothing in the slot is skipped**, exactly as on the page: there is no sampler to inherit and no reference to repoint. The new texture borrows the displaced one's sampler, because a standalone `.ktx2` has none of its own.
+- **`KHR_texture_basisu` goes in `extensionsRequired`**, not just `extensionsUsed` — the injected texture ships no uncompressed fallback `source`, so the spec makes it required. Both pushes are guarded so they cannot accumulate per request.
+- **Material selection is by name**, via `materialIndicesByName`, from the same `materials[]` list the page matches on — intersected with the zone, resolved through the same `parts` walk. Two rules over one asset is exactly how AR ends up dressing different parts than the screen did, and the intersection is why a cover swatch that lists every fabric material still only dresses the couch.
+- **One image per distinct cloth, not per zone.** `injectTexture` keys what it has already appended by the swatch's manifest path, so three zones wearing three fabrics — which share one normal map, and may share a base colour — append four images rather than six. Without it a three-zone configuration carried three copies of the same 1.2MB normal.
+- **Size.** Base colour plus normal at 1024² is roughly 1.4MB on a ~5MB file; a full three-zone change measured 1.8MB. Both well under `AR_GLB_WARN_BYTES` (15MB), and the page's HEAD-before-open measures the real response anyway.
+- **iOS is fine with this.** `ios-src` is unset on `/simple`, so model-viewer builds the USDZ from the GLB it loaded, transcoding the KTX2 on the way. Android's Scene Viewer reads the GLB directly, and these assets already require `KHR_texture_basisu` today — one more Basis texture is not a new risk.
+
 ### 2. Serve it from a URL, not a blob
 
-`GET /api/ar/<key>/model.glb?layer=<frame|variantId>&zone=<wood|cover|cushion>&paint=<base64url>`
+`GET /api/ar/<key>/model.glb?layer=<frame|variantId>&zone=<fallback zone>&paint=<base64url>&tex=<ids, one slot per zone>`
+
+**`zone` is the fallback, not a filter.** It names what anything the `parts` rules do not claim should wear. Every zone's colour travels in `paint`, and every zone's cloth travels in `tex`.
 
 **Why a URL.** Android's Scene Viewer fetches the model itself and refuses `blob:`. `supportsBlobAR()` (`lib/device-utils.ts:40`) knew that and fell back to the static, uncustomised `product.glbPath` — so on every Android phone without WebXR the customer picked a colour and then saw the default one in their room. A real URL removes that split entirely. iOS gains too: Safari is not holding the model in the page's heap while Quick Look runs.
 
-**Security shape.** `layer` **selects** a file from the manifest, it never names one. A traversal string simply finds no variant and falls through to the finished piece. `path.resolve` containment under `public/` is the second lock, for a manifest with a bad path rather than for a hostile request. `paint` is base64url JSON in a fixed key order, length-capped (`MAX_PAINT_PARAM_LENGTH`) and validated field by field — hex colour, 0–1 numbers — with a 400 on anything else.
+**Security shape.** `layer` **selects** a file from the manifest, it never names one. A traversal string simply finds no variant and falls through to the finished piece. `tex` is the same kind of token for the fabric: a **swatch id** looked up in the palette, never a texture URL, with a 400 for an id the manifest does not publish. `path.resolve` containment under `public/` is the second lock on both, for a manifest with a bad path rather than for a hostile request. `paint` is base64url JSON in a fixed key order, length-capped (`MAX_PAINT_PARAM_LENGTH`) and validated field by field — hex colour, 0–1 numbers — with a 400 on anything else.
+
+**Why `tex` is its own parameter.** `decodePaint` rejects any zone entry that is not exactly four elements long, and the encoded string is the cache key for both the browser and the route's LRU. Growing the tuple would make every AR URL issued before this change answer 400. `swatchId`, `maps` and the rest are optional fields on `ZonePaint` that stay out of the codec entirely; `arModelUrl` omits `tex` when no zone wears a textured swatch, so those URLs remain byte-identical to the ones already cached.
+
+**`tex` carries every zone.** It used to carry one — the active zone's — and that was a real bug, not a simplification: paint travelled for all four zones, so a customer who redressed the cushions and the shawl watched their *colours* reach the room while their cloth stayed behind, and only the couch, whose zone happened to be the one in the query, came through right. The encoding is positional and comma-separated in `PRESENTATION_ZONES` order, for the same reason `encodePaint` uses a fixed key order: one configuration, one string, one cache entry. Empty slots stay empty, which is also what tells the two spellings apart — the list always carries `PRESENTATION_ZONES.length - 1` commas, so a token with no comma can only be the old single-id form, and is still read that way. Those URLs are `immutable` for a year; they are in caches and in customers' histories.
 
 **Caching.** The query fully determines the bytes, so responses are `public, max-age=31536000, immutable`, plus a 6-entry in-process LRU. The fixed key order in `encodePaint` is what makes the same configuration produce the same URL every time.
 
-**Degrading.** A GLB that cannot be parsed is served as authored rather than 500 — the piece appears in its own colours, which beats no AR. A missing file 404s and the page falls back (`public/models` is gitignored, so a deploy without assets is a real case).
+**Degrading.** A GLB that cannot be parsed is served as authored rather than 500 — the piece appears in its own colours, which beats no AR. A missing model 404s and the page falls back (`public/models` is gitignored, so a deploy without assets is a real case). A swatch whose `.ktx2` files are missing from disk is **not** an error: that zone falls through to the colour-only patch, so a half-deployed texture set shows the authored cloth on that part rather than breaking AR for the whole piece. An unknown `tex` id, or a malformed one, *is* a 400 — that is a bad request, not a bad deploy.
+
+### 2b. Say what cannot travel
+
+Everything above is about the difference between the page and the room being *deliberate*. The remaining differences are the ones the file itself imposes, and they are all silent — Scene Viewer and three's `USDZExporter` drop what they cannot read and render on:
+
+| Declared | What AR does | Where the fix is |
+|---|---|---|
+| `KHR_texture_transform` | Quick Look mis-maps it. three writes a `UsdTransform2d` and documents, in its own source, that Quick Look reads it wrong (Apple FB10036297); its `quickLookCompatible` approximation is itself *"NOT correct yet in QuickLook … more incorrect the bigger the offset is"*, and model-viewer never passes it. A map with **no** transform collapses to an identity node there is nothing to misread — which is why an untransformed sofa body survives the trip and a cushion tiled 3× does not. | export with the transform baked into the UVs |
+| `KHR_texture_basisu` | Scene Viewer has no Basis transcoder — an Android phone without WebXR cannot open the file at all | a PNG/JPEG twin behind `arPath` |
+| `EXT_texture_webp` | same, for WebP | same |
+| `EXT_mesh_gpu_instancing` | only ever listed in `extensionsUsed`, so both runtimes drop every instance but the first — legs, castors — with no error | export the copies as real nodes |
+| `KHR_materials_sheen` / `_specular` / … | dropped by the USDZ exporter | nothing; reported and lived with |
+
+`arHazards(json)` (`lib/ar/glbPatch.ts`) reads that list off the JSON chunk the route has already parsed. The route logs it once per model and returns it as **`X-AR-Compat`** — `ok`, or a comma-separated list — which the page reads off the `HEAD` it already sends and warns on. The patcher cannot remove any of it; preserving the file byte for byte is the point of it. What this buys is that the gap is never again something you have to notice by eye.
 
 ### 3. Cap what Quick Look bakes
 
@@ -186,11 +229,34 @@ Manifest fall-through, against the running route: `arPath: ""` → 1 456 668 byt
 npm run dev
 # Empty arPath → the display model, ~= source size
 curl -sI 'http://localhost:3000/api/ar/test/model.glb?layer=leather&zone=cover&paint=<base64url>'
+# With a fabric → the same file plus ~1.4MB. `tex` is positional: wood,cover,cushion,shawl
+curl -s 'http://localhost:3000/api/ar/test/model.glb?layer=leather&zone=cover&paint=<b64>&tex=,wool-oat,,' -o /tmp/ar.glb
+# All three soft zones at once → +1.8MB, four new images, not six
+curl -s '...&tex=,linen-ash,cushion-wool,shawl-boucle' -o /tmp/ar3.glb
+node scripts/glb-budget.mjs /tmp/ar3.glb   # walks the container: a bad append fails here, not on a phone
 # Rejections
-#   unknown key → 404 · bad zone / paint / oversized / non-base64 → 400
+#   unknown key → 404 · bad zone / paint / oversized / non-base64 / unknown or malformed tex → 400
 ```
 
-On device, `?debug` logs the resolved path, the patched size and the triangle count from `openAR`.
+Measured against the running route on `Furniture high Test2-optimized.glb` (5 248 068 bytes as authored):
+
+| `tex` | bytes | new images | `Fabric_1` | `fabric_03` | `vray_rene_sofa_011` |
+|---|---|---|---|---|---|
+| *(none)* | 5 248 068 | — | authored | authored | authored |
+| `,linen-ash,,` | 6 670 092 | 2 | linen-ash | authored | authored |
+| `,linen-ash,cushion-wool,shawl-boucle` | 7 051 900 | 4 | linen-ash | wool-oat | boucle-stone |
+| `linen-ash` *(old spelling)* | 6 670 092 | 2 | linen-ash | authored | authored |
+
+The third row is the fix: three zones, three base colours and **one** shared normal map, with the wood materials untouched and every `KHR_texture_transform` still on the reference that carried it. The fourth proves the old single-id URLs still resolve to exactly the bytes they used to.
+
+The injection is worth checking on the bytes rather than the phone, because all of
+it is verifiable offline: that the container still parses, that exactly the named
+materials were repointed, that `KHR_texture_transform` survived on the ones that
+carried it, and that each new `bufferViews[n].byteOffset` is 4-byte aligned and
+lands on the KTX2 magic (`AB 4B 54 58 20 32 30 BB`). A URL with no `tex` must
+come back byte-identical to the pre-change build.
+
+On device, `?debug` logs the resolved path, the patched size, the triangle count and `X-AR-Compat` from `openAR`; a non-`ok` value warns unconditionally.
 
 The proof that the texture cap is the iOS fix is a toggle: `ar-usdz-max-texture-size="1024"` succeeds where removing the attribute — back to model-viewer's `Infinity` default — reproduces the crash.
 

@@ -4,13 +4,12 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { Canvas, type RootState } from '@react-three/fiber'
 import { ACESFilmicToneMapping, NeutralToneMapping, type Box3 } from 'three'
 import { PerfLadder } from '@/components/three/PerfLadder'
-import { PartErrorBoundary } from '@/components/car/PartErrorBoundary'
-import { clampDprToBudget } from '@/lib/three/dprBudget'
+import { PartErrorBoundary } from '@/components/three/PartErrorBoundary'
+import { COMPOSER_PIXEL_WEIGHT, clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
 import {
   lightingMode,
   needsEnvironment,
-  readDeviceClass,
   roomMode,
   STORE_RENDER,
   sunEnabled,
@@ -25,6 +24,8 @@ import PresentationGestures from './PresentationGestures'
 import { PresentationPostProcessing } from './PresentationPostProcessing'
 import FurnitureStack, { type StackControls, type StackFraming } from './FurnitureStack'
 import PresentationDiagnostics from './PresentationDiagnostics'
+import { RendererStatsProbe } from '@/components/three/RendererStatsProbe'
+import { useCanvasLifecycle } from '@/hooks/useCanvasLifecycle'
 import { SceneReady } from './PresentationLoading'
 
 interface Props {
@@ -62,7 +63,7 @@ interface Props {
  * `useQuality`, `roomBox` arriving, the store for the ones that read it.
  */
 export default function PresentationScene({ config, onLayerError, onReady, onContextLost }: Props) {
-  const { settings } = useQuality()
+  const { settings, device, gpu } = useQuality()
   const backdrop = roomMode(config)
   const needsIBL = needsEnvironment(config)
   // A room GLB is authored and checked under /store's renderer. Its materials
@@ -74,14 +75,18 @@ export default function PresentationScene({ config, onLayerError, onReady, onCon
   const debug = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug')
   const [perfScale, setPerfScale] = useState(1)
   /**
-   * Read once, synchronously, and handed down rather than re-queried per
-   * component: the passes below have to agree about what they are drawing on,
-   * and a composer or a shadow map that starts at the wrong size has already
-   * made the allocation by the time an effect could correct it. This component
-   * only ever mounts inside `dynamic(..., { ssr: false })`, so there is no
-   * server HTML for the synchronous read to disagree with.
+   * Read from the provider that already resolved it, and handed down rather
+   * than re-queried per component: the passes below have to agree about what
+   * they are drawing on, and a composer or a shadow map that starts at the
+   * wrong size has already made the allocation by the time an effect could
+   * correct it.
+   *
+   * This was a synchronous `readDeviceClass()` in a `useState` initialiser —
+   * correct, and the only surface that got it right, back when the provider
+   * settled the device in an effect and so began at `desktop`. The provider
+   * resolves it on the first render now, so there is one answer instead of two.
    */
-  const [device] = useState(readDeviceClass)
+
 
   // Spin/tilt targets live in a ref shared with the gesture layer — writing
   // them to zustand at 60Hz would re-render the bottom sheet every frame.
@@ -96,44 +101,29 @@ export default function PresentationScene({ config, onLayerError, onReady, onCon
   // when the room resolves. The ref stays because the camera polls it per frame.
   const [roomBox, setRoomBox] = useState<Box3 | null>(null)
 
-  // Registered in onCreated; R3F disposes the renderer on unmount but leaves
-  // listeners we added to its canvas.
-  const cleanupRef = useRef<(() => void) | null>(null)
-  useEffect(() => () => cleanupRef.current?.(), [])
-
   /**
    * Context loss is what is left once the memory budget is under control: a
-   * backgrounded tab, another page taking a context, a driver reset.
-   * `preventDefault()` is what makes it recoverable at all — without it the
-   * browser never fires `restored`.
+   * backgrounded tab, another page taking a context, a driver reset. The
+   * listeners, the transcoder priming and the teardown all live in the shared
+   * hook now. @see useCanvasLifecycle
    */
-  const handleCreated = useCallback(
-    ({ gl, invalidate }: RootState) => {
+  const handleCreated = useCanvasLifecycle({
+    label: 'presentation',
+    onContextLost,
+    onCreated: useCallback(({ gl }: RootState) => {
       gl.localClippingEnabled = true
-
-      const canvas = gl.domElement
-      const lost = (event: Event) => {
-        event.preventDefault()
-        onContextLost?.()
-      }
-      // Repaints where the browser gives us a restore; the page's retry covers
-      // the browsers that never do.
-      const restored = () => invalidate()
-
-      canvas.addEventListener('webglcontextlost', lost, false)
-      canvas.addEventListener('webglcontextrestored', restored, false)
-      cleanupRef.current = () => {
-        canvas.removeEventListener('webglcontextlost', lost)
-        canvas.removeEventListener('webglcontextrestored', restored)
-      }
-    },
-    [onContextLost]
-  )
+    }, []),
+  })
 
   const dpr = useMemo<[number, number]>(() => {
-    const [min, max] = clampDprToBudget(settings.dpr)
+    // The canvas is single-sampled here (`antialias: false` below), but AA is
+    // the composer's job and the composer allocates far more than the canvas
+    // does — two RGBA16F buffers, SMAA's pair and a bloom mip chain, every one
+    // of them sized to this DPR. Priced accordingly, or the budget would be
+    // protecting the cheapest page in the app and not this one.
+    const [min, max] = clampDprToBudget(settings.dpr, device, COMPOSER_PIXEL_WEIGHT, gpu)
     return [min, Math.max(min, +(max * perfScale).toFixed(2))]
-  }, [settings.dpr, perfScale])
+  }, [settings.dpr, device, gpu, perfScale])
 
   return (
     <div
@@ -231,6 +221,7 @@ export default function PresentationScene({ config, onLayerError, onReady, onCon
         <PresentationPostProcessing config={config} device={device} />
 
         {debug && <PresentationDiagnostics />}
+        {debug && <RendererStatsProbe label="presentation" />}
       </Canvas>
     </div>
   )

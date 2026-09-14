@@ -1,9 +1,9 @@
 module.exports = {
   apps: [
     {
-      name: "furncher-app",
+      name: "furncher-app-optimized",
       script: "node_modules/next/dist/bin/next",
-      args: "start -p 3040",
+      args: "start -p 3045",
       exec_mode: "fork",
       instances: 1,
       env: {

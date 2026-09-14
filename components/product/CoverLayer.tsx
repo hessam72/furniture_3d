@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useRef } from 'react'
 import { useGLTF } from '@react-three/drei'
+import { extendGltfLoader } from '@/lib/three/gltfLoaders'
 import * as THREE from 'three'
 import { applyMatte, collectZoneTargets, disposeTargets, preparePresentationObject } from '@/lib/three/layerMaterials'
 import { localBoundsY } from '@/lib/three/clipWipe'
 import { useClipWipe, type WipeDirection } from '@/hooks/useClipWipe'
 import { applyFirstCoat, useZonePaint } from '@/hooks/useZonePaint'
+import { applyFirstSwatch, useSwatchTextures } from '@/hooks/useSwatchTextures'
 import { usePresentation } from '@/stores/presentationStore'
 import { useQuality } from '@/contexts/QualityContext'
 import type { CoverVariant } from '@/lib/product/presentation'
@@ -29,7 +31,7 @@ interface CoverLayerProps {
  * never flashes at full size before its reveal begins.
  */
 export default function CoverLayer({ variant, direction, durationMs, matte, shadows, onWipeComplete }: CoverLayerProps) {
-  const gltf = useGLTF(variant.path)
+  const gltf = useGLTF(variant.path, false, true, extendGltfLoader)
   const groupRef = useRef<THREE.Group>(null)
   const { settings } = useQuality()
 
@@ -45,7 +47,8 @@ export default function CoverLayer({ variant, direction, durationMs, matte, shad
     // the painted ones. Bounds are read here, before the clone is parented,
     // while its world matrix is still identity.
     const collected = collectZoneTargets(clone, { zone: 'cover' })
-    applyFirstCoat(collected, usePresentation.getState().paint)
+    const { paint } = usePresentation.getState()
+    applyFirstCoat(collected, paint)
 
     // Per-variant surface character (leather vs velvet vs polyurethane).
     collected.forEach(({ material }) => {
@@ -56,12 +59,18 @@ export default function CoverLayer({ variant, direction, durationMs, matte, shad
       }
     })
 
+    // After the variant's surface character, not before: a swatch that brings
+    // its own roughness map should win over the variant's flat roughness number,
+    // and this layer remounts on every swap so the order runs every time.
+    applyFirstSwatch(collected, paint, settings.anisotropyLevel)
+
     if (matte) applyMatte(collected)
 
     return { scene: clone, targets: collected, bounds: localBoundsY(clone) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gltf.scene, variant.path, matte, shadows])
 
+  useSwatchTextures(targets)
   useZonePaint(targets)
   useClipWipe({ groupRef, targets, bounds, direction, durationMs, onComplete: onWipeComplete })
 
