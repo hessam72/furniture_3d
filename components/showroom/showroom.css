@@ -690,7 +690,8 @@
 }
 .sr-featured-controls > .sr-option-row:first-child { margin-block-start: 0; }
 .sr-option-label { font-size: 0.8rem; color: var(--sr-dim); }
-.sr-swatches { display: flex; gap: 0.5rem; }
+.sr-swatches { display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr; gap: 0.5rem; }
 .sr-swatch {
   inline-size: 1.55rem;
   block-size: 1.55rem;
