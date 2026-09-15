@@ -7,6 +7,7 @@ import { QualityProvider } from '@/contexts/QualityContext'
 import { useAssetProbe } from '@/hooks/useAssetProbe'
 import { useDeviceClass } from '@/hooks/useDeviceClass'
 import { usePresentation } from '@/stores/presentationStore'
+import { arUsdzUrl, swatchIdsFromPaint } from '@/lib/ar/arSource'
 import { useShop } from '@/stores/storeShopStore'
 import { findCatalogItemBySceneObject } from '@/lib/store/catalog'
 import catalog from '@/public/config/catalog.json'
@@ -140,7 +141,27 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
     product.glbPath,
   ])
 
-  const openAR = useCallback(() => setShowAR(true), [])
+  /**
+   * The same piece as a USDZ, for Quick Look, carrying the live configuration.
+   *
+   * `arPath` above is a static file, chosen for the reasons written over it, and
+   * it is the right `src` for Scene Viewer. iOS cannot use it: model-viewer has
+   * to convert a GLB to USDZ itself when no `ios-src` is given, and it throws on
+   * the first Basis texture with nowhere for the failure to go — the black
+   * screen. @see app/api/ar/[key]/model.usdz/route.ts
+   *
+   * Built at open time rather than on every paint change: this URL is only read
+   * when the overlay mounts, and the store's paint is what it should reflect at
+   * that moment.
+   */
+  const [arUsdz, setArUsdz] = useState<string | null>(null)
+
+  const openAR = useCallback(() => {
+    const { paint } = usePresentation.getState()
+    const layer = coverId ?? 'default'
+    setArUsdz(arUsdzUrl(key, layer, 'cover', paint, swatchIdsFromPaint(paint)))
+    setShowAR(true)
+  }, [key, coverId])
 
   useEffect(() => {
     initProduct(key, defaultPaint(config), config.layers.cover.default, config.layers.startStep ?? 1)
@@ -340,14 +361,12 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
              * USDZ. It fails with no error and Quick Look opens on the page
              * itself. @see the note on ARProductViewer's `usdzPath`.
              *
-             * The cost is real and worth naming: Quick Look shows the piece in
-             * its authored finish rather than the chosen one. WebXR and Scene
-             * Viewer still get the configured GLB through `src`, so this is
-             * iOS-only, and a wrong finish in the room beats a black screen.
-             * The fix that gets both is an authored USDZ per cover variant —
-             * @see AR_PIPELINE.md, whose `arPath` slots are still empty.
+             * It now points at the conversion route, so Quick Look shows the
+             * piece as configured rather than as authored. `product.usdzPath`
+             * stays as the floor beneath it: what the route redirects to if a
+             * conversion fails, and what this uses before one is built.
              */
-            usdzPath={product.usdzPath}
+            usdzPath={arUsdz ?? product.usdzPath}
             arScale="fixed"
             productName={product.name}
             onClose={closeAR}

@@ -11,7 +11,7 @@ import { useAssetProbe } from '@/hooks/useAssetProbe'
 import { useDeviceClass } from '@/hooks/useDeviceClass'
 import { usePresentation } from '@/stores/presentationStore'
 import { isARCapable } from '@/lib/device-utils'
-import { arModelUrl, swatchIdsFromPaint } from '@/lib/ar/arSource'
+import { arModelUrl, arUsdzUrl, swatchIdsFromPaint } from '@/lib/ar/arSource'
 import { AR_GLB_MAX_BYTES, AR_GLB_WARN_BYTES, AR_TRIANGLE_WARN, countTriangles } from '@/lib/ar/budget'
 import {
   arModelPath,
@@ -245,6 +245,8 @@ function Viewer({
    *  the picked colour is not the one about to appear in the room. */
   const [arStale, setArStale] = useState(false)
   const [arUrl, setArUrl] = useState<string | null>(null)
+  /** The same configuration as a USDZ, for Quick Look. @see arUsdzUrl */
+  const [arUsdz, setArUsdz] = useState<string | null>(null)
 
   /** The raw cached GLB behind the canvas, published by the viewer. Nothing is
    *  serialised from it any more — it is read only to weigh the piece before
@@ -272,7 +274,9 @@ function Viewer({
     // chosen fabric in the file — the couch's, the cushions', the shawl's. It
     // used to send only the active zone's, which is why colour reached the room
     // and cloth did not. Zones wearing a plain colour contribute nothing.
-    const url = arModelUrl(productKey, layer, zone, paint, swatchIdsFromPaint(paint))
+    const swatches = swatchIdsFromPaint(paint)
+    const url = arModelUrl(productKey, layer, zone, paint, swatches)
+    const usdz = arUsdzUrl(productKey, layer, zone, paint, swatches)
     const debug = new URLSearchParams(window.location.search).has('debug')
 
     setArBuilding(true)
@@ -317,6 +321,7 @@ function Viewer({
       }
 
       setArUrl(url)
+      setArUsdz(usdz)
       setShowAR(true)
     } catch (err) {
       // The published GLB stands in, and the sheet says the colour will not be
@@ -325,6 +330,7 @@ function Viewer({
       console.error('[simple] AR source unavailable', err)
       setArStale(true)
       setArUrl(null)
+      setArUsdz(null)
       setShowAR(!!product.glbPath)
     } finally {
       setArBuilding(false)
@@ -475,21 +481,20 @@ function Viewer({
         <ARProductViewer
           glbPath={arUrl ?? product.glbPath ?? ''}
           /**
-           * Always passed, including for the configured model.
+           * The configured piece, converted for Quick Look.
            *
-           * This used to be omitted on purpose so model-viewer would build the
-           * USDZ from the file it loaded and Quick Look would show the live
-           * configuration. It cannot: the route serves a Basis-compressed GLB —
-           * more so now that the swatches inject `.ktx2` fabrics into it — and
-           * model-viewer's USDZ exporter has no error path, so iOS opened Quick
-           * Look on the HTML page and showed a black screen.
-           * @see the note on ARProductViewer's `usdzPath`.
+           * Never omitted. model-viewer will try to build a USDZ itself when
+           * `ios-src` is absent, and on these models it throws on the first
+           * Basis texture with nowhere for the failure to go — which is the
+           * black screen. @see the note on ARProductViewer's `usdzPath`.
            *
-           * So iOS gets the authored USDZ and loses the chosen fabric in the
-           * room; Android keeps the full configuration through `src`. The way
-           * to have both is an authored USDZ per variant. @see AR_PIPELINE.md
+           * `arUsdz` carries the same query as `arUrl`, so the cloth the
+           * customer picked reaches the room on iOS exactly as it does on
+           * Android. The static `product.usdzPath` remains as the floor: it is
+           * what the route redirects to if a conversion ever fails, and what
+           * this falls back to before one has been built.
            */
-          usdzPath={product.usdzPath}
+          usdzPath={arUsdz ?? product.usdzPath}
           productName={product.name}
           // Explicit rather than inherited: WebXR first so a capable Android
           // stays in the page, then Scene Viewer, which can now fetch the model
