@@ -31,20 +31,20 @@
         "variants": [
           {
             "id": "velvet",
-            "name": "مخمل",
-            "path": "/ktx-optimized/Furniture high Test3-optimized.glb",
+            "name": "پارچه تدی",
+            "path": "/ktx-optimized/simple-sofa-optimized.glb",
             "arPath": "",
             "thumbnail": "/images/covers/velvet.jpeg",
             "priceDelta": 0,
             "material": {
-              "roughness": 0.95,
+              "roughness": 0.8,
               "metalness": 0,
               "clearcoat": 0
             }
           },
           {
             "id": "leather",
-            "name": "چرم طبیعی",
+            "name": "مخمل",
             "path": "/ktx-optimized/Furniture high Test2-optimized.glb",
             "arPath": "",
             "thumbnail": "/images/covers/leather.png",
@@ -90,7 +90,7 @@
         }
       ],
       "cover": [
-          {
+        {
           "id": "weave-ecru",
           "name": "بافت کرم",
           "hex": "#cbbfae",
@@ -99,11 +99,7 @@
             "map": "/textures/covers/weave-ecru.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+           
           "thumbnail": "/images/fabrics/weave-ecru.png"
         },
         {
@@ -115,14 +111,10 @@
             "map": "/textures/covers/green_fabric_03_diffuse (2)_UASTC.ktx2",
             "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+         
           "thumbnail": "/images/fabrics/green_fabric.webp"
         },
-         {
+        {
           "id": "weave-blue",
           "name": "آبی نفتی",
           "hex": "#cbbfae",
@@ -131,14 +123,9 @@
             "map": "/textures/covers/blue_fabric_12_diffuse copy_UASTC.ktx2",
             "normalMap": "/textures/covers/blue_fabric_12_normal copy_UASTC.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+        
           "thumbnail": "/images/fabrics/blue_fabric.webp"
-        }, 
-      
+        },
         {
           "id": "weave-orange",
           "name": "پرتقالی",
@@ -148,15 +135,9 @@
             "map": "/textures/covers/orange_fabric_03_diffuse copy_UASTC.ktx2",
             "normalMap": "/textures/covers/orange_fabric_03_normal copy_UASTC.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+           
           "thumbnail": "/images/fabrics/orange_fabric.webp"
         },
-        
-      
         {
           "id": "wool-oat",
           "name": "پشم ",
@@ -166,11 +147,7 @@
             "map": "/textures/covers/wool-oat.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+           
           "thumbnail": "/images/fabrics/wool-oat.png"
         },
         {
@@ -182,11 +159,7 @@
             "map": "/textures/covers/boucle-stone.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+           
           "thumbnail": "/images/fabrics/boucle-stone.png"
         },
         {
@@ -198,11 +171,7 @@
             "map": "/textures/covers/linen-ash.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+           
           "thumbnail": "/images/fabrics/linen-ash.png"
         },
         {
@@ -213,11 +182,7 @@
           "maps": {
             "map": "/textures/covers/velvet-emerald.v1.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+           
           "thumbnail": "/images/fabrics/velvet-emerald.png"
         },
         {
@@ -229,11 +194,7 @@
             "map": "/textures/covers/chenille-sand.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+           
           "thumbnail": "/images/fabrics/chenille-sand.png"
         },
         {
@@ -245,11 +206,7 @@
             "map": "/textures/covers/corduroy-rust.v1.ktx2",
             "normalMap": "/textures/covers/corduroy-normal.v1.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+           
           "thumbnail": "/images/fabrics/corduroy-rust.png"
         },
         {
@@ -261,11 +218,7 @@
             "map": "/textures/covers/tweed-charcoal.v1.ktx2",
             "normalMap": "/textures/covers/twill-normal.v1.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+           
           "thumbnail": "/images/fabrics/tweed-charcoal.png"
         },
         {
@@ -277,11 +230,7 @@
             "map": "/textures/covers/herringbone-slate.v1.ktx2",
             "normalMap": "/textures/covers/herringbone-normal.v1.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+           
           "thumbnail": "/images/fabrics/herringbone-slate.png"
         },
         {
@@ -293,11 +242,7 @@
             "map": "/textures/covers/jacquard-ivory.v1.ktx2",
             "normalMap": "/textures/covers/twill-normal.v1.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+           
           "thumbnail": "/images/fabrics/jacquard-ivory.png"
         },
         {
@@ -309,11 +254,7 @@
             "map": "/textures/covers/twill-navy.v1.ktx2",
             "normalMap": "/textures/covers/twill-normal.v1.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+           
           "thumbnail": "/images/fabrics/twill-navy.png"
         },
         {
@@ -325,11 +266,7 @@
             "map": "/textures/covers/leather-cognac.v1.ktx2",
             "normalMap": "/textures/covers/pebble-normal.v1.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+           
           "thumbnail": "/images/fabrics/leather-cognac.png"
         },
         {
@@ -364,7 +301,7 @@
         }
       ],
       "cushion": [
-         {
+        {
           "id": "cushion-wool",
           "name": "پشمی",
           "hex": "#b9ae9c",
@@ -373,10 +310,9 @@
             "map": "/textures/covers/wool-oat.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
-         
           "thumbnail": "/images/fabrics/wool-oat.png"
         },
-          {
+        {
           "id": "weave-test",
           "name": "مخمل زمردی",
           "hex": "#cbbfae",
@@ -385,10 +321,9 @@
             "map": "/textures/covers/green_fabric_03_diffuse (2)_UASTC.ktx2",
             "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
           },
-          
           "thumbnail": "/images/fabrics/green_fabric.webp"
         },
-         {
+        {
           "id": "weave-blue",
           "name": "آبی نفتی",
           "hex": "#cbbfae",
@@ -397,10 +332,8 @@
             "map": "/textures/covers/blue_fabric_12_diffuse copy_UASTC.ktx2",
             "normalMap": "/textures/covers/blue_fabric_12_normal copy_UASTC.ktx2"
           },
-        
           "thumbnail": "/images/fabrics/blue_fabric.webp"
-        }, 
-      
+        },
         {
           "id": "weave-orange",
           "name": "پرتقالی",
@@ -410,10 +343,8 @@
             "map": "/textures/covers/orange_fabric_03_diffuse copy_UASTC.ktx2",
             "normalMap": "/textures/covers/orange_fabric_03_normal copy_UASTC.ktx2"
           },
-         
           "thumbnail": "/images/fabrics/orange_fabric.webp"
         },
-        
         {
           "id": "cushion-linen",
           "name": "کتان",
@@ -423,7 +354,6 @@
             "map": "/textures/covers/linen-ash.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
-          
           "thumbnail": "/images/fabrics/linen-ash.png"
         },
         {
@@ -435,7 +365,6 @@
             "map": "/textures/covers/wool-oat.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
-          
           "thumbnail": "/images/fabrics/wool-oat.png"
         },
         {
@@ -447,7 +376,6 @@
             "map": "/textures/covers/weave-ecru.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
-           
           "thumbnail": "/images/fabrics/weave-ecru.png"
         },
         {
@@ -458,7 +386,6 @@
           "maps": {
             "map": "/textures/covers/velvet-emerald.v1.ktx2"
           },
-          
           "thumbnail": "/images/fabrics/velvet-emerald.png"
         },
         {
@@ -470,7 +397,6 @@
             "map": "/textures/covers/chenille-sand.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
-          
           "thumbnail": "/images/fabrics/chenille-sand.png"
         },
         {
@@ -482,7 +408,6 @@
             "map": "/textures/covers/tweed-charcoal.v1.ktx2",
             "normalMap": "/textures/covers/twill-normal.v1.ktx2"
           },
-          
           "thumbnail": "/images/fabrics/tweed-charcoal.png"
         },
         {
@@ -494,7 +419,6 @@
             "map": "/textures/covers/jacquard-ivory.v1.ktx2",
             "normalMap": "/textures/covers/twill-normal.v1.ktx2"
           },
-          
           "thumbnail": "/images/fabrics/jacquard-ivory.png"
         },
         {
@@ -508,7 +432,6 @@
           "hex": "#1a1a1a"
         }
       ],
-      
       "shawl": [
         {
           "id": "shawl-boucle3223",
@@ -521,7 +444,7 @@
           },
           "thumbnail": "/images/fabrics/boucle-stone.png"
         },
-          {
+        {
           "id": "weave-test",
           "name": "مخمل زمردی",
           "hex": "#cbbfae",
@@ -530,10 +453,9 @@
             "map": "/textures/covers/green_fabric_03_diffuse (2)_UASTC.ktx2",
             "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
           },
-         
           "thumbnail": "/images/fabrics/green_fabric.webp"
         },
-         {
+        {
           "id": "weave-blue",
           "name": "آبی نفتی",
           "hex": "#cbbfae",
@@ -542,10 +464,8 @@
             "map": "/textures/covers/blue_fabric_12_diffuse copy_UASTC.ktx2",
             "normalMap": "/textures/covers/blue_fabric_12_normal copy_UASTC.ktx2"
           },
-          
           "thumbnail": "/images/fabrics/blue_fabric.webp"
-        }, 
-      
+        },
         {
           "id": "weave-orange",
           "name": "پرتقالی",
@@ -555,11 +475,8 @@
             "map": "/textures/covers/orange_fabric_03_diffuse copy_UASTC.ktx2",
             "normalMap": "/textures/covers/orange_fabric_03_normal copy_UASTC.ktx2"
           },
-          
           "thumbnail": "/images/fabrics/orange_fabric.webp"
         },
-        
-        
         {
           "id": "shawl-wool",
           "name": "پشمی",
