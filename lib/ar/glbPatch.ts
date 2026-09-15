@@ -536,7 +536,7 @@ export const AR_HAZARDS: Record<string, string> = {
   KHR_texture_transform:
     'Quick Look mis-maps transformed textures — three writes a UsdTransform2d and documents that Quick Look reads it wrong (FB10036297), so a tiled or rotated map lands at the wrong scale and reads as flat colour. Export those materials with the transform baked into their UVs.',
   KHR_texture_basisu:
-    'Scene Viewer has no Basis transcoder, so an Android phone without WebXR cannot open this file at all. It needs a PNG/JPEG twin.',
+    'breaks BOTH AR runtimes, and the iOS half of that was found the hard way. Scene Viewer has no Basis transcoder, so an Android phone without WebXR cannot open the file at all. On iOS it is worse than a refusal: model-viewer has to build the USDZ itself whenever no `ios-src` is given, its exporter must decompress every Basis texture through a throwaway WebGLRenderer first, and `openIOSARQuickLook` has no try/catch around it — a failure there leaves the anchor pointing at the current page, so Quick Look opens on the HTML document and the customer gets a black screen with no camera and no error. It needs a PNG/JPEG twin, or an authored USDZ.',
   EXT_texture_webp: 'Scene Viewer cannot decode WebP; it needs a PNG/JPEG twin.',
   EXT_mesh_gpu_instancing:
     'neither AR runtime reads it, and it is only ever listed in extensionsUsed — so every instance but the first vanishes without an error. Export the copies as real nodes.',
