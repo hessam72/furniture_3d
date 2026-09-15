@@ -328,10 +328,26 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
         {showAR && arPath && (
           <ARProductViewer
             glbPath={arPath}
-            // Only meaningful when the file on screen is the catalogue model the
-            // USDZ was authored from; for a cover variant model-viewer builds
-            // Quick Look's USDZ from the GLB itself.
-            usdzPath={arPath === product.glbPath ? product.usdzPath : undefined}
+            /**
+             * Always, not only when the GLB is the catalogue model.
+             *
+             * The old condition read as a fidelity choice — hand Quick Look the
+             * authored USDZ where it matches, let model-viewer build one from
+             * the variant otherwise — and it silently became the iOS AR bug the
+             * moment `arModelPath` started returning `/ktx-optimized/…`: the
+             * paths stopped being equal, so `ios-src` was dropped on every
+             * cover, and model-viewer cannot export a Basis-compressed model to
+             * USDZ. It fails with no error and Quick Look opens on the page
+             * itself. @see the note on ARProductViewer's `usdzPath`.
+             *
+             * The cost is real and worth naming: Quick Look shows the piece in
+             * its authored finish rather than the chosen one. WebXR and Scene
+             * Viewer still get the configured GLB through `src`, so this is
+             * iOS-only, and a wrong finish in the room beats a black screen.
+             * The fix that gets both is an authored USDZ per cover variant —
+             * @see AR_PIPELINE.md, whose `arPath` slots are still empty.
+             */
+            usdzPath={product.usdzPath}
             arScale="fixed"
             productName={product.name}
             onClose={closeAR}

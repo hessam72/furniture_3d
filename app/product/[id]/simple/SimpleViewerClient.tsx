@@ -474,12 +474,22 @@ function Viewer({
       {showAR && (
         <ARProductViewer
           glbPath={arUrl ?? product.glbPath ?? ''}
-          // Omitted for the configured model: with no `ios-src`, model-viewer
-          // generates the USDZ from the file it loaded, so Quick Look shows the
-          // live configuration. It is safe to let it now that its texture cap is
-          // set — left at model-viewer's `auto` default it bakes full-resolution
-          // PNGs into an uncompressed zip. @see AR_USDZ_MAX_TEXTURE_SIZE
-          usdzPath={arUrl ? undefined : product.usdzPath}
+          /**
+           * Always passed, including for the configured model.
+           *
+           * This used to be omitted on purpose so model-viewer would build the
+           * USDZ from the file it loaded and Quick Look would show the live
+           * configuration. It cannot: the route serves a Basis-compressed GLB —
+           * more so now that the swatches inject `.ktx2` fabrics into it — and
+           * model-viewer's USDZ exporter has no error path, so iOS opened Quick
+           * Look on the HTML page and showed a black screen.
+           * @see the note on ARProductViewer's `usdzPath`.
+           *
+           * So iOS gets the authored USDZ and loses the chosen fabric in the
+           * room; Android keeps the full configuration through `src`. The way
+           * to have both is an authored USDZ per variant. @see AR_PIPELINE.md
+           */
+          usdzPath={product.usdzPath}
           productName={product.name}
           // Explicit rather than inherited: WebXR first so a capable Android
           // stays in the page, then Scene Viewer, which can now fetch the model
