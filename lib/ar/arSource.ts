@@ -176,28 +176,6 @@ export function swatchIdsFromPaint(paint: ZonePaintConfig): SwatchSelection {
  * `zone` remains the *fallback* zone for anything the part rules do not claim,
  * not a restriction on what may be dressed: every zone's cloth travels.
  */
-/**
- * The same configuration, as a USDZ for iOS.
- *
- * Deliberately the same query as `arModelUrl` and built from it, so the two can
- * never describe different pieces: Quick Look and Scene Viewer are two readers
- * of one configuration, and the day they diverge is the day a customer sees one
- * fabric on the page and another in the room.
- *
- * iOS needs this because model-viewer cannot build a USDZ from these models in
- * the browser — its exporter throws on the first Basis texture and the failure
- * has nowhere to go. @see app/api/ar/[key]/model.usdz/route.ts
- */
-export function arUsdzUrl(
-  key: string,
-  layer: string,
-  zone: PresentationZone,
-  paint: ZonePaintConfig,
-  swatches?: SwatchSelection | null
-): string {
-  return arModelUrl(key, layer, zone, paint, swatches).replace('/model.glb?', '/model.usdz?')
-}
-
 export function arModelUrl(
   key: string,
   layer: string,

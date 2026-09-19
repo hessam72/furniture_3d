@@ -7,7 +7,6 @@ import { QualityProvider } from '@/contexts/QualityContext'
 import { useAssetProbe } from '@/hooks/useAssetProbe'
 import { useDeviceClass } from '@/hooks/useDeviceClass'
 import { usePresentation } from '@/stores/presentationStore'
-import { arUsdzUrl, swatchIdsFromPaint } from '@/lib/ar/arSource'
 import { useShop } from '@/stores/storeShopStore'
 import { findCatalogItemBySceneObject } from '@/lib/store/catalog'
 import catalog from '@/public/config/catalog.json'
@@ -141,27 +140,7 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
     product.glbPath,
   ])
 
-  /**
-   * The same piece as a USDZ, for Quick Look, carrying the live configuration.
-   *
-   * `arPath` above is a static file, chosen for the reasons written over it, and
-   * it is the right `src` for Scene Viewer. iOS cannot use it: model-viewer has
-   * to convert a GLB to USDZ itself when no `ios-src` is given, and it throws on
-   * the first Basis texture with nowhere for the failure to go — the black
-   * screen. @see app/api/ar/[key]/model.usdz/route.ts
-   *
-   * Built at open time rather than on every paint change: this URL is only read
-   * when the overlay mounts, and the store's paint is what it should reflect at
-   * that moment.
-   */
-  const [arUsdz, setArUsdz] = useState<string | null>(null)
-
-  const openAR = useCallback(() => {
-    const { paint } = usePresentation.getState()
-    const layer = coverId ?? 'default'
-    setArUsdz(arUsdzUrl(key, layer, 'cover', paint, swatchIdsFromPaint(paint)))
-    setShowAR(true)
-  }, [key, coverId])
+  const openAR = useCallback(() => setShowAR(true), [])
 
   useEffect(() => {
     initProduct(key, defaultPaint(config), config.layers.cover.default, config.layers.startStep ?? 1)
@@ -349,24 +328,10 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
         {showAR && arPath && (
           <ARProductViewer
             glbPath={arPath}
-            /**
-             * Always, not only when the GLB is the catalogue model.
-             *
-             * The old condition read as a fidelity choice — hand Quick Look the
-             * authored USDZ where it matches, let model-viewer build one from
-             * the variant otherwise — and it silently became the iOS AR bug the
-             * moment `arModelPath` started returning `/ktx-optimized/…`: the
-             * paths stopped being equal, so `ios-src` was dropped on every
-             * cover, and model-viewer cannot export a Basis-compressed model to
-             * USDZ. It fails with no error and Quick Look opens on the page
-             * itself. @see the note on ARProductViewer's `usdzPath`.
-             *
-             * It now points at the conversion route, so Quick Look shows the
-             * piece as configured rather than as authored. `product.usdzPath`
-             * stays as the floor beneath it: what the route redirects to if a
-             * conversion fails, and what this uses before one is built.
-             */
-            usdzPath={arUsdz ?? product.usdzPath}
+            // Only meaningful when the file on screen is the catalogue model the
+            // USDZ was authored from; for a cover variant model-viewer builds
+            // Quick Look's USDZ from the GLB itself.
+            usdzPath={arPath === product.glbPath ? product.usdzPath : undefined}
             arScale="fixed"
             productName={product.name}
             onClose={closeAR}

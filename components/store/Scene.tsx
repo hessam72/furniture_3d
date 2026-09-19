@@ -56,7 +56,6 @@ import { RendererStatsProbe } from '@/components/three/RendererStatsProbe'
 import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
 import { isDebug } from '@/components/three/rendererStatsStore'
 import { useCanvasLifecycle } from '@/hooks/useCanvasLifecycle'
-import { useGltfCacheEviction } from '@/hooks/useGltfCacheEviction'
 import type { ContextRecovery } from '@/hooks/useContextRecovery'
 import { SHADOW_BUDGET } from '@/lib/config/deviceTier'
 import { PartErrorBoundary } from '@/components/three/PartErrorBoundary'
@@ -225,16 +224,6 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
   const { config, loading, error } = useStoreConfig()
   const { settings, preset, device, gpu } = useQuality()
 
-  /**
-   * Hand the room back when the visitor leaves /store.
-   *
-   * R3F's loader cache lives for the life of the tab, so the walkthrough's GLBs
-   * — the largest set in the app — stayed parsed and resident behind every
-   * product page the visitor opened next. The AR round trip and the
-   * context-loss retry both keep `Scene` mounted, so neither is caught by this.
-   * @see useGltfCacheEviction
-   */
-  useGltfCacheEviction(useMemo(() => config?.files.map((f) => f.url) ?? [], [config]))
 
   // Listeners, transcoder priming and — the part R3F skips — a real
   // `gl.dispose()` on unmount. @see useCanvasLifecycle

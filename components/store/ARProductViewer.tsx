@@ -1,38 +1,15 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { getARModeName, isIOS } from '@/lib/device-utils'
+import { getARModeName } from '@/lib/device-utils'
 import { AR_USDZ_MAX_TEXTURE_SIZE } from '@/lib/ar/budget'
 import "@google/model-viewer/dist/model-viewer.min.js"
 
 interface ARProductViewerProps {
   glbPath: string
-  /**
-   * The USDZ Quick Look opens. **Required for AR on iOS** — this is not the
-   * optional convenience the comment here used to call it.
-   *
-   * The old note said that without `ios-src` model-viewer builds the USDZ from
-   * the loaded model, so Quick Look would show the live configuration. It does
-   * try, and on these models it cannot: every GLB the pages hand it now carries
-   * `KHR_texture_basisu`, and the USDZ exporter has to decompress each texture
-   * through a throwaway `WebGLRenderer` before it can write a PNG into the zip.
-   *
-   * When that fails there is nowhere for the failure to go.
-   * `openIOSARQuickLook` in model-viewer 4.x is:
-   *
-   *     const generate = !this.iosSrc
-   *     this[arButtonContainer].classList.remove('enabled')
-   *     const src = generate ? await this.prepareUSDZ() : this.iosSrc
-   *     const url = new URL(src, self.location.toString())
-   *     …
-   *     anchor.setAttribute('href', url.toString()); anchor.click()
-   *
-   * — no try/catch, and `prepareUSDZ()` returns `''` when it has no model to
-   * write. `new URL('', location)` **is the current page**, so the anchor is
-   * clicked with `rel="ar"` pointing at the HTML document and Safari opens
-   * Quick Look on it: a black screen, no camera, no error. That is the bug this
-   * prop's absence was causing on both product routes.
-   */
+  /** Omit for a runtime-generated GLB: with no `ios-src`, model-viewer builds
+   *  the USDZ from the loaded model, so Quick Look shows the live config. An
+   *  empty string would defeat that, so the attribute is dropped entirely. */
   usdzPath?: string
   productName: string
   poster?: string
@@ -64,21 +41,6 @@ export default function ARProductViewer({
   const [error, setError] = useState<string | null>(null)
   const [arSupported, setArSupported] = useState(false)
 
-  /**
-   * iOS with no USDZ cannot reach AR, and must not be offered a button.
-   *
-   * `canActivateAR` is true here regardless — model-viewer resolves `quick-look`
-   * from the platform, before it knows whether it will be able to build the
-   * file. Trusting it hands the customer a button that blanks the page. @see
-   * the note on `usdzPath`.
-   *
-   * Read in an effect, not during render: this component is `ssr: false`, but
-   * the UA is not available on the server and a value that differed between the
-   * two would be a hydration mismatch if that ever changed.
-   */
-  const [quickLookBlocked, setQuickLookBlocked] = useState(false)
-  useEffect(() => setQuickLookBlocked(isIOS() && !usdzPath), [usdzPath])
-
   useEffect(() => {
     const mv = modelViewerRef.current
     if (!mv) return
@@ -86,7 +48,7 @@ export default function ARProductViewer({
     // model-viewer resolves real AR support (WebXR / Scene Viewer / Quick Look)
     // once the model is loaded. That is the honest signal — a UA sniff calls
     // every desktop incapable and, worse, reads iPadOS 13+ as a Mac.
-    const syncARSupport = () => setArSupported(mv.canActivateAR && !quickLookBlocked)
+    const syncARSupport = () => setArSupported(mv.canActivateAR)
 
     const handleLoadEvent = () => {
       setIsLoading(false)
@@ -108,7 +70,7 @@ export default function ARProductViewer({
       mv.removeEventListener('error', handleErrorEvent)
       mv.removeEventListener('ar-status', syncARSupport)
     }
-  }, [productName, quickLookBlocked])
+  }, [productName])
 
   return (
     // Above the presentation page's top bar (z-100) and bottom sheet (z-99):
@@ -145,11 +107,7 @@ export default function ARProductViewer({
       {/* AR not supported message */}
       {!arSupported && !isLoading && (
         <div className="absolute bottom-20 left-4 right-4 bg-yellow-500/90 text-black p-4 rounded-lg z-20 text-center font-[family-name:var(--font-vazir)]" dir="rtl">
-          <p className="font-semibold mb-1">
-            {quickLookBlocked
-              ? 'واقعیت افزوده برای این ترکیب در دسترس نیست'
-              : 'واقعیت افزوده در این دستگاه فعال نیست'}
-          </p>
+          <p className="font-semibold mb-1">واقعیت افزوده در این دستگاه فعال نیست</p>
           <p className="text-sm">شما می‌توانید مدل سه‌بعدی را مشاهده و چرخش دهید</p>
         </div>
       )}

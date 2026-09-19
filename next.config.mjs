@@ -6,10 +6,6 @@
 const IMMUTABLE_ASSET_PATHS = [
   '/models/:path*',
   '/store-models/:path*',
-  // Where scripts/optimize-glb.sh writes. Both the store manifest and the
-  // product presentation manifest point their heavy GLBs here, so it was the
-  // one asset root actually being re-downloaded. @see public/config/stores.json
-  '/ktx-optimized/:path*',
   '/home_models/:path*',
   '/hdr/:path*',
   '/draco/:path*',

@@ -19,20 +19,11 @@
  * would otherwise throw "Missing initialization with detectSupport()" — into a
  * Suspense boundary, where it reads as a model that never arrives.
  *
- * **Why every decoder has to be set here, not some of them:** R3F keeps exactly
- * one `GLTFLoader` instance per class, in a `WeakMap` it never evicts, and each
- * caller re-applies its own extensions to that shared instance before loading.
- * So a decoder `extendGltfLoader` does not set is not absent — it is whatever
- * the *previous* caller happened to leave on the loader. drei's `useGLTF` sets
- * a Meshopt decoder of its own, `useLoader(GLTFLoader, …)` sets none, and the
- * result was a `/store` that decoded meshopt fine after a visit to a product
- * page and not at all on a cold load. @see extendGltfLoader
- *
  * @see scripts/optimize-glb.sh, which produces the KTX2 these read.
  */
 
 import type { CompressedTexture, WebGLRenderer } from 'three'
-import { DRACOLoader, KTX2Loader, MeshoptDecoder, type GLTFLoader } from 'three-stdlib'
+import { DRACOLoader, KTX2Loader, type GLTFLoader } from 'three-stdlib'
 
 /** Both decoders are served from /public and cached immutably. @see next.config.mjs */
 const DRACO_PATH = '/draco/'
@@ -40,7 +31,6 @@ const BASIS_PATH = '/basis/'
 
 let draco: DRACOLoader | null = null
 let ktx2: KTX2Loader | null = null
-let meshopt: ReturnType<typeof MeshoptDecoder> | null = null
 let primed = false
 
 let resolveReady: () => void
@@ -58,18 +48,6 @@ function dracoLoader(): DRACOLoader {
 function ktx2Loader(): KTX2Loader {
   if (!ktx2) ktx2 = new KTX2Loader().setTranscoderPath(BASIS_PATH)
   return ktx2
-}
-
-/**
- * three-stdlib exports the decoder as a *factory*, not the singleton three's
- * own examples ship, so drei's `useMeshopt` branch builds a fresh wasm instance
- * on every call. One is enough — the decode is a pure call against a wasm heap
- * and nothing about it is per-file — so the paths that come through here share
- * this one, like DRACO and the transcoder above.
- */
-function meshoptDecoder(): ReturnType<typeof MeshoptDecoder> {
-  if (!meshopt) meshopt = MeshoptDecoder()
-  return meshopt
 }
 
 /**
@@ -124,10 +102,6 @@ export function loadKtx2(url: string): Promise<CompressedTexture> {
 export function extendGltfLoader(loader: GLTFLoader): void {
   loader.setDRACOLoader(dracoLoader())
   loader.setKTX2Loader(ktx2Loader())
-  // Geometry the optimiser leaves as `EXT_meshopt_compression`. Set here rather
-  // than left to drei, because the store loads through `useLoader` and never
-  // reaches drei's branch. @see the note on the shared instance above.
-  loader.setMeshoptDecoder(meshoptDecoder())
 }
 
 /**
