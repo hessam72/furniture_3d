@@ -9,9 +9,10 @@ import { applyAnisotropy } from '@/lib/three/prepareCarMaterial'
 import { extendGltfLoader } from '@/lib/three/gltfLoaders'
 import type { ModelFile } from './hooks/useStoreConfig'
 
-// DRACO and KTX2 both live in lib/three/gltfLoaders — the one-shared-decoder
-// rule this file introduced, now applied app-wide and extended to the
-// transcoder. @see extendGltfLoader
+// DRACO, KTX2 and meshopt all live in lib/three/gltfLoaders — the
+// one-shared-decoder rule this file introduced, now applied app-wide and
+// extended to the transcoder. This path does not go through drei, so what
+// `extendGltfLoader` does not set, nothing does. @see extendGltfLoader
 
 type ModelLoaderProps = {
   files: ModelFile[]
@@ -67,7 +68,8 @@ function Model({ url, isWireframe, onLoaded }: ModelProps) {
   // Texture sharpening follows the shared quality tier (4/4/8/16)
   const { settings } = useQuality()
 
-  // Draco for geometry, KTX2 for textures — the store's room GLB carries both.
+  // Draco/meshopt for geometry, KTX2 for textures — the store's room GLB is
+  // whatever scripts/optimize-glb.sh last wrote to /ktx-optimized.
   const gltf = useLoader(GLTFLoader, url, extendGltfLoader)
 
   useEffect(() => {
