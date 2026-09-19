@@ -68,6 +68,22 @@ const OPENING_DIR = new THREE.Vector3(0.55, 0.3, 1)
 const OPENING_POLAR = Math.acos(OPENING_DIR.y / OPENING_DIR.length())
 
 /**
+ * How far a free drag may tip the camera.
+ *
+ * Polar angle runs 0 at directly overhead, π/2 level with the piece, π directly
+ * underneath. The old lower stop of `Math.PI - 0.35` (≈160°) put the camera well
+ * below the floor, so a drag down showed the underside of the couch — frame,
+ * webbing, and whatever the model does not bother to author down there.
+ *
+ * So the floor is the horizon: at π/2 the eye is level with the piece and the
+ * bottom is edge-on, never in view. The ceiling stops 60% of the way from the
+ * horizon to overhead, which keeps a recognisable three-quarter view at the top
+ * of the drag instead of the flat plan view a full tip gives.
+ */
+const FREE_POLAR_MAX = Math.PI / 2
+const FREE_POLAR_MIN = FREE_POLAR_MAX * (1 - 0.6)
+
+/**
  * The finished piece, centred on the origin.
  *
  * Every mesh becomes a `cover` paint target. On the full presentation page the
@@ -599,11 +615,10 @@ export default function SimpleViewer({
         rotateSpeed={0.85}
         zoomSpeed={0.8}
         // Locked, both limits on the opening elevation, when the host asked for
-        // a turntable: the piece spins and never tips. Otherwise stop short of
-        // the poles — at the exact top the azimuth is undefined and the piece
-        // spins on the spot as you drag past it.
-        minPolarAngle={lockPolar ? OPENING_POLAR : 0.15}
-        maxPolarAngle={lockPolar ? OPENING_POLAR : Math.PI - 0.35}
+        // a turntable: the piece spins and never tips. Otherwise the tip is
+        // bounded to the range above the horizon. @see FREE_POLAR_MIN
+        minPolarAngle={lockPolar ? OPENING_POLAR : FREE_POLAR_MIN}
+        maxPolarAngle={lockPolar ? OPENING_POLAR : FREE_POLAR_MAX}
       />
 
       {embedded && <EmbeddedGestures />}
