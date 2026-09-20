@@ -42,7 +42,7 @@
             "thumbnail": "/images/covers/velvet.jpeg",
             "priceDelta": 0,
             "material": {
-              "roughness": 0.95,
+              "roughness": 0.8,
               "metalness": 0,
               "clearcoat": 0
             },
