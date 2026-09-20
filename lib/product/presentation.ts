@@ -548,6 +548,17 @@ export interface SimpleViewerMeta {
   toneMapping?: 'none' | 'linear' | 'reinhard' | 'cineon' | 'aces-filmic' | 'agx' | 'neutral'
   /** Exposure under that curve. Omitted → 1, today's hard-coded value. */
   exposure?: number
+  /**
+   * Overrides `config.sun` for this page alone. Omitted → the shared sun, so
+   * a value tuned for the room on `/product` is not silently disturbed by a
+   * change meant only for the piece-centred framing here.
+   *
+   * The real thing — a directional light with a PCSS shadow — not a manifest
+   * knob invented for this page: `/simple` mounts `/store`'s own `SunLight` /
+   * `ShadowSystem` via `/product`'s `PresentationSun`, imported rather than
+   * forked, so a `?sundebug=1` printout pastes straight in here too.
+   */
+  sun?: PartialSun
 }
 
 export interface ResolvedSimpleViewer {
