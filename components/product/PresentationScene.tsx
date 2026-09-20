@@ -63,7 +63,7 @@ interface Props {
  * `useQuality`, `roomBox` arriving, the store for the ones that read it.
  */
 export default function PresentationScene({ config, onLayerError, onReady, onContextLost }: Props) {
-  const { settings, device, gpu } = useQuality()
+  const { preset, settings, device, gpu } = useQuality()
   const backdrop = roomMode(config)
   const needsIBL = needsEnvironment(config)
   // A room GLB is authored and checked under /store's renderer. Its materials
@@ -218,7 +218,29 @@ export default function PresentationScene({ config, onLayerError, onReady, onCon
           />
         )}
 
-        <PresentationPostProcessing config={config} device={device} />
+        {/*
+          Keyed on `preset` — not on `dpr` — so a tier change forces a fresh
+          composer at the new pixel ratio, while `PerfLadder`'s own automatic
+          `perfScale` adjustments (which also move the effective dpr, far more
+          often, mid-session) do not: that would tear down and reallocate the
+          whole postprocessing chain on every adaptive step, which is the
+          opposite of what an adaptive-performance ladder is for.
+
+          `@react-three/postprocessing`'s <EffectComposer> only rebuilds its
+          own composer on a `multisampling`/`gl`/`scene`/`camera` identity
+          change, and only resizes it — separately — on a `size` (CSS width/
+          height) change. Neither fires on a DPR-only change with the same
+          `multisampling` (true of every tier on touch, where multisampling is
+          forced to 0 regardless of preset — @see PresentationPostProcessing):
+          the canvas itself resizes correctly (react-three-fiber's own resize
+          subscription isn't gated on either of those), but the composer's
+          input/output buffers, SMAA's targets and the bloom mip chain stay
+          sized to whatever DPR was active when they were last built — so the
+          image stays visually pinned at the old resolution until something
+          forces a fresh composer. A full page reload was the only such thing;
+          this key is the same fix, scoped to just this subtree.
+        */}
+        <PresentationPostProcessing key={preset} config={config} device={device} />
 
         {debug && <PresentationDiagnostics />}
         {debug && <RendererStatsProbe label="presentation" />}
