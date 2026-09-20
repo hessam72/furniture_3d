@@ -145,6 +145,11 @@ function Viewer({
   const zone: PresentationZone = showingFrame ? 'wood' : 'cover'
 
   const view = useMemo(() => simpleViewer(config), [config])
+  /** The splash plate and the page root both painted a flat `view.background`
+   *  before ViewerBackdrop existed; now the canvas draws a gradient, so the
+   *  handoff between the two needs to match it or the edges flash. Plain CSS,
+   *  no vignette — the splash is on screen for a moment, not the point. */
+  const splashGradient = `linear-gradient(to top, ${view.backdrop.bottom}, ${view.backdrop.top})`
   /** The manifest with the shown layer swapped in — `simpleViewer()` reads
    *  `simple.model`, so this override is the whole layer switch. */
   const viewConfig = useMemo(
@@ -369,7 +374,7 @@ function Viewer({
       /* `--dock-w` is declared here rather than inside the dock because two
          things need to agree on it: the dock's own width, and the padding that
          keeps the header's controls from sliding underneath it. */
-      style={{ background: view.background, ['--dock-w' as string]: 'clamp(20rem, 29vw, 25rem)' }}
+      style={{ background: splashGradient, ['--dock-w' as string]: 'clamp(20rem, 29vw, 25rem)' }}
     >
       {live && !showAR && !recovery.lost && !noWebgl && (
         <SimpleViewer
@@ -473,7 +478,7 @@ function Viewer({
           aria-hidden={ready}
           className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center transition-opacity duration-500"
           style={{
-            background: view.background,
+            background: splashGradient,
             opacity: ready ? 0 : 1,
             visibility: ready ? 'hidden' : 'visible',
           }}

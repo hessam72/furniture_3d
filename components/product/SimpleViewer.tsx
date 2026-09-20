@@ -4,7 +4,6 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { Canvas, useThree, type RootState } from '@react-three/fiber'
 import { ContactShadows, Environment, OrbitControls, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
-import { NeutralToneMapping } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { PerfLadder } from '@/components/three/PerfLadder'
 import { RendererStatsProbe } from '@/components/three/RendererStatsProbe'
@@ -63,6 +62,19 @@ const VIEWER_TOUCH_DPR_MAX = 2.2
 /** A stable identity for an unset callback prop, so a component that always
  *  mounts its watcher does not hand it a fresh closure every render. */
 const NOOP = () => {}
+
+/** `simple.toneMapping` is a string — @see SimpleViewerMeta for why — mapped
+ *  to the real constant here, the one file in this pipeline that already
+ *  imports `three`. */
+const TONE_MAPPINGS: Record<ResolvedSimpleViewer['toneMapping'], THREE.ToneMapping> = {
+  none: THREE.NoToneMapping,
+  linear: THREE.LinearToneMapping,
+  reinhard: THREE.ReinhardToneMapping,
+  cineon: THREE.CineonToneMapping,
+  'aces-filmic': THREE.ACESFilmicToneMapping,
+  agx: THREE.AgXToneMapping,
+  neutral: THREE.NeutralToneMapping,
+}
 
 /**
  * What `<ContactShadows>` actually costs: a blur ping-pong pair, RGBA8, at
@@ -644,8 +656,8 @@ export default function SimpleViewer({
         // channel composites nothing and the blend path is pure cost.
         alpha: false,
         powerPreference: 'high-performance',
-        toneMapping: NeutralToneMapping,
-        toneMappingExposure: 1,
+        toneMapping: TONE_MAPPINGS[view.toneMapping],
+        toneMappingExposure: view.exposure,
       }}
       camera={{ position: [0, 0, 4], fov: view.fov, near: 0.1, far: 100 }}
       onCreated={handleCreated}

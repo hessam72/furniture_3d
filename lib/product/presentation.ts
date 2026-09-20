@@ -536,6 +536,18 @@ export interface SimpleViewerMeta {
   /** Opening tier, per device. The on-screen picker overrides it either way.
    *  @see SIMPLE_VIEWER_QUALITY */
   quality?: { preset?: QualityPreset; mobile?: QualityPreset }
+  /**
+   * Tone curve for this piece. A string, not a `three` constant — this module
+   * ships no `three` import, read by contexts that have no business pulling
+   * the library in. `SimpleViewer` maps it to the real constant.
+   *
+   * Omitted → `'neutral'`, today's hard-coded default and the right one for a
+   * page whose job is colour accuracy. A piece that wants more contrast can
+   * ask for `'aces-filmic'` without a code change.
+   */
+  toneMapping?: 'none' | 'linear' | 'reinhard' | 'cineon' | 'aces-filmic' | 'agx' | 'neutral'
+  /** Exposure under that curve. Omitted → 1, today's hard-coded value. */
+  exposure?: number
 }
 
 export interface ResolvedSimpleViewer {
@@ -550,6 +562,8 @@ export interface ResolvedSimpleViewer {
   lighting: { ambient: number; key: number; fill: number; rim: number; bounce: number; hemi: number }
   backdrop: { top: string; bottom: string; vignette: number }
   ground: { blur: number; opacity: number; far: number }
+  toneMapping: 'none' | 'linear' | 'reinhard' | 'cineon' | 'aces-filmic' | 'agx' | 'neutral'
+  exposure: number
 }
 
 /** The `simple` block with every default filled in, in the shape of
@@ -587,6 +601,8 @@ export function simpleViewer(config: PresentationConfig): ResolvedSimpleViewer {
       opacity: s.ground?.opacity ?? 0.45,
       far: s.ground?.far ?? 2.2,
     },
+    toneMapping: s.toneMapping ?? 'neutral',
+    exposure: s.exposure ?? 1,
   }
 }
 
