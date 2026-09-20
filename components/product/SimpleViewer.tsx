@@ -2,15 +2,15 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useThree, type RootState } from '@react-three/fiber'
-import { Environment, OrbitControls, useGLTF } from '@react-three/drei'
+import { ContactShadows, Environment, OrbitControls, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
-import { NeutralToneMapping } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { PerfLadder } from '@/components/three/PerfLadder'
 import { RendererStatsProbe } from '@/components/three/RendererStatsProbe'
 import { isDebug } from '@/components/three/rendererStatsStore'
 import { extendGltfLoader } from '@/lib/three/gltfLoaders'
 import { useCanvasLifecycle } from '@/hooks/useCanvasLifecycle'
+import { useVramWatchdog } from '@/hooks/useVramWatchdog'
 import { PartErrorBoundary } from '@/components/three/PartErrorBoundary'
 import { COMPOSER_PIXEL_WEIGHT, clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
@@ -26,12 +26,16 @@ import { applyFirstSwatch, useSwatchTextures } from '@/hooks/useSwatchTextures'
 import { usePresentation } from '@/stores/presentationStore'
 import {
   simpleViewer,
+  SHADOW_BUDGET,
+  type DeviceClass,
   type PresentationConfig,
   type PresentationPart,
   type PresentationZone,
   type ResolvedSimpleViewer,
 } from '@/lib/product/presentation'
+import PresentationSun from '@/components/product/PresentationSun'
 import ViewerPlinth, { type PlinthSpec } from './ViewerPlinth'
+import ViewerBackdrop from './ViewerBackdrop'
 
 // DRACO's path, the KTX2 transcoder's path and the one-instance-each rule all
 // live in lib/three/gltfLoaders now. @see extendGltfLoader
@@ -45,6 +49,58 @@ const MAX_PANEL_COVERAGE = 0.5
 const MAX_DOCK_COVERAGE = 0.45
 
 /**
+ * How far touch hardware may raise its DPR ask above the tier's own ratio.
+ *
+ * The tier's `dpr[1]` is tuned for the composer pages, where the ratio itself
+ * has to stay conservative because there is no per-pixel budget downstream of
+ * it. Here there is — `clampDprToBudget` holds the real ceiling in absolute
+ * pixels — so the ratio can ask past the tier and let the budget be what
+ * binds, exactly as `lib/three/dprBudget.ts` intends. 2.2 against a phone's
+ * `PIXEL_BUDGET.normal.phone` (28MB, `weight` 1) works out to DPR ~3.2 on an
+ * iPhone 15's panel, so this is the ask, not the grant.
+ */
+const VIEWER_TOUCH_DPR_MAX = 2.2
+
+/** A stable identity for an unset callback prop, so a component that always
+ *  mounts its watcher does not hand it a fresh closure every render. */
+const NOOP = () => {}
+
+/** `simple.toneMapping` is a string — @see SimpleViewerMeta for why — mapped
+ *  to the real constant here, the one file in this pipeline that already
+ *  imports `three`. */
+const TONE_MAPPINGS: Record<ResolvedSimpleViewer['toneMapping'], THREE.ToneMapping> = {
+  none: THREE.NoToneMapping,
+  linear: THREE.LinearToneMapping,
+  reinhard: THREE.ReinhardToneMapping,
+  cineon: THREE.CineonToneMapping,
+  'aces-filmic': THREE.ACESFilmicToneMapping,
+  agx: THREE.AgXToneMapping,
+  neutral: THREE.NeutralToneMapping,
+}
+
+/**
+ * What `<ContactShadows>` actually costs: a blur ping-pong pair, RGBA8, at
+ * `resolution` each. Measured to ~2.1MB at 512² against the drei source, and
+ * `reserveBytes` wants the same unit `dprBudget` prices the drawing buffer
+ * in, so the two compete for one honestly-accounted allowance rather than the
+ * shadow eating room the budget does not know it gave up.
+ */
+function contactShadowBytes(resolution: number): number {
+  return resolution * resolution * 4 * 2
+}
+
+/**
+ * What the real sun's shadow map costs: a depth-only render target at
+ * `resolution` each side, priced generously at 4 bytes/pixel since the exact
+ * depth format is driver-chosen. Only relevant on tablet — desktop is exempt
+ * from `reserveBytes` by `clampDprToBudget` itself, and the sun never mounts
+ * on phone at all. @see SHADOW_BUDGET
+ */
+function sunShadowBytes(resolution: number): number {
+  return resolution * resolution * 4
+}
+
+/**
  * What the camera frames on: the piece's measured size.
  *
  * `radius` still sets the near/far planes and the zoom stops, where a
@@ -55,9 +111,14 @@ export interface Fit {
   radius: number
   horizontal: number
   vertical: number
+  /** Y of the piece's underside, in the centred space the viewer draws in —
+   *  where a ground belongs. @see ViewerBackdrop, ContactShadows */
+  bottom: number
+  /** Half the piece's footprint — what a ground shadow has to cover. */
+  footprint: number
 }
 
-const EMPTY_FIT: Fit = { radius: 0, horizontal: 0, vertical: 0 }
+const EMPTY_FIT: Fit = { radius: 0, horizontal: 0, vertical: 0, bottom: 0, footprint: 0 }
 
 /** The opening three-quarter view: slightly off-axis and slightly above, which
  *  is how furniture is photographed. Normalised on use. */
@@ -106,6 +167,7 @@ function Piece({
   zone,
   parts,
   paintable = true,
+  sunOn = false,
 }: {
   path: string
   envIntensity: number
@@ -125,9 +187,12 @@ function Piece({
   parts?: PresentationPart[]
   /** False leaves the GLB's own materials alone. @see Props.paintable */
   paintable?: boolean
+  /** The real sun is live and lighting the piece — cast and receive its
+   *  shadow. @see the effect below, and PresentationSun for the light itself */
+  sunOn?: boolean
 }) {
   const gltf = useGLTF(path, false, true, extendGltfLoader)
-  const { settings } = useQuality()
+  const { settings, preset } = useQuality()
   const invalidate = useThree((s) => s.invalidate)
   // Read at clone time without making the clone depend on it. @see below.
   const anisotropyRef = useRef(settings.anisotropyLevel)
@@ -147,7 +212,12 @@ function Piece({
 
     // An unpainted piece keeps every material the file shipped with — nothing
     // is cloned, so nothing is recoloured and nothing needs disposing.
-    const collected = paintable ? collectZoneTargets(clone, { zone, parts }) : []
+    // `physical` wants a genuine MeshPhysicalMaterial for sheen, which is a
+    // different, heavier compiled shader than a plain clone's — held back at
+    // `low`, the rung a crashed device lands on, so that path never picks up
+    // a shader variant it did not have before this existed. @see the
+    // `low`-is-untouched invariant, arch-docs/plans/plan-for-increase-quality-of-simple-page.md
+    const collected = paintable ? collectZoneTargets(clone, { zone, parts, physical: preset !== 'low' }) : []
     if (paintable) {
       const { paint } = usePresentation.getState()
       applyFirstCoat(collected, paint)
@@ -191,7 +261,7 @@ function Piece({
       footprint: Math.max(size.x, size.z) / 2,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gltf.scene, path, envIntensity, zone, parts, paintable])
+  }, [gltf.scene, path, envIntensity, zone, parts, paintable, preset])
 
   /**
    * Anisotropy is applied to the existing clone, not baked into the memo above.
@@ -212,6 +282,26 @@ function Piece({
     })
     invalidate()
   }, [scene, settings.anisotropyLevel, invalidate])
+
+  /**
+   * Cast/receive, applied to the existing clone rather than baked into the
+   * memo above — the same reasoning as anisotropy just above: `sunOn` can
+   * flip on a tier change or a resize that crosses a device-class boundary,
+   * and re-cloning the whole scene graph for a boolean mesh flag would be the
+   * same wasted work that comment already explains. Mirrors
+   * `preparePresentationObject`'s own glass/lamp rule so a mesh casts
+   * identically whichever path set the flag.
+   */
+  useEffect(() => {
+    scene.traverse((child) => {
+      const mesh = child as THREE.Mesh
+      if (!mesh.isMesh) return
+      const name = mesh.name.toLowerCase()
+      mesh.castShadow = sunOn && !name.includes('glass') && !name.includes('lamp')
+      mesh.receiveShadow = sunOn
+    })
+    invalidate()
+  }, [scene, sunOn, invalidate])
 
   /**
    * The file's own names, for whoever has to write the `parts` block.
@@ -261,10 +351,15 @@ function Piece({
               // solved against the pair or the stage clips out of frame.
               horizontal: extent.horizontal * 1.2,
               vertical: extent.vertical * 1.2,
+              // Coordinates, not extents — a plinth does not move where the
+              // piece's own underside is, and ViewerPlinth already renders
+              // from these two unscaled. @see the primitive below.
+              bottom,
+              footprint,
             }
-          : { radius, ...extent }
+          : { radius, ...extent, bottom, footprint }
       ),
-    [radius, extent, plinth, onFit]
+    [radius, extent, plinth, onFit, bottom, footprint]
   )
 
   return (
@@ -408,6 +503,21 @@ function EmbeddedGestures() {
   return null
 }
 
+/** `useVramWatchdog` needs `useThree`/`useFrame`, which only work inside the
+ *  Canvas — this is the mount point for it. @see the hook for what it does. */
+function VramWatchdog({
+  modelPath,
+  device,
+  demote,
+}: {
+  modelPath: string
+  device: DeviceClass
+  demote: () => void
+}) {
+  useVramWatchdog({ modelPath, device, demote })
+  return null
+}
+
 interface Props {
   config: PresentationConfig
   /** Fraction of the viewport height the control panel covers, measured by the
@@ -448,6 +558,10 @@ interface Props {
   label?: string
   /** The GPU dropped the buffer. The host decides what to show. */
   onContextLost?: () => void
+  /** The VRAM watchdog wants a rung dropped, live — no context lost, no
+   *  remount. Omitted → the watchdog still measures (under `?debug` it still
+   *  logs) but has nothing to call. @see hooks/useVramWatchdog */
+  onDemote?: () => void
 }
 
 /**
@@ -494,8 +608,9 @@ export default function SimpleViewer({
   paintable = true,
   label = 'viewer',
   onContextLost,
+  onDemote,
 }: Props) {
-  const { settings, device, gpu } = useQuality()
+  const { settings, device, gpu, preset } = useQuality()
   const [perfScale, setPerfScale] = useState(1)
   const [fit, setFit] = useState<Fit>(EMPTY_FIT)
   const controls = useRef<OrbitControlsImpl | null>(null)
@@ -507,13 +622,94 @@ export default function SimpleViewer({
    *  bytes per pixel — so the budget is told which of the two this is. */
   const antialias = device === 'desktop'
 
+  /** `simple.sun` overrides the shared `config.sun` — so tuning it for this
+   *  page's piece-centred framing never disturbs /product's room-tuned sun.
+   *  @see SimpleViewerMeta.sun */
+  const sun = config.simple?.sun ?? config.sun
+
+  /**
+   * `high`/`ultra` only, on **tier alone** — no `device`, and deliberately no
+   * `gpu` either. `readGpuClass`'s probe (texture-size / sample-count limits,
+   * core count, `navigator.deviceMemory`) is exactly the kind of signal iOS
+   * Safari answers unreliably: `deviceMemory` isn't exposed at all there, and
+   * Safari 17+ masks the unmasked-renderer string the capability checks lean
+   * on, so real iPhones were reading `weak` and losing the sun for a reason
+   * that has nothing to do with what the hardware can hold. A device that
+   * cannot actually afford this is still caught downstream — the VRAM
+   * watchdog demotes it live, and a lost context lands it on `low`, which is
+   * still the one rung that renders with nothing new at all, unconditionally.
+   */
+  const highTier = preset === 'high' || preset === 'ultra'
+
+  /** The real sun. `medium` and below keep no floor plane at all — @see
+   *  groundShadowOn — not even the contact shadow this used to fall back to. */
+  const sunOn = !!sun?.enabled && highTier
+
+  /**
+   * The contact shadow: the `high`/`ultra` fallback for a product with no
+   * `sun` authored, never a `medium` consolation prize. `low` and `medium`
+   * render with no floor plane on any device, full stop.
+   */
+  const groundShadowOn = !sunOn && highTier
+
+  /**
+   * `SHADOW_BUDGET` is a *device* table — left alone, it would still cap a
+   * phone's shadow map to 512px even at `ultra`, which is the low-resolution,
+   * blurry shadow `sunOn`'s whole point was to get past. Once the sun is live
+   * the goal is desktop parity, so its own resolution and PCSS sample count
+   * are sized on desktop's terms regardless of what device is actually
+   * drawing it — @see PresentationSun. Only the shadow follows this; the
+   * drawing buffer's own DPR budget below still reads the *real* device,
+   * because that ceiling is about actual canvas memory, not about matching a
+   * look, and `reserveBytes` prices the shadow map into it honestly either way.
+   */
+  const shadowDevice: DeviceClass = sunOn ? 'desktop' : device
+
+  const groundShadowResolution =
+    device === 'desktop' ? settings.groundShadowResolution : Math.min(settings.groundShadowResolution, 512)
+
   const dpr = useMemo<[number, number]>(() => {
     // Weight 1 with MSAA off: this page holds a plain canvas and nothing else —
     // no composer, no shadow map, no second scene render — which is exactly why
     // it can afford the sharpest picture in the app.
-    const [min, max] = clampDprToBudget(settings.dpr, device, antialias ? COMPOSER_PIXEL_WEIGHT : 1, gpu)
+    //
+    // The tier's ratio is raised on touch before the budget clamps it, so the
+    // budget — not the tier — is what binds. @see VIEWER_TOUCH_DPR_MAX. Left
+    // alone at `low`: that rung is where a crashed device lands, and it must
+    // stay exactly what it was.
+    const [tierMin, tierMax] = settings.dpr
+    const askMax = device !== 'desktop' && preset !== 'low' ? Math.max(tierMax, VIEWER_TOUCH_DPR_MAX) : tierMax
+    // Whichever ground treatment is live spends its own render target here —
+    // never both, since the two are mutually exclusive above — so this is
+    // the one place that prices every byte this canvas spends, not just the
+    // drawing buffer. Ignored on desktop by clampDprToBudget itself.
+    // @see contactShadowBytes, sunShadowBytes
+    const reserveBytes = sunOn
+      ? sunShadowBytes(Math.min(settings.shadowResolution, SHADOW_BUDGET[shadowDevice].resolution))
+      : groundShadowOn
+        ? contactShadowBytes(groundShadowResolution)
+        : 0
+    const [min, max] = clampDprToBudget(
+      [tierMin, askMax],
+      device,
+      antialias ? COMPOSER_PIXEL_WEIGHT : 1,
+      gpu,
+      reserveBytes
+    )
     return [min, Math.max(min, +(max * perfScale).toFixed(2))]
-  }, [settings.dpr, device, gpu, antialias, perfScale])
+  }, [
+    settings.dpr,
+    settings.shadowResolution,
+    device,
+    gpu,
+    antialias,
+    perfScale,
+    preset,
+    sunOn,
+    shadowDevice,
+    groundShadowOn,
+    groundShadowResolution,
+  ])
 
   const handleFit = useCallback(
     (next: Fit) => {
@@ -523,6 +719,24 @@ export default function SimpleViewer({
     [onReady]
   )
 
+  /**
+   * A stand-in for the room box `PresentationSun` normally fits its shadow
+   * frustum against. There is no room here, so the piece's own measured
+   * extent — already computed for the camera rig — plays that role: centred
+   * on the origin the same way, horizontal used symmetrically for both X and
+   * Z since it is already the diagonal-safe bound a yaw spin needs.
+   */
+  const pieceBox = useMemo(
+    () =>
+      fit.footprint > 0
+        ? new THREE.Box3(
+            new THREE.Vector3(-fit.horizontal, fit.bottom, -fit.horizontal),
+            new THREE.Vector3(fit.horizontal, fit.vertical, fit.horizontal)
+          )
+        : null,
+    [fit]
+  )
+
   // Nothing here allocates enough to lose a context on its own — but this
   // viewer is also what /showroom and /view mount, and a page that cannot
   // report a loss leaves the viewer staring at a frozen frame.
@@ -530,9 +744,9 @@ export default function SimpleViewer({
 
   return (
     <Canvas
-      /* Explicitly off. No light on this page casts, so three never allocates a
-         shadow map — which is the single largest buffer the heavy page holds. */
-      shadows={false}
+      /* Off unless the real sun is live (@see sunOn) — the single largest
+         buffer the heavy page holds, so this stays a deliberate opt-in. */
+      shadows={sunOn}
       frameloop="demand"
       dpr={dpr}
       style={{ touchAction: embedded ? 'pan-y' : 'none', background: view.background }}
@@ -554,19 +768,30 @@ export default function SimpleViewer({
         // channel composites nothing and the blend path is pure cost.
         alpha: false,
         powerPreference: 'high-performance',
-        toneMapping: NeutralToneMapping,
-        toneMappingExposure: 1,
+        toneMapping: TONE_MAPPINGS[view.toneMapping],
+        toneMappingExposure: view.exposure,
       }}
       camera={{ position: [0, 0, 4], fov: view.fov, near: 0.1, far: 100 }}
       onCreated={handleCreated}
     >
       <color attach="background" args={[view.background]} />
 
+      {/* Cyclorama sweep instead of a flat void. Unauthored, this renders the
+          same flat colour as the line above — @see simpleViewer's backdrop
+          default — so it costs one draw call and changes nothing until a
+          product actually authors it. */}
+      <ViewerBackdrop top={view.backdrop.top} bottom={view.backdrop.bottom} vignette={view.backdrop.vignette} />
+
       {/* Sustained-FPS ladder only. AdaptiveDpr is deliberately left off: it
           drops resolution while the camera moves, and on a page whose whole
           purpose is judging a finish, a piece that goes soft the moment you
           turn it is the wrong trade. */}
       <PerfLadder onScale={setPerfScale} adaptive={false} />
+
+      {/* Catches the allocation PerfLadder can't: a cover swap to a variant
+          nobody has measured yet, checked before the frame it would cost is
+          asked to draw. @see hooks/useVramWatchdog */}
+      <VramWatchdog modelPath={view.model} device={device} demote={onDemote ?? NOOP} />
 
       {/* The image-based light, and the reason the material reads as leather or
           velvet rather than as flat colour. Its own boundary: `useEnvironment`
@@ -586,6 +811,28 @@ export default function SimpleViewer({
       <directionalLight position={[4, 6, 5]} intensity={view.lighting.key} />
       <directionalLight position={[-5, 2, -3]} intensity={view.lighting.fill} />
 
+      {/* Rim — behind and above, opposite the key, cool: edge separation from
+          the backdrop instead of the silhouette dissolving into it. Zero by
+          default (@see simpleViewer), so an unauthored product is unchanged —
+          same for the two lights below. */}
+      <directionalLight position={[0, 5, -6]} intensity={view.lighting.rim} color="#88aaff" />
+
+      {/* Floor bounce — low and slightly forward, warm: throws light back up
+          into the underside now that the piece has a ground to bounce off. */}
+      <pointLight position={[0, -0.3, 1.2]} intensity={view.lighting.bounce} distance={4} decay={2} color="#ffeedd" />
+
+      {/* Diffuse-only fill, coloured from the backdrop itself — sky from its
+          top stop, ground from its bottom — so the ambient light and the wall
+          behind the piece read as the same room. */}
+      <hemisphereLight args={[view.backdrop.top, view.backdrop.bottom, view.lighting.hemi]} />
+
+      {/* The real sun — /store's own SunLight/ShadowSystem/SunDebug, imported
+          via /product's PresentationSun rather than forked, so ?sundebug=1
+          works identically here. Its shadow frustum fits the piece's own
+          measured box in place of a room's, since there is no room. Desktop
+          and a capable tablet only — @see sunOn. */}
+      {sunOn && sun && pieceBox && <PresentationSun sun={sun} roomBox={pieceBox} device={shadowDevice} />}
+
       <Suspense fallback={null}>
         <PartErrorBoundary category="piece" onError={onError}>
           <Piece
@@ -597,11 +844,43 @@ export default function SimpleViewer({
             zone={zone}
             parts={config.parts}
             paintable={paintable}
+            sunOn={sunOn}
           />
         </PartErrorBoundary>
       </Suspense>
 
       <Frame fit={fit} coverage={coverage} dock={dockCoverage} view={view} controls={controls} />
+
+      {/* A frozen contact shadow so the piece sits on something instead of
+          floating. `frames={1}`: the piece never moves, only the camera
+          orbits, so one bake is the whole shadow for the mount's lifetime.
+          Keyed on the model so a cover swap — a different footprint, a
+          different height — re-bakes it rather than stretching the old one. */}
+      {groundShadowOn && fit.footprint > 0 && (
+        <ContactShadows
+          key={view.model}
+          frames={1}
+          position={[0, fit.bottom, 0]}
+          scale={Math.max(fit.footprint * 2.4, 0.1)}
+          resolution={groundShadowResolution}
+          blur={view.ground.blur}
+          opacity={view.ground.opacity}
+          far={view.ground.far}
+        />
+      )}
+
+      {/* The real shadow's receiver — invisible everywhere but where the sun
+          is blocked, via a bare ShadowMaterial, so there is no visible plane
+          to keep registered with the backdrop. Sized generously past the
+          footprint: the sun can fall at an angle, and a clipped shadow reads
+          as a bug. Shares `view.ground.opacity` with the contact shadow it
+          replaces, so the two never look like a different feature. */}
+      {sunOn && fit.footprint > 0 && (
+        <mesh receiveShadow position={[0, fit.bottom, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[Math.max(fit.footprint * 8, 4), Math.max(fit.footprint * 8, 4)]} />
+          <shadowMaterial transparent opacity={view.ground.opacity} />
+        </mesh>
+      )}
 
       {/* Rotate and dolly, nothing else. Panning would slide the piece off the
           pivot the orbit turns about, which is the one thing this camera must

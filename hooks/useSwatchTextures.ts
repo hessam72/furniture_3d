@@ -36,6 +36,7 @@ function specFor(paint: ZonePaintConfig, zone: PresentationZone): SwatchSpec | n
     maps: zonePaint.maps,
     materials: zonePaint.materials,
     uv: zonePaint.uv,
+    normalScale: zonePaint.normalScale ?? undefined,
   }
 }
 

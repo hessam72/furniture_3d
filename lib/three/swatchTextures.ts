@@ -68,6 +68,10 @@ export interface SwatchSpec {
   materials?: string[] | null
   /** Omitted → each slot inherits the transform of the texture it replaces. */
   uv?: SwatchUv | null
+  /** Normal-map intensity. Omitted → the target's own authored scale —
+   *  @see ZoneTarget.baseNormalScale — which is what lets several swatches
+   *  share one normal map and still read at different depths. */
+  normalScale?: number
 }
 
 /** One slot of a material as the GLB authored it. @see captureBaseline */
@@ -325,8 +329,18 @@ export function applySwatchTextures(
     seen.add(target.material.uuid)
 
     const baseline = target.baseMaps
+    const dressed = !!spec && matchesMaterials(target.materialName, spec.materials)
 
-    if (!spec || !matchesMaterials(target.materialName, spec.materials)) {
+    // Independent of the slot loop below, and applied whichever branch this
+    // target takes: a swatch that names no normalScale of its own restores
+    // the authored one, the same as an unmatched or absent spec does.
+    const scale = dressed ? spec!.normalScale : undefined
+    target.material.normalScale.set(
+      scale ?? target.baseNormalScale.x,
+      scale ?? target.baseNormalScale.y
+    )
+
+    if (!dressed) {
       restore(target)
       return
     }

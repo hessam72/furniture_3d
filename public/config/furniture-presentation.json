@@ -36,12 +36,13 @@
           {
             "id": "velvet",
             "name": "مخمل",
-            "path": "/ktx-optimized/Furniture high Test3-optimized.glb",
+                        "path": "/ktx-optimized/Furniture high Test2-optimized.glb",
+
             "arPath": "",
             "thumbnail": "/images/covers/velvet.jpeg",
             "priceDelta": 0,
             "material": {
-              "roughness": 0.95,
+              "roughness": 0.8,
               "metalness": 0,
               "clearcoat": 0
             },
@@ -51,8 +52,8 @@
           },
           {
             "id": "leather",
-            "name": "چرم طبیعی",
-            "path": "/ktx-optimized/Furniture high Test2-optimized.glb",
+            "name": "صندلی برند نیلپر",
+            "path": "/ktx-optimized/Nilper Final glb-optimized (1).glb",
             "arPath": "",
             "thumbnail": "/images/covers/leather.png",
             "priceDelta": 4500000,
@@ -121,6 +122,7 @@
           "name": "بافت کرم",
           "hex": "#cbbfae",
           "roughness": 0.92,
+          "normalScale": 0.7,
           "maps": {
             "map": "/textures/covers/weave-ecru.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
@@ -192,49 +194,13 @@
             "name": "Orange"
           }
         },
-        {
-          "id": "wool-oat",
-          "name": "پشم ",
-          "hex": "#b9ae9c",
-          "roughness": 0.95,
-          "maps": {
-            "map": "/textures/covers/wool-oat.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
-          },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
-          "thumbnail": "/images/fabrics/wool-oat.png",
-          "en": {
-            "name": "Wool"
-          }
-        },
-        {
-          "id": "boucle-stone",
-          "name": "بوکله سنگی",
-          "hex": "#a9a49c",
-          "roughness": 0.9,
-          "maps": {
-            "map": "/textures/covers/boucle-stone.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
-          },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
-          "thumbnail": "/images/fabrics/boucle-stone.png",
-          "en": {
-            "name": "Stone Bouclé"
-          }
-        },
+       
         {
           "id": "linen-ash",
           "name": "کتان خاکستری",
           "hex": "#b4b0a8",
           "roughness": 0.88,
+          "normalScale": 0.65,
           "maps": {
             "map": "/textures/covers/linen-ash.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
@@ -249,43 +215,7 @@
             "name": "Ash Linen"
           }
         },
-        {
-          "id": "velvet-emerald",
-          "name": "مخمل زمردی",
-          "hex": "#1f5f4a",
-          "roughness": 0.42,
-          "maps": {
-            "map": "/textures/covers/velvet-emerald.v1.ktx2"
-          },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
-          "thumbnail": "/images/fabrics/velvet-emerald.png",
-          "en": {
-            "name": "Emerald Velvet"
-          }
-        },
-        {
-          "id": "chenille-sand",
-          "name": "شنیل شنی",
-          "hex": "#c4b49b",
-          "roughness": 0.88,
-          "maps": {
-            "map": "/textures/covers/chenille-sand.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
-          },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
-          "thumbnail": "/images/fabrics/chenille-sand.png",
-          "en": {
-            "name": "Sand Chenille"
-          }
-        },
+      
         {
           "id": "corduroy-rust",
           "name": "مخمل کبریتی زنگاری",
@@ -343,25 +273,7 @@
             "name": "Slate Herringbone"
           }
         },
-        {
-          "id": "jacquard-ivory",
-          "name": "ژاکارد عاجی",
-          "hex": "#d8cdb8",
-          "roughness": 0.85,
-          "maps": {
-            "map": "/textures/covers/jacquard-ivory.v1.ktx2",
-            "normalMap": "/textures/covers/twill-normal.v1.ktx2"
-          },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
-          "thumbnail": "/images/fabrics/jacquard-ivory.png",
-          "en": {
-            "name": "Ivory Jacquard"
-          }
-        },
+       
         {
           "id": "twill-navy",
           "name": "سرژه سرمه‌ای",
@@ -520,34 +432,7 @@
             "name": "Linen"
           }
         },
-        {
-          "id": "cushion-wool",
-          "name": "پشمی",
-          "hex": "#b9ae9c",
-          "roughness": 0.95,
-          "maps": {
-            "map": "/textures/covers/wool-oat.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
-          },
-          "thumbnail": "/images/fabrics/wool-oat.png",
-          "en": {
-            "name": "Wool"
-          }
-        },
-        {
-          "id": "cushion-weave",
-          "name": "بافت",
-          "hex": "#cbbfae",
-          "roughness": 0.92,
-          "maps": {
-            "map": "/textures/covers/weave-ecru.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
-          },
-          "thumbnail": "/images/fabrics/weave-ecru.png",
-          "en": {
-            "name": "Weave"
-          }
-        },
+        
         {
           "id": "cushion-velvet-emerald",
           "name": "مخمل زمردی",
@@ -575,20 +460,7 @@
             "name": "Sand Chenille"
           }
         },
-        {
-          "id": "cushion-tweed-charcoal",
-          "name": "توید ذغالی",
-          "hex": "#3c3f44",
-          "roughness": 0.95,
-          "maps": {
-            "map": "/textures/covers/tweed-charcoal.v1.ktx2",
-            "normalMap": "/textures/covers/twill-normal.v1.ktx2"
-          },
-          "thumbnail": "/images/fabrics/tweed-charcoal.png",
-          "en": {
-            "name": "Charcoal Tweed"
-          }
-        },
+       
         {
           "id": "cushion-jacquard-ivory",
           "name": "ژاکارد عاجی",
@@ -771,7 +643,7 @@
       "near": 0.1,
       "far": 130,
       "padding": 1.55,
-      "minZoom": 0.3,
+      "minZoom": 0.1,
       "maxZoom": 2,
       "startZoom": 0.8,
       "tiltLimitDeg": 0,
@@ -784,41 +656,44 @@
       "rim": 60,
       "bounce": 6,
       "ambient": 1.1,
-      "hemi": 0.8,
-      "gallery": {
-        "spots": 3,
-        "track": 1,
-        "wash": 1,
-        "angle": 0.6,
-        "color": "#fff2df"
-      }
+      "hemi": 0.8
+    
     },
-    "sun": {
-      "enabled": true,
-      "position": [
-        -1,
-        2,
-        1.5
-      ],
-      "target": [
-        0.007048580466527676,
-        1.496530166182611,
-        0.7229428589840117
-      ],
-      "intensity": 6,
-      "color": "#ffe3c2",
-      "soft": {
-        "size": 20,
-        "samples": 16,
-        "focus": 0
-      }
+   "sun": {
+    "enabled": true,
+    "position": [
+      -1,
+      2,
+      0.5
+    ],
+    "target": [
+      0.007048580466527676,
+      1.496530166182611,
+      0.7229428589840117
+    ],
+    "intensity": 6,
+    "color": "#ffe3c2",
+    "soft": {
+      "size": 20,
+      "samples": 16,
+      "focus": 0
     },
+    "shadow": {
+      "left": -11.231447273503278,
+      "right": 10.078113755735181,
+      "top": 7.1620356728587495,
+      "bottom": -9.62405315681729,
+      "near": 0.1,
+      "far": 7.831464431115272,
+      "bias": -0.0001,
+      "normalBias": 0.03
+    }
+  },
     "quality": {
       "preset": "high",
-      "mobile": "medium"
+      "mobile": "high"
     },
     "simple": {
-      "path": "/ktx-optimized/Furniture high Test3-optimized.glb",
       "arModel": "",
       "hdr": "/hdr/studio-512.hdr",
       "envIntensity": 1,
@@ -827,14 +702,22 @@
       "padding": 1.1,
       "minZoom": 0.1,
       "maxZoom": 2.6,
+      "backdrop": {
+        "top": "#fbfaf7",
+        "bottom": "#e3ddd2",
+        "vignette": 0.18
+      },
       "lighting": {
         "ambient": 0.35,
         "key": 1.1,
-        "fill": 0.35
+        "fill": 0.2,
+        "rim": 0.2,
+        "bounce": 0,
+        "hemi": 0.4
       },
       "quality": {
         "preset": "high",
-        "mobile": "medium"
+        "mobile": "high"
       }
     },
     "explode": {

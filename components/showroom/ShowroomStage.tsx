@@ -38,6 +38,7 @@ export default function ShowroomStage({
   onReady,
   onError,
   onContextLost,
+  onDemote,
   downgrades,
 }: {
   config: PresentationConfig
@@ -54,6 +55,8 @@ export default function ShowroomStage({
   /** The GPU dropped the buffer. The section folds this into its own `failed`
    *  state, which already draws a fallback plate. */
   onContextLost?: () => void
+  /** The VRAM watchdog wants a rung dropped, live. @see hooks/useVramWatchdog */
+  onDemote?: () => void
   /** Rungs a lost context has cost this tab. @see useContextRecovery */
   downgrades?: number
 }) {
@@ -84,6 +87,7 @@ export default function ShowroomStage({
         coverage={0}
         onReady={onReady}
         onContextLost={onContextLost}
+        onDemote={onDemote}
         onError={onError}
         sourceRef={sourceRef}
         plinth={plinth}

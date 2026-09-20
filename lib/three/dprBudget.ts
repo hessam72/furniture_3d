@@ -76,13 +76,27 @@ export function clampDprToBudget(
   dpr: [number, number],
   device: DeviceClass = 'desktop',
   weight = 1,
-  gpu: GpuClass = 'normal'
+  gpu: GpuClass = 'normal',
+  /**
+   * Bytes some other allocation on this canvas already spends — a contact
+   * shadow's render targets, say — subtracted from the allowance before it is
+   * turned into a DPR ceiling, so the one place that prices this page's GPU
+   * memory prices all of it, not just the drawing buffer.
+   *
+   * Ignored on desktop, the same as `weight` and for the same reason: that
+   * budget is a fill-rate ceiling, not a memory one, and a desktop GPU has no
+   * canvas-memory cap for a render target to eat into.
+   */
+  reserveBytes = 0
 ): [number, number] {
   if (typeof window === 'undefined') return dpr
   const area = window.innerWidth * window.innerHeight
   if (!area) return dpr
   const allowance = PIXEL_BUDGET[gpu][device]
-  const budget = device === 'desktop' ? allowance : allowance / Math.max(1, weight)
+  const budget =
+    device === 'desktop'
+      ? allowance
+      : Math.max(0, allowance - reserveBytes / 8) / Math.max(1, weight)
   const budgetMax = Math.max(1, Math.sqrt(budget / area))
   return [dpr[0], Math.max(dpr[0], Math.min(dpr[1], budgetMax))]
 }

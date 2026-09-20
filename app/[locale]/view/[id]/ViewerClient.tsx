@@ -108,6 +108,7 @@ export default function ViewerClient({ asset }: { asset: UploadedAsset }) {
           onReady={handleReady}
           onError={handleError}
           onContextLost={recovery.handleContextLost}
+          onDemote={recovery.demote}
         />
       )}
 
