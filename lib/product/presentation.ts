@@ -445,7 +445,10 @@ export function arModelPath(config: PresentationConfig, layer: string | null): s
   // `""` counts as unset, not as a path. The fields sit in the manifest empty,
   // waiting for a file that may never be authored, and `??` alone would hand an
   // empty string to the route as a real answer.
-  const authored = (path: string | undefined) => (path && path.trim() ? path : null)
+  const authored = (path: string | undefined) => {
+    const value = path?.trim()
+    return value && !/\.usdz(?:$|[?#])/i.test(value) ? value : null
+  }
 
   if (layer === 'frame') return authored(config.layers.frame.arPath) ?? config.layers.frame.path
   const variant = findCoverVariant(config, layer)
