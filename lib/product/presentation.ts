@@ -461,6 +461,13 @@ export interface SimpleViewerMeta {
    *  would not read over a dark one. */
   background?: string
   /**
+   * A vertical gradient sweep behind the piece, instead of the flat void
+   * `background` alone draws. Omitted → `background` at both stops with no
+   * vignette, which is pixel-for-pixel what an unauthored product rendered
+   * before this existed. @see ViewerBackdrop
+   */
+  backdrop?: { top?: string; bottom?: string; vignette?: number }
+  /**
    * Vertical field of view.
    *
    * Long by default. A wide lens bows straight edges, which is the first thing
@@ -508,12 +515,14 @@ export interface ResolvedSimpleViewer {
   minZoom: number
   maxZoom: number
   lighting: { ambient: number; key: number; fill: number }
+  backdrop: { top: string; bottom: string; vignette: number }
 }
 
 /** The `simple` block with every default filled in, in the shape of
  *  `floorReflection` and `galleryLighting`. */
 export function simpleViewer(config: PresentationConfig): ResolvedSimpleViewer {
   const s = config.simple ?? {}
+  const background = s.background ?? '#ffffff'
   return {
     model: s.model ?? finishedPiecePath(config),
     // `null` is a deliberate "no environment", so only `undefined` falls through.
@@ -521,7 +530,7 @@ export function simpleViewer(config: PresentationConfig): ResolvedSimpleViewer {
     // Left undefined so the viewer can fall back to the quality tier's value,
     // which the manifest has no business knowing.
     envIntensity: s.envIntensity ?? config.room.envIntensity,
-    background: s.background ?? '#ffffff',
+    background,
     fov: s.fov ?? 35,
     padding: s.padding ?? 1.1,
     minZoom: s.minZoom ?? 0.35,
@@ -530,6 +539,11 @@ export function simpleViewer(config: PresentationConfig): ResolvedSimpleViewer {
       ambient: s.lighting?.ambient ?? 0.35,
       key: s.lighting?.key ?? 1.1,
       fill: s.lighting?.fill ?? 0.35,
+    },
+    backdrop: {
+      top: s.backdrop?.top ?? background,
+      bottom: s.backdrop?.bottom ?? background,
+      vignette: s.backdrop?.vignette ?? 0,
     },
   }
 }

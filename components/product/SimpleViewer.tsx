@@ -32,6 +32,7 @@ import {
   type ResolvedSimpleViewer,
 } from '@/lib/product/presentation'
 import ViewerPlinth, { type PlinthSpec } from './ViewerPlinth'
+import ViewerBackdrop from './ViewerBackdrop'
 
 // DRACO's path, the KTX2 transcoder's path and the one-instance-each rule all
 // live in lib/three/gltfLoaders now. @see extendGltfLoader
@@ -591,6 +592,12 @@ export default function SimpleViewer({
       onCreated={handleCreated}
     >
       <color attach="background" args={[view.background]} />
+
+      {/* Cyclorama sweep instead of a flat void. Unauthored, this renders the
+          same flat colour as the line above — @see simpleViewer's backdrop
+          default — so it costs one draw call and changes nothing until a
+          product actually authors it. */}
+      <ViewerBackdrop top={view.backdrop.top} bottom={view.backdrop.bottom} vignette={view.backdrop.vignette} />
 
       {/* Sustained-FPS ladder only. AdaptiveDpr is deliberately left off: it
           drops resolution while the camera moves, and on a page whose whole
