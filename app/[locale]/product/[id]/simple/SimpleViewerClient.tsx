@@ -275,6 +275,16 @@ function Viewer({
    * to a second copy of three.js. The `HEAD` is what makes the fallback honest:
    * it proves the file exists on this deploy — `public/models` is gitignored —
    * and reports what it weighs before a phone has to carry it.
+   *
+   * The USDZ half is the exception: when the product has a published
+   * `usdzPath`, that file is used outright and `/api/ar/[key]/model.usdz`'s
+   * per-request GLB→USDZ conversion is never asked to run for this open. That
+   * route already redirects to the same published file on a *failed*
+   * conversion — this is the same fallback taken proactively, on the
+   * reasoning that a known-good, already-verified file beats a fresh
+   * conversion that might not open in Quick Look at all. The GLB side is
+   * unaffected: model-viewer's own inline preview and Android's Scene Viewer
+   * still get the live, configured model exactly as before.
    */
   const openAR = useCallback(async () => {
     const layer = showingFrame ? 'frame' : coverId ?? 'default'
@@ -285,11 +295,18 @@ function Viewer({
     // and cloth did not. Zones wearing a plain colour contribute nothing.
     const swatches = swatchIdsFromPaint(paint)
     const url = arModelUrl(productKey, layer, zone, paint, swatches)
-    const usdz = arUsdzUrl(productKey, layer, zone, paint, swatches)
+    const publishedUsdz = product.usdzPath
+    const usdz = publishedUsdz ?? arUsdzUrl(productKey, layer, zone, paint, swatches)
     const debug = new URLSearchParams(window.location.search).has('debug')
 
+    if (debug && publishedUsdz) {
+      console.log(`[AR] usdz → published ${publishedUsdz}, skipping the per-configuration build`)
+    }
+
     setArBuilding(true)
-    setArStale(false)
+    // Already true when a published USDZ stands in for the live configuration
+    // — the colour Quick Look shows may not be the one just picked.
+    setArStale(!!publishedUsdz)
     try {
       const head = await fetch(url, { method: 'HEAD' })
       const size = Number(head.headers.get('content-length') ?? 0)
@@ -344,7 +361,7 @@ function Viewer({
     } finally {
       setArBuilding(false)
     }
-  }, [config, coverId, device, modelPath, product.glbPath, productKey, showingFrame, zone])
+  }, [config, coverId, device, modelPath, product.glbPath, product.usdzPath, productKey, showingFrame, zone])
 
   /**
    * Leaving AR remounts the canvas: it was unmounted to give the overlay the

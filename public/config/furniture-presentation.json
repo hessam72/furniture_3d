@@ -36,9 +36,9 @@
           {
             "id": "velvet",
             "name": "مخمل",
-                        "path": "/ktx-optimized/Furniture high Test2-optimized.glb",
+             "path": "/ktx-optimized/Furniture high Test2-optimized.glb",
 
-            "arPath": "",
+            "arPath": "/models/Furniture/arm_chair__furniture.usdz",
             "thumbnail": "/images/covers/velvet.jpeg",
             "priceDelta": 0,
             "material": {
@@ -54,7 +54,7 @@
             "id": "leather",
             "name": "صندلی برند نیلپر",
             "path": "/ktx-optimized/Nilper Final glb-optimized (1).glb",
-            "arPath": "",
+            "arPath": "/models/Furniture/Sofa-ar.glb.usdz",
             "thumbnail": "/images/covers/leather.png",
             "priceDelta": 4500000,
             "material": {
