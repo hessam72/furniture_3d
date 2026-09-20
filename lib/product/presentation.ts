@@ -498,8 +498,13 @@ export interface SimpleViewerMeta {
    * flat, `fill` opens the shaded side, and `ambient` keeps that side off pure
    * black against a white ground. Zero any of them for a piece that should be
    * read by the environment alone.
+   *
+   * Same six keys as `PresentationConfig.lighting`, not by coincidence — this
+   * is the same rig, stripped. `rim`, `bounce` and `hemi` default to 0, so a
+   * product that has not authored them renders exactly as before these
+   * existed: no cool edge light, no floor bounce, no hemisphere fill.
    */
-  lighting?: { ambient?: number; key?: number; fill?: number }
+  lighting?: { ambient?: number; key?: number; fill?: number; rim?: number; bounce?: number; hemi?: number }
   /** Opening tier, per device. The on-screen picker overrides it either way.
    *  @see SIMPLE_VIEWER_QUALITY */
   quality?: { preset?: QualityPreset; mobile?: QualityPreset }
@@ -514,7 +519,7 @@ export interface ResolvedSimpleViewer {
   padding: number
   minZoom: number
   maxZoom: number
-  lighting: { ambient: number; key: number; fill: number }
+  lighting: { ambient: number; key: number; fill: number; rim: number; bounce: number; hemi: number }
   backdrop: { top: string; bottom: string; vignette: number }
 }
 
@@ -539,6 +544,9 @@ export function simpleViewer(config: PresentationConfig): ResolvedSimpleViewer {
       ambient: s.lighting?.ambient ?? 0.35,
       key: s.lighting?.key ?? 1.1,
       fill: s.lighting?.fill ?? 0.35,
+      rim: s.lighting?.rim ?? 0,
+      bounce: s.lighting?.bounce ?? 0,
+      hemi: s.lighting?.hemi ?? 0,
     },
     backdrop: {
       top: s.backdrop?.top ?? background,

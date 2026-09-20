@@ -623,6 +623,21 @@ export default function SimpleViewer({
       <directionalLight position={[4, 6, 5]} intensity={view.lighting.key} />
       <directionalLight position={[-5, 2, -3]} intensity={view.lighting.fill} />
 
+      {/* Rim — behind and above, opposite the key, cool: edge separation from
+          the backdrop instead of the silhouette dissolving into it. Zero by
+          default (@see simpleViewer), so an unauthored product is unchanged —
+          same for the two lights below. */}
+      <directionalLight position={[0, 5, -6]} intensity={view.lighting.rim} color="#88aaff" />
+
+      {/* Floor bounce — low and slightly forward, warm: throws light back up
+          into the underside now that the piece has a ground to bounce off. */}
+      <pointLight position={[0, -0.3, 1.2]} intensity={view.lighting.bounce} distance={4} decay={2} color="#ffeedd" />
+
+      {/* Diffuse-only fill, coloured from the backdrop itself — sky from its
+          top stop, ground from its bottom — so the ambient light and the wall
+          behind the piece read as the same room. */}
+      <hemisphereLight args={[view.backdrop.top, view.backdrop.bottom, view.lighting.hemi]} />
+
       <Suspense fallback={null}>
         <PartErrorBoundary category="piece" onError={onError}>
           <Piece

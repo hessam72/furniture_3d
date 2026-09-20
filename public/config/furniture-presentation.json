@@ -834,7 +834,10 @@
       "lighting": {
         "ambient": 0.35,
         "key": 1.1,
-        "fill": 0.35
+        "fill": 0.35,
+        "rim": 0.5,
+        "bounce": 0.6,
+        "hemi": 0.4
       },
       "quality": {
         "preset": "high",
