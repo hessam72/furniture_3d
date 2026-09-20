@@ -240,15 +240,6 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
    */
   useGltfCacheEviction(useMemo(() => config?.files.map((f) => f.url) ?? [], [config]))
 
-  // Listeners, transcoder priming and — the part R3F skips — a real
-  // `gl.dispose()` on unmount. @see useCanvasLifecycle
-  const handleCanvasCreated = useCanvasLifecycle({
-    label: 'store',
-    onContextLost: recovery.handleContextLost,
-    onCreated: useCallback((state: RootState) => {
-      r3fRef.current = state
-    }, []),
-  })
   const [joystickInputRef, setJoystickInputRef] = useState<React.RefObject<{ x: number; y: number }> | null>(null)
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('loading')
   const [loadedCount, setLoadedCount] = useState(0)
@@ -257,6 +248,24 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
   const [selectedObjectPosition, setSelectedObjectPosition] = useState<[number, number, number] | null>(null)
   const [showAR, setShowAR] = useState(false)
   const [arProduct, setArProduct] = useState<ProductData | null>(null)
+
+  // Listeners, transcoder priming and — the part R3F skips — a real
+  // `gl.dispose()` on unmount. @see useCanvasLifecycle
+  //
+  // `active: !showAR` matters as much as the listener itself: this Canvas is
+  // conditionally rendered from inside `Scene`, which stays mounted for the
+  // AR round trip, so without it the release below only ever fires when the
+  // visitor leaves /store — not when AR hides the Canvas — and R3F's own
+  // delayed `forceContextLoss()` on that orphaned canvas then reads as a real
+  // GPU loss the moment AR is closed. @see the note on `active` in the hook.
+  const handleCanvasCreated = useCanvasLifecycle({
+    label: 'store',
+    active: !showAR,
+    onContextLost: recovery.handleContextLost,
+    onCreated: useCallback((state: RootState) => {
+      r3fRef.current = state
+    }, []),
+  })
   const [gyroEnabled, setGyroEnabled] = useState(false)
   const [galleryError, setGalleryError] = useState<string | null>(null)
   const [modelsKey, setModelsKey] = useState(0)

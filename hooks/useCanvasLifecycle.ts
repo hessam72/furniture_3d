@@ -41,16 +41,41 @@ export function useCanvasLifecycle(options: {
   onContextLost?: () => void
   /** Runs last inside `onCreated`, for whatever else the host needs `gl` for. */
   onCreated?: (state: RootState) => void
+  /**
+   * Whether the host's `<Canvas>` is the one currently mounted.
+   *
+   * Default `true` fits the common shape — a page-level component whose own
+   * mount/unmount *is* the Canvas's, like `PresentationScene` and
+   * `SimpleViewer`, where this hook's owner and the Canvas come and go
+   * together and the effect below only ever needs to fire on that one real
+   * unmount.
+   *
+   * A host that keeps its own component mounted across an AR round trip and
+   * only toggles the `<Canvas>` in its JSX — `/store`'s `Scene`, gating on
+   * `{!showAR && <Canvas>}` — has to pass this explicitly (`!showAR`) and
+   * flip it. Otherwise the effect's cleanup is tied to *this hook's owner*
+   * unmounting, which for a store visit is "never, until the visitor leaves
+   * /store" — so the Canvas going away for AR skips the release below
+   * entirely, `webglcontextlost` stays attached with `tearingDown` stuck
+   * `false`, and R3F's own delayed `forceContextLoss()` on that orphaned
+   * canvas — a normal, harmless part of its unmount, ~500ms later — reads as
+   * a real GPU loss and fires the recovery ladder the moment AR is closed
+   * and the page next asks whether it's safe to remount.
+   */
+  active?: boolean
 }) {
-  const { label, onContextLost, onCreated } = options
+  const { label, onContextLost, onCreated, active = true } = options
   const stateRef = useRef<RootState | null>(null)
   const detachRef = useRef<(() => void) | null>(null)
   /** True from the first line of teardown, so the loss we cause ourselves is
-   *  not mistaken for the device running out of room. */
+   *  not mistaken for the device running out of room. Cleared at the top of
+   *  `handleCreated` — otherwise a second real loss, on the canvas that
+   *  replaces this one, would be silently swallowed too. */
   const tearingDown = useRef(false)
 
   const handleCreated = useCallback(
     (state: RootState) => {
+      tearingDown.current = false
       stateRef.current = state
       // The KTX2 transcoder cannot pick a target format without a renderer to
       // ask, and every Canvas is an equally good one to ask. @see primeGltfLoaders
@@ -103,7 +128,15 @@ export function useCanvasLifecycle(options: {
       const debug = isDebug()
       window.setTimeout(() => releaseRenderer(state, { label, detachListeners: detach ?? undefined, debug }), 0)
     }
-  }, [label])
+    // `active` has to be a dependency, not just a value read above: it is
+    // what makes this cleanup run on the *Canvas's* unmount rather than only
+    // this hook's owner's. React tears down a deleted child subtree — the
+    // `<Canvas>` — before it processes a still-mounted parent's own effects
+    // for a dependency that changed in the same commit, so by the time this
+    // runs for an `active: true → false` flip, `state.gl.domElement` has
+    // already left the document and the `isConnected` guard above still
+    // reads correctly. @see the note on `active` in the options above
+  }, [label, active])
 
   return handleCreated
 }
