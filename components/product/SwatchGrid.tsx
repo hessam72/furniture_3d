@@ -33,6 +33,7 @@ export default function SwatchGrid({
   onPick,
   label,
   layout = 'stack',
+  images = true,
 }: {
   swatches: ZoneSwatch[]
   activeId?: string
@@ -41,6 +42,15 @@ export default function SwatchGrid({
   onPick: (swatch: ZoneSwatch) => void
   label: string
   layout?: 'stack' | 'grid' | 'row'
+  /**
+   * Whether the chips may fetch their photographs yet.
+   *
+   * False leaves every chip on its `hex`, which the component is built to fall
+   * back to anyway — see the note at the top of this file. The page turns it on
+   * once the piece is on screen, so ten image requests are not holding six
+   * HTTP/1.1 connections against the one download the customer is waiting for.
+   */
+  images?: boolean
 }) {
   if (layout === 'stack') {
     return (
@@ -67,6 +77,7 @@ export default function SwatchGrid({
             active={swatch.id === activeId}
             pending={pendingId === swatch.id}
             onPick={onPick}
+            images={images}
           />
         ))}
       </div>
@@ -121,7 +132,7 @@ export default function SwatchGrid({
                         }`}
             style={{
               backgroundColor: swatch.hex,
-              ...(swatch.thumbnail ? { backgroundImage: `url(${swatch.thumbnail})` } : {}),
+              ...(images && swatch.thumbnail ? { backgroundImage: `url(${swatch.thumbnail})` } : {}),
             }}
           >
             {/* The ring is an inset shadow rather than a border, so it cannot
@@ -190,11 +201,15 @@ function FabricBand({
   active,
   pending,
   onPick,
+  images,
 }: {
   swatch: ZoneSwatch
   active: boolean
   pending: boolean
   onPick: (swatch: ZoneSwatch) => void
+  /** False → the band is its `hex` under the same folds, and fetches nothing.
+   *  @see SwatchGrid's `images` */
+  images: boolean
 }) {
   const fold =
     // Crest, then the turn under. The stops are uneven on purpose: cloth does
@@ -238,9 +253,10 @@ function FabricBand({
                   }`}
       style={{
         backgroundColor: swatch.hex,
-        backgroundImage: swatch.thumbnail
-          ? `${fold}, ${vignette}, url(${swatch.thumbnail})`
-          : `${fold}, ${vignette}`,
+        backgroundImage:
+          images && swatch.thumbnail
+            ? `${fold}, ${vignette}, url(${swatch.thumbnail})`
+            : `${fold}, ${vignette}`,
         /**
          * Tiled at a fixed size, not `cover`.
          *

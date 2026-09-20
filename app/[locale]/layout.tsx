@@ -6,6 +6,7 @@ import { routing, type Locale } from "@/i18n/routing";
 import { fontVariables } from "@/app/fonts";
 import "@/app/globals.css";
 import { LenisProvider } from "@/components/layout/LenisProvider";
+import AssetCache from "@/components/layout/AssetCache";
 import CustomCursor from "@/components/ui/CustomCursor";
 
 export function generateStaticParams() {
@@ -67,6 +68,9 @@ export default async function LocaleLayout({
     >
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
+          {/* Keeps the big immutable assets out of the network on a second
+              visit — Safari's HTTP cache will not hold them. @see public/sw.js */}
+          <AssetCache />
           <LenisProvider>
             {/* Cinematic film grain overlay */}
             <div className="grain-overlay" aria-hidden="true" />
