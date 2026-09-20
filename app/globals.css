@@ -136,11 +136,37 @@ body {
 /* Persian text utilities */
 .font-persian {
   font-family: var(--font-vazirmatn), sans-serif;
+}
+/*
+ * The `ss01`/`ss02` stylistic sets are Vazirmatn-specific shaping — `ss01`
+ * in particular is what redraws plain ASCII "0"-"9" as Persian-Indic digit
+ * shapes at the font level (@see `.persian-number` below). `font-feature-
+ * settings` inherits, so any English text sitting under a `.font-persian`
+ * ancestor — a spec value with no `.persian-number` of its own, e.g. — was
+ * having its digits redrawn the same way even though nothing about that
+ * value was actually Persian. Scoped to `fa` documents only for that reason;
+ * `font-family` above stays unscoped, that part is unrelated to the bug.
+ */
+html[lang="fa"] .font-persian {
   font-feature-settings: "ss01", "ss02";
 }
+/*
+ * `tabular-nums` (fixed-width digits, so a price doesn't reflow as it
+ * counts up) applies regardless of script. `ss01` does not: it is Vazirmatn's
+ * own OpenType feature for Persian-style digit *shapes* — it substitutes the
+ * glyph for plain ASCII "0"-"9" with the Persian-Indic one, at the font
+ * level, independent of which Unicode code points the text actually
+ * contains. `formatPrice`/`formatPercent`/etc. already write out the right
+ * digits for each locale (Persian-Indic for `fa`, Latin for `en`), so
+ * leaving `ss01` always on was re-drawing an already-correct Latin "48,500"
+ * in Persian-style figures on the English pages — the underlying text was
+ * right, the font was overriding how it looked.
+ */
 .persian-number {
-  font-feature-settings: "ss01";
   font-variant-numeric: tabular-nums;
+}
+html[lang="fa"] .persian-number {
+  font-feature-settings: "ss01";
 }
 
 /* English pages read Latin type first, falling back to Vazirmatn only for
