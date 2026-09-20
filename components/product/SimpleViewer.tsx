@@ -628,13 +628,16 @@ export default function SimpleViewer({
   const sun = config.simple?.sun ?? config.sun
 
   /**
-   * The real sun — desktop and a capable tablet only, never phone, and off
-   * at `low` on every device: a PCSS shadow map and shadow-casting on every
-   * mesh is a categorically bigger allocation and shader-compile cost than
-   * anything else this page adds, so this is more conservative than the
-   * contact-shadow gate below on purpose. @see components/product/PresentationSun
+   * The real sun — gated on **tier, not device**. A phone that has earned
+   * `high` or `ultra` (the on-screen picker, tapped deliberately — the tier
+   * never defaults there on a phone, @see SURFACE_POLICY.viewer.fallback)
+   * gets the identical rig a desktop does: same light, same PCSS shadow, same
+   * `SHADOW_BUDGET`-scaled map size a strong tablet already gets. `medium`
+   * and below keep the cheaper contact shadow — @see groundShadowOn — and
+   * `low` keeps neither, on any device: that rung is where a crashed device
+   * lands and must render with nothing new at all.
    */
-  const sunOn = !!sun?.enabled && preset !== 'low' && (device === 'desktop' || (device === 'tablet' && gpu !== 'weak'))
+  const sunOn = !!sun?.enabled && gpu !== 'weak' && (preset === 'high' || preset === 'ultra')
 
   /**
    * The contact shadow's own gate — off at the `low` rung, which is where a
