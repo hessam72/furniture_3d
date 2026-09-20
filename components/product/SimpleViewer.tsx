@@ -637,14 +637,16 @@ export default function SimpleViewer({
   const sunOn = !!sun?.enabled && preset !== 'low' && (device === 'desktop' || (device === 'tablet' && gpu !== 'weak'))
 
   /**
-   * The contact shadow's own gate — off on a weak GPU or the `low` rung,
-   * which is where a crashed device lands and must stay exactly what it was.
-   * `resolution` is clamped separately on touch, so the render-target cost
-   * below and the mounted `<ContactShadows>` (further down) never disagree.
-   * Off whenever the real sun is live: the two are never both worth paying
-   * for at once.
+   * The contact shadow's own gate — off at the `low` rung, which is where a
+   * crashed device lands and must render with no floor plane at all, on
+   * every device including desktop. (`gpu !== 'weak'` is redundant with
+   * `preset !== 'low'` here — `resolveTier` already caps a weak GPU to `low`
+   * — kept only for readability.) `resolution` is clamped separately on
+   * touch, so the render-target cost below and the mounted `<ContactShadows>`
+   * (further down) never disagree. Off whenever the real sun is live: the
+   * two are never both worth paying for at once.
    */
-  const groundShadowOn = !sunOn && (device === 'desktop' || (gpu !== 'weak' && preset !== 'low'))
+  const groundShadowOn = !sunOn && gpu !== 'weak' && preset !== 'low'
   const groundShadowResolution =
     device === 'desktop' ? settings.groundShadowResolution : Math.min(settings.groundShadowResolution, 512)
 
