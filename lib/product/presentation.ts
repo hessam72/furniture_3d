@@ -123,6 +123,21 @@ export interface ZoneSwatch {
   /** Chip image, for a cloth a flat hex misrepresents. Keep it small — a WebP
    *  under ~20KB; it renders at about 32px. */
   thumbnail?: string
+  /**
+   * Fabric sheen — a soft, grazing-angle highlight real cloth has. Needs a
+   * genuinely Physical material to render at all, so this only does anything
+   * on a surface that opts into `lib/three/layerMaterials.ts`'s `physical`
+   * clone. Omitted → no sheen, the behaviour every swatch had before this
+   * existed.
+   */
+  sheen?: number
+  sheenRoughness?: number
+  sheenColor?: string
+  /** Normal-map intensity, for a swatch that shares its normal map with
+   *  others at a different apparent depth — bouclé wants to read deeper than
+   *  a fine weave off the same `fabric-weave-normal` map. Omitted → the
+   *  map's own authored scale. */
+  normalScale?: number
 }
 
 export interface CoverVariant {
@@ -134,7 +149,14 @@ export interface CoverVariant {
   arPath?: string
   thumbnail?: string
   priceDelta?: number
-  material?: { roughness?: number; metalness?: number; clearcoat?: number }
+  material?: {
+    roughness?: number
+    metalness?: number
+    clearcoat?: number
+    sheen?: number
+    sheenRoughness?: number
+    sheenColor?: string
+  }
   /**
    * Swatches shown only while this variant is the mounted one, replacing
    * `palettes.cover`.
@@ -875,11 +897,25 @@ export function totalPrice(product: ProductData, variant: CoverVariant | null): 
 export function coverSurface(
   config: PresentationConfig,
   variant: CoverVariant | null
-): { roughness: number; metalness: number; clearcoat: number } {
+): {
+  roughness: number
+  metalness: number
+  clearcoat: number
+  sheen?: number
+  sheenRoughness?: number
+  sheenColor?: string
+} {
+  const m = variant?.material
   return {
-    roughness: variant?.material?.roughness ?? 0.6,
-    metalness: variant?.material?.metalness ?? 0,
-    clearcoat: isMatte(config) ? 0 : variant?.material?.clearcoat ?? 0,
+    roughness: m?.roughness ?? 0.6,
+    metalness: m?.metalness ?? 0,
+    clearcoat: isMatte(config) ? 0 : m?.clearcoat ?? 0,
+    // Conditional, not `?? undefined`: a key present with value `undefined`
+    // still overwrites whatever setPaint's merge finds there, the same
+    // footgun `swatchPaint` below already avoids for `roughness`.
+    ...(m?.sheen !== undefined ? { sheen: m.sheen } : {}),
+    ...(m?.sheenRoughness !== undefined ? { sheenRoughness: m.sheenRoughness } : {}),
+    ...(m?.sheenColor !== undefined ? { sheenColor: m.sheenColor } : {}),
   }
 }
 
@@ -936,7 +972,13 @@ export function swatchUv(swatch: ZoneSwatch): SwatchUv | null {
 /** The render layer's view of a swatch, resolved from the manifest. */
 export function swatchSpec(swatch: ZoneSwatch): SwatchSpec | null {
   if (!isTextureSwatch(swatch)) return null
-  return { id: swatch.id, maps: swatch.maps!, materials: swatch.materials, uv: swatchUv(swatch) }
+  return {
+    id: swatch.id,
+    maps: swatch.maps!,
+    materials: swatch.materials,
+    uv: swatchUv(swatch),
+    normalScale: swatch.normalScale,
+  }
 }
 
 /**
@@ -966,7 +1008,14 @@ export function swatchPaint(swatch: ZoneSwatch, roughnessFallback?: number): Par
     maps: textured ? swatch.maps! : null,
     materials: textured ? swatch.materials ?? null : null,
     uv: textured ? swatchUv(swatch) : null,
+    normalScale: textured ? swatch.normalScale ?? null : null,
     ...(roughness !== undefined ? { roughness } : {}),
+    // Conditional, not nulled like the texture fields above: unlike a map, a
+    // swatch's sheen has a sensible "say nothing" state — inherit whatever
+    // the cover variant's own surface already set. @see coverSurface
+    ...(swatch.sheen !== undefined ? { sheen: swatch.sheen } : {}),
+    ...(swatch.sheenRoughness !== undefined ? { sheenRoughness: swatch.sheenRoughness } : {}),
+    ...(swatch.sheenColor !== undefined ? { sheenColor: swatch.sheenColor } : {}),
   }
 }
 

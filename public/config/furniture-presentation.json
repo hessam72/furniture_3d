@@ -121,6 +121,7 @@
           "name": "بافت کرم",
           "hex": "#cbbfae",
           "roughness": 0.92,
+          "normalScale": 0.7,
           "maps": {
             "map": "/textures/covers/weave-ecru.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
@@ -197,6 +198,9 @@
           "name": "پشم ",
           "hex": "#b9ae9c",
           "roughness": 0.95,
+          "sheen": 0.15,
+          "sheenRoughness": 0.6,
+          "normalScale": 0.85,
           "maps": {
             "map": "/textures/covers/wool-oat.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
@@ -216,6 +220,9 @@
           "name": "بوکله سنگی",
           "hex": "#a9a49c",
           "roughness": 0.9,
+          "sheen": 0.25,
+          "sheenRoughness": 0.55,
+          "normalScale": 1.4,
           "maps": {
             "map": "/textures/covers/boucle-stone.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
@@ -235,6 +242,7 @@
           "name": "کتان خاکستری",
           "hex": "#b4b0a8",
           "roughness": 0.88,
+          "normalScale": 0.65,
           "maps": {
             "map": "/textures/covers/linen-ash.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
@@ -254,6 +262,9 @@
           "name": "مخمل زمردی",
           "hex": "#1f5f4a",
           "roughness": 0.42,
+          "sheen": 0.55,
+          "sheenRoughness": 0.3,
+          "sheenColor": "#3d7d68",
           "maps": {
             "map": "/textures/covers/velvet-emerald.v1.ktx2"
           },
@@ -272,6 +283,9 @@
           "name": "شنیل شنی",
           "hex": "#c4b49b",
           "roughness": 0.88,
+          "sheen": 0.2,
+          "sheenRoughness": 0.5,
+          "normalScale": 1.15,
           "maps": {
             "map": "/textures/covers/chenille-sand.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"

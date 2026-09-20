@@ -183,7 +183,9 @@ function Piece({
 
     // An unpainted piece keeps every material the file shipped with — nothing
     // is cloned, so nothing is recoloured and nothing needs disposing.
-    const collected = paintable ? collectZoneTargets(clone, { zone, parts }) : []
+    // `physical: true` — this page wants fabric sheen, which needs a genuine
+    // MeshPhysicalMaterial to render at all. @see lib/three/layerMaterials.ts
+    const collected = paintable ? collectZoneTargets(clone, { zone, parts, physical: true }) : []
     if (paintable) {
       const { paint } = usePresentation.getState()
       applyFirstCoat(collected, paint)

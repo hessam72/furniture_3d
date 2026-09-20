@@ -17,6 +17,9 @@ export interface ZoneTarget {
   materialName: string
   /** The maps and transforms this material shipped with. @see captureBaseline */
   baseMaps: MaterialBaseline
+  /** The authored normal-map intensity, for a swatch that does not set its own
+   *  to fall back to. @see lib/three/swatchTextures.ts */
+  baseNormalScale: THREE.Vector2
 }
 
 /** `preparePresentationObject`'s options: material prep, plus whether this
@@ -106,6 +109,41 @@ export interface CollectOptions {
    * names their author gave them. @see PresentationPart
    */
   parts?: PresentationPart[]
+  /**
+   * Clone into a genuine `MeshPhysicalMaterial`, whatever the source is.
+   *
+   * `mat.clone()` returns an instance of the *source's* own class — a plain
+   * `MeshStandardMaterial` clones to `MeshStandardMaterial`, cast to Physical
+   * only in the type system, and `sheen`/`clearcoat` on it read back
+   * `undefined`, not zero. Every caller already guards `clearcoat` that way,
+   * which is fine for `clearcoat` — most exports carry it via the clearcoat
+   * extension already. It is not fine for sheen on a fabric that was never
+   * authored with that extension, which is what this is for. Opt-in, so
+   * `/product`'s FurnitureStack and CoverLayer — which never asked for sheen —
+   * keep the cheaper plain clone. @see upgradeToPhysical
+   */
+  physical?: boolean
+}
+
+/**
+ * Build a genuine `MeshPhysicalMaterial` from a material that may not be one.
+ *
+ * `MeshPhysicalMaterial.prototype.copy` unconditionally copies its own fields
+ * from `source` — `this.sheenColor.copy(source.sheenColor)` among them — which
+ * throws the moment `source` is a plain `MeshStandardMaterial` that has no
+ * `sheenColor` to copy. So construction goes the other way: a fresh Physical
+ * instance already has valid defaults for every field `MeshStandardMaterial`
+ * does not know about, and only `MeshStandardMaterial`'s own `copy` — called
+ * against that instance, not `source`'s actual class — pulls the shared fields
+ * (maps, colour, roughness, metalness, …) across. If `source` already carries
+ * its own authored Physical fields (a GLB exported with the clearcoat
+ * extension), this path is skipped entirely and the ordinary `.clone()` keeps
+ * them — @see the call site.
+ */
+function upgradeToPhysical(source: THREE.Material): THREE.MeshPhysicalMaterial {
+  const physical = new THREE.MeshPhysicalMaterial()
+  THREE.MeshStandardMaterial.prototype.copy.call(physical, source)
+  return physical
 }
 
 const lower = (value: string | undefined | null) => (value ?? '').toLowerCase()
@@ -144,7 +182,7 @@ function partForMaterial(materialName: string, parts: PresentationPart[]): Prese
  *   4. `options.zone`
  */
 export function collectZoneTargets(root: THREE.Object3D, options: CollectOptions): ZoneTarget[] {
-  const { zone, match, parts } = options
+  const { zone, match, parts, physical } = options
   const needle = match?.toLowerCase()
   const targets: ZoneTarget[] = []
   const rules = parts ?? []
@@ -161,7 +199,10 @@ export function collectZoneTargets(root: THREE.Object3D, options: CollectOptions
       if (override || matched) {
         const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
         const cloned = materials.map((mat) => {
-          const copy = mat.clone() as THREE.MeshPhysicalMaterial
+          const copy =
+            physical && !(mat as THREE.MeshPhysicalMaterial).isMeshPhysicalMaterial
+              ? upgradeToPhysical(mat)
+              : (mat.clone() as THREE.MeshPhysicalMaterial)
           const byMaterial = rules.length ? partForMaterial(mat.name, rules) : null
           targets.push({
             material: copy,
@@ -171,6 +212,7 @@ export function collectZoneTargets(root: THREE.Object3D, options: CollectOptions
             // transforms — this is the only moment that state is guaranteed present,
             // and both restoring and the inherit rule need it. @see captureBaseline
             baseMaps: captureBaseline(copy),
+            baseNormalScale: copy.normalScale.clone(),
           })
           return copy
         })
