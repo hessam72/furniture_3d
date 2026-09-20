@@ -651,6 +651,20 @@ export default function SimpleViewer({
    * render with no floor plane on any device, full stop.
    */
   const groundShadowOn = !sunOn && highTier
+
+  /**
+   * `SHADOW_BUDGET` is a *device* table — left alone, it would still cap a
+   * phone's shadow map to 512px even at `ultra`, which is the low-resolution,
+   * blurry shadow `sunOn`'s whole point was to get past. Once the sun is live
+   * the goal is desktop parity, so its own resolution and PCSS sample count
+   * are sized on desktop's terms regardless of what device is actually
+   * drawing it — @see PresentationSun. Only the shadow follows this; the
+   * drawing buffer's own DPR budget below still reads the *real* device,
+   * because that ceiling is about actual canvas memory, not about matching a
+   * look, and `reserveBytes` prices the shadow map into it honestly either way.
+   */
+  const shadowDevice: DeviceClass = sunOn ? 'desktop' : device
+
   const groundShadowResolution =
     device === 'desktop' ? settings.groundShadowResolution : Math.min(settings.groundShadowResolution, 512)
 
@@ -671,7 +685,7 @@ export default function SimpleViewer({
     // drawing buffer. Ignored on desktop by clampDprToBudget itself.
     // @see contactShadowBytes, sunShadowBytes
     const reserveBytes = sunOn
-      ? sunShadowBytes(Math.min(settings.shadowResolution, SHADOW_BUDGET[device].resolution))
+      ? sunShadowBytes(Math.min(settings.shadowResolution, SHADOW_BUDGET[shadowDevice].resolution))
       : groundShadowOn
         ? contactShadowBytes(groundShadowResolution)
         : 0
@@ -692,6 +706,7 @@ export default function SimpleViewer({
     perfScale,
     preset,
     sunOn,
+    shadowDevice,
     groundShadowOn,
     groundShadowResolution,
   ])
@@ -816,7 +831,7 @@ export default function SimpleViewer({
           works identically here. Its shadow frustum fits the piece's own
           measured box in place of a room's, since there is no room. Desktop
           and a capable tablet only — @see sunOn. */}
-      {sunOn && sun && pieceBox && <PresentationSun sun={sun} roomBox={pieceBox} device={device} />}
+      {sunOn && sun && pieceBox && <PresentationSun sun={sun} roomBox={pieceBox} device={shadowDevice} />}
 
       <Suspense fallback={null}>
         <PartErrorBoundary category="piece" onError={onError}>
