@@ -45,6 +45,19 @@ const MAX_PANEL_COVERAGE = 0.5
 const MAX_DOCK_COVERAGE = 0.45
 
 /**
+ * How far touch hardware may raise its DPR ask above the tier's own ratio.
+ *
+ * The tier's `dpr[1]` is tuned for the composer pages, where the ratio itself
+ * has to stay conservative because there is no per-pixel budget downstream of
+ * it. Here there is — `clampDprToBudget` holds the real ceiling in absolute
+ * pixels — so the ratio can ask past the tier and let the budget be what
+ * binds, exactly as `lib/three/dprBudget.ts` intends. 2.2 against a phone's
+ * `PIXEL_BUDGET.normal.phone` (28MB, `weight` 1) works out to DPR ~3.2 on an
+ * iPhone 15's panel, so this is the ask, not the grant.
+ */
+const VIEWER_TOUCH_DPR_MAX = 2.2
+
+/**
  * What the camera frames on: the piece's measured size.
  *
  * `radius` still sets the near/far planes and the zoom stops, where a
@@ -495,7 +508,7 @@ export default function SimpleViewer({
   label = 'viewer',
   onContextLost,
 }: Props) {
-  const { settings, device, gpu } = useQuality()
+  const { settings, device, gpu, preset } = useQuality()
   const [perfScale, setPerfScale] = useState(1)
   const [fit, setFit] = useState<Fit>(EMPTY_FIT)
   const controls = useRef<OrbitControlsImpl | null>(null)
@@ -511,9 +524,16 @@ export default function SimpleViewer({
     // Weight 1 with MSAA off: this page holds a plain canvas and nothing else —
     // no composer, no shadow map, no second scene render — which is exactly why
     // it can afford the sharpest picture in the app.
-    const [min, max] = clampDprToBudget(settings.dpr, device, antialias ? COMPOSER_PIXEL_WEIGHT : 1, gpu)
+    //
+    // The tier's ratio is raised on touch before the budget clamps it, so the
+    // budget — not the tier — is what binds. @see VIEWER_TOUCH_DPR_MAX. Left
+    // alone at `low`: that rung is where a crashed device lands, and it must
+    // stay exactly what it was.
+    const [tierMin, tierMax] = settings.dpr
+    const askMax = device !== 'desktop' && preset !== 'low' ? Math.max(tierMax, VIEWER_TOUCH_DPR_MAX) : tierMax
+    const [min, max] = clampDprToBudget([tierMin, askMax], device, antialias ? COMPOSER_PIXEL_WEIGHT : 1, gpu)
     return [min, Math.max(min, +(max * perfScale).toFixed(2))]
-  }, [settings.dpr, device, gpu, antialias, perfScale])
+  }, [settings.dpr, device, gpu, antialias, perfScale, preset])
 
   const handleFit = useCallback(
     (next: Fit) => {

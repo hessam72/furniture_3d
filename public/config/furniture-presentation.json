@@ -818,7 +818,6 @@
       "mobile": "medium"
     },
     "simple": {
-      "path": "/ktx-optimized/Furniture high Test3-optimized.glb",
       "arModel": "",
       "hdr": "/hdr/studio-512.hdr",
       "envIntensity": 1,
@@ -834,7 +833,7 @@
       },
       "quality": {
         "preset": "high",
-        "mobile": "medium"
+        "mobile": "high"
       }
     },
     "explode": {
