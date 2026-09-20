@@ -1,10 +1,13 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
+import { useLocale, useTranslations } from 'next-intl'
 import { Menu, Heart, ShoppingCart } from 'lucide-react'
 import { useShop } from '@/stores/storeShopStore'
+import type { Locale } from '@/i18n/routing'
 
-const faNum = (n: number) => new Intl.NumberFormat('fa-IR').format(n)
+const formatCount = (n: number, locale: Locale) =>
+  new Intl.NumberFormat(locale === 'fa' ? 'fa-IR' : 'en-US').format(n)
 
 interface StoreTopBarProps {
   onOpenMenu: () => void
@@ -27,6 +30,8 @@ export default function StoreTopBar({
   productId,
   children
 }: StoreTopBarProps) {
+  const locale = useLocale() as Locale
+  const t = useTranslations('store')
   const liked = useShop((s) => s.liked)
   const cart = useShop((s) => s.cart)
   const toggleLike = useShop((s) => s.toggleLike)
@@ -36,7 +41,7 @@ export default function StoreTopBar({
   return (
     <div className="relative flex h-10 items-center justify-between">
       {/* Right (RTL start): menu */}
-      <button onClick={onOpenMenu} aria-label="منو" className={BTN}>
+      <button onClick={onOpenMenu} aria-label={t('menu')} className={BTN}>
         <Menu className="h-[18px] w-[18px]" />
       </button>
 
@@ -65,7 +70,7 @@ export default function StoreTopBar({
         <button
           onClick={() => productId && toggleLike(productId)}
           disabled={!productId}
-          aria-label="پسندیدن"
+          aria-label={t('like')}
           aria-pressed={isLiked}
           className={`${BTN} ${!productId ? 'opacity-40' : ''}`}
         >
@@ -76,7 +81,7 @@ export default function StoreTopBar({
           />
         </button>
 
-        <button aria-label="سبد خرید" className={`${BTN} relative`}>
+        <button aria-label={t('cart')} className={`${BTN} relative`}>
           <ShoppingCart className="h-[18px] w-[18px]" />
           {cart.length > 0 && (
             <span
@@ -84,7 +89,7 @@ export default function StoreTopBar({
                          place-items-center rounded-full bg-[var(--gold-primary)] px-1
                          text-[10px] font-bold text-black"
             >
-              {faNum(cart.length)}
+              {formatCount(cart.length, locale)}
             </span>
           )}
         </button>

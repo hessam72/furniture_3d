@@ -1,3 +1,5 @@
+import createNextIntlPlugin from 'next-intl/plugin'
+
 /** @type {import('next').NextConfig} */
 
 // Long-term immutable caching for the big static assets under /public.
@@ -41,4 +43,6 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
+
+export default withNextIntl(nextConfig);

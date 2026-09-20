@@ -2,9 +2,14 @@
 
 import { useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useLocale, useTranslations } from 'next-intl'
 import { X, Volume2, VolumeX, RotateCcw } from 'lucide-react'
 import QualitySelector from '@/components/car/QualitySelector'
 import { useShop } from '@/stores/storeShopStore'
+import { getHomeCopy } from '@/lib/content/home'
+import LocaleSwitcher from '@/components/i18n/LocaleSwitcher'
+import type { QualityPreset } from '@/lib/config/quality'
+import type { Locale } from '@/i18n/routing'
 
 const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
@@ -20,6 +25,17 @@ interface StoreSidebarProps {
  * minus the Lenis scroll-lock — /store never scrolls.
  */
 export default function StoreSidebar({ open, onClose, returnFocusTo, onResetCamera }: StoreSidebarProps) {
+  const locale = useLocale() as Locale
+  const t = useTranslations('store')
+  const tq = useTranslations('quality')
+  const tc = useTranslations('common')
+  const { brand } = getHomeCopy(locale)
+  const QUALITY_LABELS: Record<QualityPreset, string> = {
+    low: tq('low'),
+    medium: tq('medium'),
+    high: tq('high'),
+    ultra: tq('ultra'),
+  }
   const panelRef = useRef<HTMLDivElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
   const muted = useShop((s) => s.muted)
@@ -72,11 +88,11 @@ export default function StoreSidebar({ open, onClose, returnFocusTo, onResetCame
           />
 
           <motion.aside
-            dir="rtl"
+            dir={locale === 'fa' ? 'rtl' : 'ltr'}
             ref={panelRef}
             role="dialog"
             aria-modal="true"
-            aria-label="منوی فروشگاه"
+            aria-label={t('menuAria')}
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
@@ -91,12 +107,12 @@ export default function StoreSidebar({ open, onClose, returnFocusTo, onResetCame
           >
             <div className="flex h-11 items-center justify-between">
               <span className="text-[13px] font-bold tracking-tight text-[var(--gold-primary)]">
-                شهر امید
+                {brand.name}
               </span>
               <button
                 ref={closeRef}
                 onClick={onClose}
-                aria-label="بستن منو"
+                aria-label={t('closeMenu')}
                 className="grid h-9 w-9 place-items-center rounded-full text-[var(--text-muted)]
                            transition-colors hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
               >
@@ -107,7 +123,7 @@ export default function StoreSidebar({ open, onClose, returnFocusTo, onResetCame
             <div className="mt-6 flex flex-1 flex-col gap-5 overflow-y-auto">
               {/* Reset camera view */}
               <section>
-                <h3 className="mb-2 text-[11px] text-[var(--text-muted)]">نمای دوربین</h3>
+                <h3 className="mb-2 text-[11px] text-[var(--text-muted)]">{t('cameraView')}</h3>
                 <button
                   onClick={() => {
                     onResetCamera?.()
@@ -117,14 +133,14 @@ export default function StoreSidebar({ open, onClose, returnFocusTo, onResetCame
                              text-[13px] text-[var(--text-primary)] transition-colors
                              hover:border-[var(--color-gold-line-hi)]"
                 >
-                  <span>بازنشانی نما</span>
+                  <span>{t('resetView')}</span>
                   <RotateCcw className="h-4 w-4 text-[var(--gold-primary)]" />
                 </button>
               </section>
 
               {/* Ambient sound */}
               <section>
-                <h3 className="mb-2 text-[11px] text-[var(--text-muted)]">صدا</h3>
+                <h3 className="mb-2 text-[11px] text-[var(--text-muted)]">{t('sound')}</h3>
                 <button
                   onClick={toggleMuted}
                   aria-pressed={!muted}
@@ -132,7 +148,7 @@ export default function StoreSidebar({ open, onClose, returnFocusTo, onResetCame
                              text-[13px] text-[var(--text-primary)] transition-colors
                              hover:border-[var(--color-gold-line-hi)]"
                 >
-                  <span>{muted ? 'صدای پس‌زمینه خاموش' : 'صدای پس‌زمینه روشن'}</span>
+                  <span>{muted ? t('soundOff') : t('soundOn')}</span>
                   {muted ? (
                     <VolumeX className="h-4 w-4 text-[var(--text-muted)]" />
                   ) : (
@@ -143,10 +159,16 @@ export default function StoreSidebar({ open, onClose, returnFocusTo, onResetCame
 
               {/* Graphics quality — shares the persisted tier with /car */}
               <section>
-                <h3 className="mb-2 text-[11px] text-[var(--text-muted)]">کیفیت گرافیک</h3>
+                <h3 className="mb-2 text-[11px] text-[var(--text-muted)]">{tq('heading')}</h3>
                 <div className="glass-flat rounded-xl p-3.5" dir="ltr">
-                  <QualitySelector />
+                  <QualitySelector labels={QUALITY_LABELS} heading={tq('heading')} />
                 </div>
+              </section>
+
+              {/* Language */}
+              <section>
+                <h3 className="mb-2 text-[11px] text-[var(--text-muted)]">{tc('language')}</h3>
+                <LocaleSwitcher />
               </section>
             </div>
           </motion.aside>

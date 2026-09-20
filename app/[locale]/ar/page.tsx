@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import productsJson from "@/public/config/products.json";
-import { AR_PAGE, BRAND } from "@/lib/content/home";
+import { AR_PAGE, getHomeCopy } from "@/lib/content/home";
+
+// /ar is out of this rollout's scope and stays Persian under both locale
+// prefixes, matching AR_PAGE above — see lib/content/home.ts.
+const BRAND = getHomeCopy("fa").brand;
 import { ArrowIcon } from "@/components/landing/icons";
 import { Heading } from "@/components/landing/SectionHeading";
 import ArDemoClient, { type ArProduct } from "./ArDemoClient";

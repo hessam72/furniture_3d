@@ -2,11 +2,16 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useThree } from '@react-three/fiber'
+import { useLocale } from 'next-intl'
 import { Raycaster, Vector2, Object3D, Vector3 } from 'three'
+import type { Locale } from '@/i18n/routing'
+import { localizeProduct } from '@/lib/i18n/localize'
 
-interface FurnitureColor {
+export interface FurnitureColor {
   name: string
   hex: string
+  /** English name override — falls back to `name` (fa) when absent. @see lib/i18n/localize */
+  en?: { name: string }
 }
 
 export interface ProductData {
@@ -19,7 +24,7 @@ export interface ProductData {
   weight?: string
   seatingCapacity?: string
   shelves?: string
-  /** Toman, unformatted — the drawer renders it with Intl 'fa-IR' */
+  /** Toman, unformatted — formatPrice() renders it per-locale. @see lib/store/catalog */
   price?: number
   colors?: FurnitureColor[]
   fabricType?: string
@@ -28,6 +33,27 @@ export interface ProductData {
   glbPath?: string
   usdzPath?: string
   billboardPosition: [number, number, number]
+  /**
+   * English overrides for the flat string fields above, plus a positional
+   * mirror of `fabricMaterials`. Missing fields (including a missing `en`
+   * entirely) fall back to the Persian value. @see lib/i18n/localize
+   */
+  en?: Partial<
+    Pick<
+      ProductData,
+      | 'category'
+      | 'type'
+      | 'name'
+      | 'dimensions'
+      | 'material'
+      | 'weight'
+      | 'seatingCapacity'
+      | 'shelves'
+      | 'fabricType'
+      | 'detailedDescription'
+      | 'fabricMaterials'
+    >
+  >
 }
 
 interface ProductInteractionProps {
@@ -40,6 +66,7 @@ interface ProductInteractionProps {
 }
 
 export default function ProductInteraction({ onProductClick }: ProductInteractionProps) {
+  const locale = useLocale() as Locale
   const { camera, scene, gl } = useThree()
   const raycaster = useRef(new Raycaster())
   const pointer = useRef(new Vector2())
@@ -49,9 +76,11 @@ export default function ProductInteraction({ onProductClick }: ProductInteractio
   useEffect(() => {
     fetch('/config/products.json')
       .then(res => res.json())
-      .then(data => setProducts(data))
+      .then((data: Record<string, ProductData>) =>
+        setProducts(Object.fromEntries(Object.entries(data).map(([key, p]) => [key, localizeProduct(p, locale)])))
+      )
       .catch(err => console.error('Failed to load products:', err))
-  }, [])
+  }, [locale])
 
   useEffect(() => {
     const downPos: { x: number; y: number } | null = { x: 0, y: 0 }

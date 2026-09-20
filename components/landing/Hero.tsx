@@ -1,10 +1,12 @@
-import { HERO } from "@/lib/content/home";
+import { useLocale } from "next-intl";
+import { getHomeCopy } from "@/lib/content/home";
 import { Heading, Eyebrow } from "./SectionHeading";
 import SmartImage from "./SmartImage";
 import ScrollCue from "./ScrollCue";
 import Reveal from "./Reveal";
 
 export default function Hero() {
+  const { hero: HERO } = getHomeCopy(useLocale());
   return (
     <section
       id="top"

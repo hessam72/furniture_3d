@@ -1,10 +1,12 @@
-import { COLOR_SWAP } from "@/lib/content/home";
+import { useLocale } from "next-intl";
+import { getHomeCopy } from "@/lib/content/home";
 import SectionHeading from "./SectionHeading";
 import BeforeAfterSlider from "./BeforeAfterSlider";
 import Reveal from "./Reveal";
 import Section from "./Section";
 
 export default function ColorSwapFeature() {
+  const { colorSwap: COLOR_SWAP } = getHomeCopy(useLocale());
   return (
     <Section tone="b" id={COLOR_SWAP.id} labelledBy="colorswap-heading">
       <Reveal className="flex w-full flex-col items-center gap-8">

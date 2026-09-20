@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
 import { getARModeName, isIOS } from '@/lib/device-utils'
 import { AR_USDZ_MAX_TEXTURE_SIZE } from '@/lib/ar/budget'
 import "@google/model-viewer/dist/model-viewer.min.js"
@@ -59,6 +60,9 @@ export default function ARProductViewer({
   arUsdzMaxTextureSize = AR_USDZ_MAX_TEXTURE_SIZE,
   onClose
 }: ARProductViewerProps) {
+  const locale = useLocale()
+  const dir = locale === 'fa' ? 'rtl' : 'ltr'
+  const t = useTranslations('ar')
   const modelViewerRef = useRef<HTMLElement & ModelViewerElement>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -118,39 +122,37 @@ export default function ARProductViewer({
       {onClose && (
         <button
           onClick={onClose}
-          className="fixed top-18 right-6 z-[999999999] px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-[family-name:var(--font-vazir)] transition-colors"
-          dir="rtl"
+          className="fixed top-18 end-6 z-[999999999] px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-[family-name:var(--font-vazir)] transition-colors"
+          dir={dir}
         >
-          بستن
+          {t('close')}
         </button>
       )}
 
       {/* Loading indicator */}
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/50">
-          <div className="text-white text-center font-[family-name:var(--font-vazir)]" dir="rtl">
+          <div className="text-white text-center font-[family-name:var(--font-vazir)]" dir={dir}>
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-            <p>در حال بارگذاری {productName}...</p>
+            <p>{t('loadingModel', { name: productName })}</p>
           </div>
         </div>
       )}
 
       {/* Error message */}
       {error && (
-        <div className="absolute top-4 left-4 right-4 bg-red-500/90 text-white p-4 rounded-lg z-20 font-[family-name:var(--font-vazir)]" dir="rtl">
-          خطا در بارگذاری مدل سه‌بعدی
+        <div className="absolute top-4 left-4 right-4 bg-red-500/90 text-white p-4 rounded-lg z-20 font-[family-name:var(--font-vazir)]" dir={dir}>
+          {t('loadError')}
         </div>
       )}
 
       {/* AR not supported message */}
       {!arSupported && !isLoading && (
-        <div className="absolute bottom-20 left-4 right-4 bg-yellow-500/90 text-black p-4 rounded-lg z-20 text-center font-[family-name:var(--font-vazir)]" dir="rtl">
+        <div className="absolute bottom-20 left-4 right-4 bg-yellow-500/90 text-black p-4 rounded-lg z-20 text-center font-[family-name:var(--font-vazir)]" dir={dir}>
           <p className="font-semibold mb-1">
-            {quickLookBlocked
-              ? 'واقعیت افزوده برای این ترکیب در دسترس نیست'
-              : 'واقعیت افزوده در این دستگاه فعال نیست'}
+            {quickLookBlocked ? t('notAvailableCombo') : t('notAvailableDevice')}
           </p>
-          <p className="text-sm">شما می‌توانید مدل سه‌بعدی را مشاهده و چرخش دهید</p>
+          <p className="text-sm">{t('canStillView')}</p>
         </div>
       )}
 
@@ -208,8 +210,8 @@ export default function ARProductViewer({
         {arSupported && (
           <button
             slot="ar-button"
-            className="absolute top-18 left-6 px-6 py-3 bg-white hover:bg-gray-100 active:bg-gray-200 text-black font-semibold rounded-xl shadow-lg transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2 z-30 font-[family-name:var(--font-vazir)]"
-            dir="rtl"
+            className="absolute top-18 start-6 px-6 py-3 bg-white hover:bg-gray-100 active:bg-gray-200 text-black font-semibold rounded-xl shadow-lg transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2 z-30 font-[family-name:var(--font-vazir)]"
+            dir={dir}
           >
             <svg
               className="w-5 h-5"
@@ -224,7 +226,7 @@ export default function ARProductViewer({
                 d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
               />
             </svg>
-            مشاهده در واقعیت افزوده
+            {t('viewInAR')}
           </button>
         )}
 
@@ -232,19 +234,19 @@ export default function ARProductViewer({
         <div
           className="absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur-sm rounded-xl p-4 shadow-lg font-[family-name:var(--font-vazir)]"
           slot="poster"
-          dir="rtl"
+          dir={dir}
         >
           <h2 className="text-xl font-bold text-gray-900 mb-2">{productName}</h2>
           <div className="text-sm text-gray-600 space-y-1">
             {arSupported && (
               <p className="flex items-center gap-2">
                 <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                واقعیت افزوده فعال است ({getARModeName()})
+                {t('active', { mode: getARModeName() })}
               </p>
             )}
-            <p>• چرخش: یک انگشت را بکشید</p>
-            <p>• بزرگنمایی: با دو انگشت پینچ کنید</p>
-            {arSupported && <p>• برای قرار دادن در فضای خود، روی دکمه واقعیت افزوده بزنید</p>}
+            <p>{t('gestureRotate')}</p>
+            <p>{t('gesturePinch')}</p>
+            {arSupported && <p>{t('gesturePlace')}</p>}
           </div>
         </div>
       </model-viewer>

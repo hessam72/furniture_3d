@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, type PanInfo } from 'framer-motion'
+import { useLocale, useTranslations } from 'next-intl'
 import { Box, ChevronDown, Loader2, ShoppingBag, Smartphone } from 'lucide-react'
-import { faPrice } from '@/lib/store/catalog'
+import { formatPrice } from '@/lib/store/catalog'
 import { SpecDetails, SpecDimensions, SpecFabric } from '@/components/store/productSpecTabs'
 import { usePresentation } from '@/stores/presentationStore'
 import {
@@ -26,21 +27,6 @@ const SPRING = { type: 'spring' as const, damping: 34, stiffness: 320, mass: 0.8
 
 type Tab = 'specs' | 'colors' | 'layers' | 'ar'
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'specs', label: 'مشخصات' },
-  { id: 'colors', label: 'رنگ‌ها' },
-  { id: 'layers', label: 'لایه‌ها' },
-  { id: 'ar', label: 'واقعیت افزوده' },
-]
-
-/** Fallback row labels, for a manifest with no `parts` block of its own. */
-const ZONE_LABELS: Record<PresentationZone, string> = {
-  wood: 'چوب بدنه',
-  cover: 'رویه',
-  cushion: 'کوسن',
-  shawl: 'شال',
-}
-
 /**
  * The swatch rows to show, in manifest order.
  *
@@ -52,7 +38,11 @@ const ZONE_LABELS: Record<PresentationZone, string> = {
  * With no parts, this is the old behaviour exactly: wood and cover, plus cushion
  * where a soft layer exists to wear it.
  */
-function swatchRows(config: ResolvedPresentation['config']): { zone: PresentationZone; label: string }[] {
+function swatchRows(
+  config: ResolvedPresentation['config'],
+  /** Fallback row labels, for a manifest with no `parts` block of its own. */
+  zoneLabels: Record<PresentationZone, string>
+): { zone: PresentationZone; label: string }[] {
   if (config.parts?.length) {
     const seen = new Set<PresentationZone>()
     return config.parts
@@ -61,7 +51,7 @@ function swatchRows(config: ResolvedPresentation['config']): { zone: Presentatio
       .map((part) => ({ zone: part.zone, label: part.label }))
   }
   const zones: PresentationZone[] = config.layers.soft ? ['wood', 'cover', 'cushion'] : ['wood', 'cover']
-  return zones.map((zone) => ({ zone, label: ZONE_LABELS[zone] }))
+  return zones.map((zone) => ({ zone, label: zoneLabels[zone] }))
 }
 
 interface Props {
@@ -107,11 +97,26 @@ export default function ProductSheet({
   hidden = false,
 }: Props) {
   const { product, config } = presentation
+  const locale = useLocale()
+  const t = useTranslations('product')
+  const tc = useTranslations('common')
+  const TABS: { id: Tab; label: string }[] = [
+    { id: 'specs', label: t('tabSpecs') },
+    { id: 'colors', label: t('tabColors') },
+    { id: 'layers', label: t('tabLayers') },
+    { id: 'ar', label: t('tabAR') },
+  ]
+  const zoneLabels: Record<PresentationZone, string> = {
+    wood: t('zoneWood'),
+    cover: t('zoneCover'),
+    cushion: t('zoneCushion'),
+    shawl: t('zoneShawl'),
+  }
 
   // One row per named part, or the old zone list where a manifest has none.
   // A row whose palette is empty is dropped — swatches that paint nothing read
   // as a broken control rather than a deliberate one.
-  const rows = useMemo(() => swatchRows(config), [config])
+  const rows = useMemo(() => swatchRows(config, zoneLabels), [config, zoneLabels])
   const [activeTab, setActiveTab] = useState<Tab>('specs')
   // Opens collapsed: the piece is the hero, details are one tap away.
   const [expanded, setExpanded] = useState(false)
@@ -214,7 +219,7 @@ export default function ProductSheet({
   return (
     <motion.div
       ref={sheetRef}
-      dir="rtl"
+      dir={locale === 'fa' ? 'rtl' : 'ltr'}
       drag={hidden ? false : 'y'}
       dragConstraints={{ top: 0, bottom: 0 }}
       dragElastic={{ top: 0.04, bottom: 0.25 }}
@@ -236,7 +241,7 @@ export default function ProductSheet({
 
       <button
         onClick={() => setExpanded((v) => !v)}
-        aria-label={expanded ? 'جمع کردن' : 'باز کردن'}
+        aria-label={expanded ? t('collapsePanel') : t('expandPanel')}
         aria-expanded={expanded}
         className="flex w-full cursor-grab justify-center pt-3 pb-1.5 active:cursor-grabbing"
       >
@@ -254,7 +259,7 @@ export default function ProductSheet({
                        text-[var(--text-secondary)] transition-colors hover:bg-white/[0.06]
                        hover:text-[var(--gold-primary)]"
           >
-            {expanded ? 'کمتر' : 'جزییات'}
+            {expanded ? tc('lessDetails') : tc('details')}
             <ChevronDown
               className={`h-3.5 w-3.5 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
             />
@@ -330,7 +335,7 @@ export default function ProductSheet({
                 <div className="space-y-5">
                   <LayerStepper config={config} explode={explodable} />
                   <div className="space-y-2">
-                    <span className="text-[12px] text-[var(--text-muted)]">جنس رویه</span>
+                    <span className="text-[12px] text-[var(--text-muted)]">{t('coverMaterial')}</span>
                     <CoverVariantGrid
                       variants={config.layers.cover.variants}
                       activeId={layerStep === 1 ? coverId : null}
@@ -338,7 +343,7 @@ export default function ProductSheet({
                       onSelect={pickCover}
                     />
                     <p className="text-[11px] text-[var(--text-muted)]">
-                      با انتخاب جنس رویه، اسکلت چوبی پنهان می‌شود.
+                      {t('coverHint')}
                     </p>
                   </div>
                 </div>
@@ -348,12 +353,12 @@ export default function ProductSheet({
                 <div className="space-y-3">
                   <p className="text-[13px] leading-7 text-[var(--text-secondary)]">
                     {!arCapable
-                      ? 'پیش‌نمایش سه‌بعدی رویه انتخابی شما باز می‌شود. برای قرار دادن آن در فضای واقعی، صفحه را روی گوشی یا تبلت باز کنید.'
+                      ? t('arPreviewNote')
                       : arLive === true
-                        ? 'همین چیدمان — جنس رویه و هر سه رنگ انتخابی شما — در اندازه واقعی در فضای اتاق شما قرار می‌گیرد.'
+                        ? t('arLiveNote')
                         : arLive === false
-                          ? 'ساخت مدل سفارشی ممکن نشد؛ مدل پیش‌فرض محصول نمایش داده می‌شود.'
-                          : 'رویه‌ای که انتخاب کرده‌اید، در اندازه واقعی در فضای اتاق شما قرار می‌گیرد.'}
+                          ? t('arFallbackNote')
+                          : t('arDefaultNote')}
                   </p>
                   <button
                     onClick={onViewAR}
@@ -366,17 +371,17 @@ export default function ProductSheet({
                     {arBuilding ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        در حال آماده‌سازی مدل…
+                        {t('preparingModel')}
                       </>
                     ) : arCapable ? (
                       <>
                         <Smartphone className="h-4 w-4" />
-                        مشاهده در واقعیت افزوده
+                        {tc('viewInAR')}
                       </>
                     ) : (
                       <>
                         <Box className="h-4 w-4" />
-                        پیش‌نمایش سه‌بعدی
+                        {t('preview3D')}
                       </>
                     )}
                   </button>
@@ -392,7 +397,7 @@ export default function ProductSheet({
               <span className="truncate text-[11px] text-[var(--text-muted)]">{variant.name}</span>
             )}
             <span className="persian-number text-[17px] font-bold leading-tight text-[var(--gold-primary)]">
-              {price ? faPrice(price) : 'استعلام قیمت'}
+              {price ? formatPrice(price, locale) : tc('priceOnRequest')}
             </span>
           </div>
 
@@ -404,7 +409,7 @@ export default function ProductSheet({
                        transition-transform duration-200 active:scale-[0.97]"
           >
             <ShoppingBag className="h-4 w-4" />
-            افزودن
+            {tc('add')}
           </button>
         </div>
       </div>

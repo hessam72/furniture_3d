@@ -1,7 +1,8 @@
 'use client'
 
 import { Check } from 'lucide-react'
-import { faPrice } from '@/lib/store/catalog'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatPrice } from '@/lib/store/catalog'
 import type { CoverVariant } from '@/lib/product/presentation'
 
 interface Props {
@@ -14,6 +15,8 @@ interface Props {
 }
 
 export default function CoverVariantGrid({ variants, activeId, disabled, errors, onSelect }: Props) {
+  const locale = useLocale()
+  const t = useTranslations('product')
   return (
     <div className={`grid grid-cols-3 gap-2 ${disabled ? 'pointer-events-none opacity-40' : ''}`}>
       {variants.map((variant) => {
@@ -55,10 +58,10 @@ export default function CoverVariantGrid({ variants, activeId, disabled, errors,
               <p className="truncate text-[12px] text-[var(--text-primary)]">{variant.name}</p>
               <p className="persian-number truncate text-[10px] text-[var(--text-muted)]">
                 {failed
-                  ? 'در دسترس نیست'
+                  ? t('variantUnavailable')
                   : delta === 0
-                    ? 'بدون تغییر قیمت'
-                    : `${delta > 0 ? '+' : '−'} ${faPrice(Math.abs(delta))}`}
+                    ? t('noVariantChange')
+                    : `${delta > 0 ? '+' : '−'} ${formatPrice(Math.abs(delta), locale)}`}
               </p>
             </div>
 

@@ -12,7 +12,7 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { usePresentation, type ZonePaintConfig } from '@/stores/presentationStore'
+import { usePresentation, type ZonePaint, type ZonePaintConfig } from '@/stores/presentationStore'
 import type { ZoneTarget } from '@/lib/three/layerMaterials'
 
 /** Applies the current zone colours to freshly cloned materials, synchronously.
@@ -26,7 +26,34 @@ export function applyFirstCoat(targets: ZoneTarget[], paint: ZonePaintConfig) {
     material.metalness = zoneConfig.metalness
     material.roughness = zoneConfig.roughness
     if (material.clearcoat !== undefined) material.clearcoat = zoneConfig.clearcoat
+    applySheen(material, zoneConfig)
   })
+}
+
+/** Never let a Physical material's actual sheen sit at exactly 0 once it is
+ *  capable of sheen at all. @see applySheen */
+const SHEEN_FLOOR = 0.02
+
+/**
+ * Sheen, set directly rather than through the damped loop below.
+ *
+ * three keys its `USE_SHEEN` shader define on `sheen > 0` at compile time. A
+ * lerp that passes through exactly 0 on its way to a new value would toggle
+ * that define and recompile the program mid-blend — the "climbing prog
+ * count" the plan's verification section warns about. Snapping instead, and
+ * flooring at `SHEEN_FLOOR` rather than a true 0, keeps `USE_SHEEN` compiled
+ * in for the whole life of a material that can use it at all.
+ *
+ * `material.sheen === undefined` is the same guard `clearcoat` already uses:
+ * this material was never upgraded to genuinely Physical (@see
+ * lib/three/layerMaterials.ts's `physical` opt-in), so there is nothing to
+ * set and nothing to floor.
+ */
+function applySheen(material: THREE.MeshPhysicalMaterial, paint: ZonePaint) {
+  if (material.sheen === undefined) return
+  material.sheen = Math.max(paint.sheen ?? 0, SHEEN_FLOOR)
+  if (paint.sheenRoughness !== undefined) material.sheenRoughness = paint.sheenRoughness
+  if (paint.sheenColor !== undefined) material.sheenColor.set(paint.sheenColor)
 }
 
 /**
@@ -53,6 +80,12 @@ export function useZonePaint(targets: ZoneTarget[]) {
       firstPaintRef.current = false
       return
     }
+    // Sheen snaps here, undamped — @see applySheen — while everything else
+    // below enters the lerp.
+    targets.forEach(({ material, zone }) => {
+      const zoneConfig = paint[zone]
+      if (zoneConfig) applySheen(material, zoneConfig)
+    })
     animatingRef.current = true
     invalidate()
   }, [paint, targets, invalidate])

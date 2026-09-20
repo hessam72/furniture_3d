@@ -1,15 +1,9 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useQuality } from '@/contexts/QualityContext'
 import { type QualityPreset } from '@/lib/config/quality'
 import { tiersUpTo } from '@/lib/config/deviceTier'
-
-const LABELS: Record<QualityPreset, string> = {
-  low: 'کم',
-  medium: 'متوسط',
-  high: 'زیاد',
-  ultra: 'حداکثر',
-}
 
 /**
  * The render tier, exposed as a control rather than pinned.
@@ -27,13 +21,14 @@ const LABELS: Record<QualityPreset, string> = {
  * own phone downgrade whenever it found one. @see SURFACE_POLICY
  */
 export default function QualityChips() {
+  const t = useTranslations('quality')
   const { preset, setPreset, ceiling } = useQuality()
   const tiers = tiersUpTo(ceiling)
 
   return (
     <div
       role="radiogroup"
-      aria-label="کیفیت نمایش"
+      aria-label={t('heading')}
       /* Dark glass like the rest of the page chrome: `simple.background` is a
          manifest value and may be white for the next product, and a dark pill is
          the one treatment that reads on both grounds. */
@@ -49,7 +44,7 @@ export default function QualityChips() {
             preset === tier ? 'bg-white/[0.14] text-white' : 'text-white/45 hover:text-white/80'
           }`}
         >
-          {LABELS[tier]}
+          {t(tier)}
         </button>
       ))}
     </div>

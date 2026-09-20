@@ -136,11 +136,81 @@ body {
 /* Persian text utilities */
 .font-persian {
   font-family: var(--font-vazirmatn), sans-serif;
+}
+/*
+ * The `ss01`/`ss02` stylistic sets are Vazirmatn-specific shaping — `ss01`
+ * in particular is what redraws plain ASCII "0"-"9" as Persian-Indic digit
+ * shapes at the font level (@see `.persian-number` below). `font-feature-
+ * settings` inherits, so any English text sitting under a `.font-persian`
+ * ancestor — a spec value with no `.persian-number` of its own, e.g. — was
+ * having its digits redrawn the same way even though nothing about that
+ * value was actually Persian. Scoped to `fa` documents only for that reason;
+ * `font-family` above stays unscoped, that part is unrelated to the bug.
+ */
+html[lang="fa"] .font-persian {
   font-feature-settings: "ss01", "ss02";
 }
+/*
+ * `tabular-nums` (fixed-width digits, so a price doesn't reflow as it
+ * counts up) applies regardless of script. `ss01` does not: it is Vazirmatn's
+ * own OpenType feature for Persian-style digit *shapes* — it substitutes the
+ * glyph for plain ASCII "0"-"9" with the Persian-Indic one, at the font
+ * level, independent of which Unicode code points the text actually
+ * contains. `formatPrice`/`formatPercent`/etc. already write out the right
+ * digits for each locale (Persian-Indic for `fa`, Latin for `en`), so
+ * leaving `ss01` always on was re-drawing an already-correct Latin "48,500"
+ * in Persian-style figures on the English pages — the underlying text was
+ * right, the font was overriding how it looked.
+ */
 .persian-number {
-  font-feature-settings: "ss01";
   font-variant-numeric: tabular-nums;
+}
+html[lang="fa"] .persian-number {
+  font-feature-settings: "ss01";
+}
+
+/* English pages read Latin type first, falling back to Vazirmatn only for
+   any Persian text still embedded in them (e.g. an untranslated product
+   name) — mirrors the `fa` stack above, just reordered. */
+html[lang="en"] body {
+  font-family: var(--font-inter), var(--font-vazirmatn), sans-serif;
+}
+
+/* Two-segment فا|EN pill — components/i18n/LocaleSwitcher.tsx. Built on the
+   legacy `--gold-primary`/`--text-*` tokens (see the note above @theme)
+   because the switcher is mounted on both the gold/navy landing chrome and
+   the dark glass store/product chrome, and those tokens are the ones both
+   already share at :root. */
+.locale-switcher {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid rgb(212 175 55 / 30%);
+  background: rgb(5 8 14 / 55%);
+}
+.locale-switcher button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  color: var(--text-muted);
+  transition: color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+}
+.locale-switcher button:hover {
+  color: var(--text-primary);
+}
+.locale-switcher button[aria-pressed="true"] {
+  color: #05080e;
+  background: var(--gold-primary);
+  box-shadow: 0 2px 10px -2px rgb(212 175 55 / 60%);
 }
 
 /* ─────────────────────────────────────────────

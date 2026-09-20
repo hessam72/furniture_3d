@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useProgress } from '@react-three/drei'
+import { useLocale, useTranslations } from 'next-intl'
 import type * as THREE from 'three'
 import type { StackFraming } from './FurnitureStack'
 
@@ -102,6 +103,8 @@ export default function PresentationLoading({
   productName: string
   ready: boolean
 }) {
+  const locale = useLocale()
+  const t = useTranslations('product')
   const { progress, active } = useProgress()
   const [gone, setGone] = useState(false)
 
@@ -126,15 +129,15 @@ export default function PresentationLoading({
       style={{ opacity: ready ? 0 : 1 }}
     >
       <div className="flex flex-col items-center gap-2 px-6 text-center">
-        <span className="text-[10px] uppercase tracking-[0.45em] text-[#d4af37]/70">Atelier</span>
+        <span className="text-[10px] uppercase tracking-[0.45em] text-[#d4af37]/70">{t('atelier')}</span>
         <h1
           className="font-[family-name:var(--font-vazir)] text-2xl font-light tracking-wide text-white md:text-3xl"
-          dir="rtl"
+          dir={locale === 'fa' ? 'rtl' : 'ltr'}
         >
           {productName}
         </h1>
-        <p className="font-[family-name:var(--font-vazir)] mt-1 text-sm text-white/35" dir="rtl">
-          در حال آماده‌سازی نمای سه‌بعدی...
+        <p className="font-[family-name:var(--font-vazir)] mt-1 text-sm text-white/35" dir={locale === 'fa' ? 'rtl' : 'ltr'}>
+          {t('preparingScene')}
         </p>
       </div>
 

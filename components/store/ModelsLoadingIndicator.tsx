@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useProgress } from '@react-three/drei'
+import { useLocale, useTranslations } from 'next-intl'
 
 interface ModelsLoadingIndicatorProps {
   fadeOut?: boolean
@@ -18,6 +19,8 @@ export function ModelsLoadingIndicator({
   loadedCount,
   totalCount
 }: ModelsLoadingIndicatorProps) {
+  const locale = useLocale()
+  const t = useTranslations('store')
   const { progress } = useProgress()
   const [opacity, setOpacity] = useState(1)
   const [visible, setVisible] = useState(true)
@@ -52,9 +55,10 @@ export function ModelsLoadingIndicator({
       style={{ opacity }}
     >
       <div className="flex w-72 flex-col items-center gap-5 rounded-2xl border border-white/10 bg-black/60 px-8 py-7 backdrop-blur-xl">
+        {/* English micro-label by design — see LoadingScreen.tsx */}
         <span className="text-[10px] uppercase tracking-[0.45em] text-[#d4af37]/70">Gallery</span>
-        <p className="font-[family-name:var(--font-vazir)] text-sm text-white/80" dir="rtl">
-          بارگذاری مدل‌های سه‌بعدی...
+        <p className="font-[family-name:var(--font-vazir)] text-sm text-white/80" dir={locale === 'fa' ? 'rtl' : 'ltr'}>
+          {t('loadingModels')}
         </p>
 
         <div className="h-px w-full overflow-hidden bg-white/10">

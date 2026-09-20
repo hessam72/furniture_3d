@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import type { ProductData } from '@/components/store/ProductInteraction'
 
 /**
@@ -11,15 +12,16 @@ import type { ProductData } from '@/components/store/ProductInteraction'
  * fields, same order, same fallbacks — the difference is entirely the skin.
  */
 export default function DockSpecs({ product }: { product: ProductData }) {
+  const t = useTranslations('specs')
   const specs = [
-    { label: 'ابعاد', value: product.dimensions },
-    { label: 'جنس بدنه', value: product.material },
-    { label: 'جنس پارچه', value: product.fabricType },
-    { label: 'وزن', value: product.weight },
-    { label: 'ظرفیت نشستن', value: product.seatingCapacity },
-    { label: 'دسته‌بندی', value: product.category },
-    { label: 'نوع', value: product.type },
-    { label: 'تعداد قفسه', value: product.shelves },
+    { label: t('dimensions'), value: product.dimensions },
+    { label: t('material'), value: product.material },
+    { label: t('fabricType'), value: product.fabricType },
+    { label: t('weight'), value: product.weight },
+    { label: t('seatingCapacity'), value: product.seatingCapacity },
+    { label: t('category'), value: product.category },
+    { label: t('type'), value: product.type },
+    { label: t('shelves'), value: product.shelves },
   ].filter((spec) => spec.value)
 
   return (
@@ -49,7 +51,7 @@ export default function DockSpecs({ product }: { product: ProductData }) {
 
       {!!product.fabricMaterials?.length && (
         <div className="space-y-2">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">ترکیب پارچه</p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">{t('fabricComposition')}</p>
           <ul className="space-y-1.5">
             {product.fabricMaterials.map((material) => (
               <li key={material} className="flex items-start gap-2 text-[12.5px] leading-6 text-white/60">
@@ -62,7 +64,7 @@ export default function DockSpecs({ product }: { product: ProductData }) {
       )}
 
       {!specs.length && !product.detailedDescription && (
-        <p className="text-[12.5px] text-white/40">مشخصاتی برای این محصول ثبت نشده است.</p>
+        <p className="text-[12.5px] text-white/40">{t('noSpecs')}</p>
       )}
     </div>
   )

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-import Link from 'next/link'
+import { useLocale, useTranslations } from 'next-intl'
+import { Link } from '@/i18n/navigation'
 import { ChevronRight, Loader2, Scan } from 'lucide-react'
 import type * as THREE from 'three'
 import { useGLTF } from '@react-three/drei'
@@ -30,7 +31,7 @@ import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
 import { useContextRecovery, type ContextRecovery } from '@/hooks/useContextRecovery'
 import { useGltfCacheEviction, useSwatchCacheEviction } from '@/hooks/useGltfCacheEviction'
 import { preloadGltf } from '@/lib/three/gltfLoaders'
-import { WEBGL_UNAVAILABLE_FA, webglUnavailable } from '@/lib/three/gpuClass'
+import { webglUnavailable } from '@/lib/three/gpuClass'
 import ViewerDock from '@/components/product/ViewerDock'
 import QualityChips from '@/components/product/QualityChips'
 
@@ -87,6 +88,9 @@ function Viewer({
   recovery: ContextRecovery
 }) {
   const { key: productKey, product, config } = presentation
+  const locale = useLocale()
+  const t = useTranslations('product')
+  const tc = useTranslations('common')
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const canvasKey = recovery.canvasKey
@@ -141,6 +145,11 @@ function Viewer({
   const zone: PresentationZone = showingFrame ? 'wood' : 'cover'
 
   const view = useMemo(() => simpleViewer(config), [config])
+  /** The splash plate and the page root both painted a flat `view.background`
+   *  before ViewerBackdrop existed; now the canvas draws a gradient, so the
+   *  handoff between the two needs to match it or the edges flash. Plain CSS,
+   *  no vignette — the splash is on screen for a moment, not the point. */
+  const splashGradient = `linear-gradient(to top, ${view.backdrop.bottom}, ${view.backdrop.top})`
   /** The manifest with the shown layer swapped in — `simpleViewer()` reads
    *  `simple.model`, so this override is the whole layer switch. */
   const viewConfig = useMemo(
@@ -365,7 +374,7 @@ function Viewer({
       /* `--dock-w` is declared here rather than inside the dock because two
          things need to agree on it: the dock's own width, and the padding that
          keeps the header's controls from sliding underneath it. */
-      style={{ background: view.background, ['--dock-w' as string]: 'clamp(20rem, 29vw, 25rem)' }}
+      style={{ background: splashGradient, ['--dock-w' as string]: 'clamp(20rem, 29vw, 25rem)' }}
     >
       {live && !showAR && !recovery.lost && !noWebgl && (
         <SimpleViewer
@@ -379,6 +388,7 @@ function Viewer({
           onReady={handleReady}
           onError={handleError}
           onContextLost={recovery.handleContextLost}
+          onDemote={recovery.demote}
         />
       )}
 
@@ -401,15 +411,15 @@ function Viewer({
                    md:ps-[calc(var(--dock-w)+1.5rem)]"
       >
         <Link
-          href={`/product/${productKey}`}
-          aria-label="نمای کامل محصول"
+          href={`/showroom/nilper`}
+          aria-label={t('fullViewAria')}
           className="pointer-events-auto flex h-9 items-center gap-1.5 rounded-full border border-white/10
                      bg-[#0a0e15]/70 px-3.5 text-[12px] text-white/70 backdrop-blur-xl
                      transition-colors duration-200 hover:border-white/20 hover:text-white
                      md:h-10 md:px-4 md:text-[12.5px]"
         >
-          <ChevronRight className="h-4 w-4" />
-          نمای کامل
+          <ChevronRight className={locale === 'en' ? 'h-4 w-4 rotate-180' : 'h-4 w-4'} />
+          {t('backToShowroom')}
         </Link>
 
         <div className="flex flex-col items-end gap-2">
@@ -419,9 +429,9 @@ function Viewer({
               onClick={openAR}
               disabled={arBuilding}
               className="pointer-events-auto flex h-9 items-center gap-2 rounded-full border border-white/10
-                         bg-[#0a0e15]/70 py-1 pl-3.5 pr-1 text-[12px] font-medium text-white
+                         bg-[#0a0e15]/70 py-1 pe-3.5 ps-1 text-[12px] font-medium text-white
                          backdrop-blur-xl transition-colors duration-200 hover:border-blue-400/40
-                         disabled:opacity-60 md:h-10 md:pl-4 md:text-[12.5px]"
+                         disabled:opacity-60 md:h-10 md:pe-4 md:text-[12.5px]"
             >
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500 text-white md:h-8 md:w-8">
                 {arBuilding ? (
@@ -430,7 +440,7 @@ function Viewer({
                   <Scan className="h-[15px] w-[15px]" strokeWidth={2} />
                 )}
               </span>
-              {arBuilding ? 'در حال آماده‌سازی…' : arSupported ? 'مشاهده در فضای خانه' : 'پیش‌نمای سه‌بعدی'}
+              {arBuilding ? t('preparingEllipsis') : arSupported ? t('viewAtHome') : t('preview3D')}
             </button>
           )}
           {/* A render-quality picker over a page that cannot render. */}
@@ -449,10 +459,10 @@ function Viewer({
             // Ordered by how final each is. An unsupported browser outranks
             // everything else: nothing else that is wrong can be fixed on it.
             noWebgl
-              ? WEBGL_UNAVAILABLE_FA
+              ? tc('webglUnavailable')
               : recovery.lost
-                ? 'نمایش سه‌بعدی متوقف شد — حافظه گرافیکی دستگاه پر شد'
-                : error ?? `فایل‌های یافت‌نشده: ${blocked.join('، ')}`
+                ? t('gpuLost')
+                : error ?? t('filesNotFound', { list: blocked.join(locale === 'fa' ? '، ' : ', ') })
           }
           productKey={productKey}
           onRetry={
@@ -468,12 +478,12 @@ function Viewer({
           aria-hidden={ready}
           className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center transition-opacity duration-500"
           style={{
-            background: view.background,
+            background: splashGradient,
             opacity: ready ? 0 : 1,
             visibility: ready ? 'hidden' : 'visible',
           }}
         >
-          <span className="text-[11px] tracking-[0.4em] text-neutral-400">در حال بارگذاری</span>
+          <span className="text-[11px] tracking-[0.4em] text-neutral-400">{t('loadingLabel')}</span>
         </div>
       )}
 
@@ -523,6 +533,8 @@ function Notice({
    *  give up — a retry that comes back at the same tier crashes the same way. */
   onRetry?: () => void
 }) {
+  const t = useTranslations('product')
+  const tc = useTranslations('common')
   // Transparent: the page root behind it already carries the ground colour.
   // Its own dark card rather than bare text on the page root: `simple.background`
   // is a manifest value, and a message that is only legible on one of the two
@@ -534,7 +546,7 @@ function Notice({
                    shadow-[0_30px_80px_-30px_rgb(0_0_0/0.95)] backdrop-blur-2xl"
       >
         <h2 className="text-[15px] font-semibold text-white">{productName}</h2>
-        <p className="text-[13px] leading-7 text-white/55">نمایش سه‌بعدی این محصول در دسترس نیست.</p>
+        <p className="text-[13px] leading-7 text-white/55">{t('notAvailable3D')}</p>
         <p className="break-all text-[11px] leading-6 text-white/30">{detail}</p>
         <div className="flex items-center justify-center gap-2 pt-1">
           {onRetry && (
@@ -543,7 +555,7 @@ function Notice({
               className="rounded-xl bg-blue-500 px-4 py-2 text-[13px] font-medium text-white
                          transition-colors hover:bg-blue-400"
             >
-              تلاش دوباره
+              {tc('retry')}
             </button>
           )}
           <Link
@@ -551,7 +563,7 @@ function Notice({
             className="inline-block rounded-xl border border-white/15 px-4 py-2 text-[13px] text-white/75
                        transition-colors hover:border-white/30 hover:text-white"
           >
-            نمای کامل محصول
+            {t('fullViewAria')}
           </Link>
         </div>
       </div>

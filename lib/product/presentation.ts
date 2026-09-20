@@ -6,6 +6,8 @@ import type { ZonePaint, ZonePaintConfig } from '@/stores/presentationStore'
 import type { SwatchMaps, SwatchSpec, SwatchUv } from '@/lib/three/swatchTextures'
 import { type QualityPreset } from '@/lib/config/quality'
 import { SURFACE_POLICY, resolveTier, type DeviceClass } from '@/lib/config/deviceTier'
+import type { Locale } from '@/i18n/routing'
+import { localizeProduct, localizePresentationConfig } from '@/lib/i18n/localize'
 
 /**
  * The independently colourable parts of a piece.
@@ -51,6 +53,7 @@ export interface PresentationPart {
   id: string
   /** Row label in the sheet. */
   label: string
+  en?: { label: string }
   /**
    * Which paint zone this part wears. Two parts may share a zone, in which case
    * they change together — that is a choice the manifest makes, not an accident.
@@ -82,6 +85,8 @@ export interface PresentationPart {
 export interface ZoneSwatch {
   id: string
   name: string
+  /** English override — falls back to `name` (fa) when absent. @see lib/i18n/localize */
+  en?: { name: string }
   /**
    * The swatch's colour.
    *
@@ -118,17 +123,40 @@ export interface ZoneSwatch {
   /** Chip image, for a cloth a flat hex misrepresents. Keep it small — a WebP
    *  under ~20KB; it renders at about 32px. */
   thumbnail?: string
+  /**
+   * Fabric sheen — a soft, grazing-angle highlight real cloth has. Needs a
+   * genuinely Physical material to render at all, so this only does anything
+   * on a surface that opts into `lib/three/layerMaterials.ts`'s `physical`
+   * clone. Omitted → no sheen, the behaviour every swatch had before this
+   * existed.
+   */
+  sheen?: number
+  sheenRoughness?: number
+  sheenColor?: string
+  /** Normal-map intensity, for a swatch that shares its normal map with
+   *  others at a different apparent depth — bouclé wants to read deeper than
+   *  a fine weave off the same `fabric-weave-normal` map. Omitted → the
+   *  map's own authored scale. */
+  normalScale?: number
 }
 
 export interface CoverVariant {
   id: string
   name: string
+  en?: { name: string }
   path: string
   /** A lighter stand-in for AR only. @see arModelPath */
   arPath?: string
   thumbnail?: string
   priceDelta?: number
-  material?: { roughness?: number; metalness?: number; clearcoat?: number }
+  material?: {
+    roughness?: number
+    metalness?: number
+    clearcoat?: number
+    sheen?: number
+    sheenRoughness?: number
+    sheenColor?: string
+  }
   /**
    * Swatches shown only while this variant is the mounted one, replacing
    * `palettes.cover`.
@@ -147,6 +175,7 @@ export interface LayerMeta {
   arPath?: string
   label: string
   desc?: string
+  en?: { label?: string; desc?: string }
   /** Substring tested against mesh.name to pick the colourable subset of this layer */
   zoneMatch?: string
 }
@@ -188,6 +217,7 @@ export interface StageMeta {
 export interface CoverLayerMeta {
   label: string
   desc?: string
+  en?: { label?: string; desc?: string }
   default: string
   variants: CoverVariant[]
 }
@@ -453,6 +483,19 @@ export interface SimpleViewerMeta {
    *  would not read over a dark one. */
   background?: string
   /**
+   * A vertical gradient sweep behind the piece, instead of the flat void
+   * `background` alone draws. Omitted → `background` at both stops with no
+   * vignette, which is pixel-for-pixel what an unauthored product rendered
+   * before this existed. @see ViewerBackdrop
+   */
+  backdrop?: { top?: string; bottom?: string; vignette?: number }
+  /**
+   * The frozen contact shadow under the piece. Omitted → the defaults below,
+   * chosen to look right on a white or near-white ground — which is what
+   * every product renders on until `backdrop` says otherwise.
+   */
+  ground?: { blur?: number; opacity?: number; far?: number }
+  /**
    * Vertical field of view.
    *
    * Long by default. A wide lens bows straight edges, which is the first thing
@@ -483,11 +526,39 @@ export interface SimpleViewerMeta {
    * flat, `fill` opens the shaded side, and `ambient` keeps that side off pure
    * black against a white ground. Zero any of them for a piece that should be
    * read by the environment alone.
+   *
+   * Same six keys as `PresentationConfig.lighting`, not by coincidence — this
+   * is the same rig, stripped. `rim`, `bounce` and `hemi` default to 0, so a
+   * product that has not authored them renders exactly as before these
+   * existed: no cool edge light, no floor bounce, no hemisphere fill.
    */
-  lighting?: { ambient?: number; key?: number; fill?: number }
+  lighting?: { ambient?: number; key?: number; fill?: number; rim?: number; bounce?: number; hemi?: number }
   /** Opening tier, per device. The on-screen picker overrides it either way.
    *  @see SIMPLE_VIEWER_QUALITY */
   quality?: { preset?: QualityPreset; mobile?: QualityPreset }
+  /**
+   * Tone curve for this piece. A string, not a `three` constant — this module
+   * ships no `three` import, read by contexts that have no business pulling
+   * the library in. `SimpleViewer` maps it to the real constant.
+   *
+   * Omitted → `'neutral'`, today's hard-coded default and the right one for a
+   * page whose job is colour accuracy. A piece that wants more contrast can
+   * ask for `'aces-filmic'` without a code change.
+   */
+  toneMapping?: 'none' | 'linear' | 'reinhard' | 'cineon' | 'aces-filmic' | 'agx' | 'neutral'
+  /** Exposure under that curve. Omitted → 1, today's hard-coded value. */
+  exposure?: number
+  /**
+   * Overrides `config.sun` for this page alone. Omitted → the shared sun, so
+   * a value tuned for the room on `/product` is not silently disturbed by a
+   * change meant only for the piece-centred framing here.
+   *
+   * The real thing — a directional light with a PCSS shadow — not a manifest
+   * knob invented for this page: `/simple` mounts `/store`'s own `SunLight` /
+   * `ShadowSystem` via `/product`'s `PresentationSun`, imported rather than
+   * forked, so a `?sundebug=1` printout pastes straight in here too.
+   */
+  sun?: PartialSun
 }
 
 export interface ResolvedSimpleViewer {
@@ -499,13 +570,18 @@ export interface ResolvedSimpleViewer {
   padding: number
   minZoom: number
   maxZoom: number
-  lighting: { ambient: number; key: number; fill: number }
+  lighting: { ambient: number; key: number; fill: number; rim: number; bounce: number; hemi: number }
+  backdrop: { top: string; bottom: string; vignette: number }
+  ground: { blur: number; opacity: number; far: number }
+  toneMapping: 'none' | 'linear' | 'reinhard' | 'cineon' | 'aces-filmic' | 'agx' | 'neutral'
+  exposure: number
 }
 
 /** The `simple` block with every default filled in, in the shape of
  *  `floorReflection` and `galleryLighting`. */
 export function simpleViewer(config: PresentationConfig): ResolvedSimpleViewer {
   const s = config.simple ?? {}
+  const background = s.background ?? '#ffffff'
   return {
     model: s.model ?? finishedPiecePath(config),
     // `null` is a deliberate "no environment", so only `undefined` falls through.
@@ -513,7 +589,7 @@ export function simpleViewer(config: PresentationConfig): ResolvedSimpleViewer {
     // Left undefined so the viewer can fall back to the quality tier's value,
     // which the manifest has no business knowing.
     envIntensity: s.envIntensity ?? config.room.envIntensity,
-    background: s.background ?? '#ffffff',
+    background,
     fov: s.fov ?? 35,
     padding: s.padding ?? 1.1,
     minZoom: s.minZoom ?? 0.35,
@@ -522,7 +598,22 @@ export function simpleViewer(config: PresentationConfig): ResolvedSimpleViewer {
       ambient: s.lighting?.ambient ?? 0.35,
       key: s.lighting?.key ?? 1.1,
       fill: s.lighting?.fill ?? 0.35,
+      rim: s.lighting?.rim ?? 0,
+      bounce: s.lighting?.bounce ?? 0,
+      hemi: s.lighting?.hemi ?? 0,
     },
+    backdrop: {
+      top: s.backdrop?.top ?? background,
+      bottom: s.backdrop?.bottom ?? background,
+      vignette: s.backdrop?.vignette ?? 0,
+    },
+    ground: {
+      blur: s.ground?.blur ?? 2.6,
+      opacity: s.ground?.opacity ?? 0.45,
+      far: s.ground?.far ?? 2.2,
+    },
+    toneMapping: s.toneMapping ?? 'neutral',
+    exposure: s.exposure ?? 1,
   }
 }
 
@@ -795,12 +886,21 @@ export interface ResolvedPresentation {
   config: PresentationConfig
 }
 
-/** Joins showroom catalogue metadata with the 3D presentation config. */
-export function resolvePresentation(key: string): ResolvedPresentation | null {
+/**
+ * Joins showroom catalogue metadata with the 3D presentation config, and
+ * resolves every translatable field (product facts, layer labels, cover
+ * variants, swatch names, part labels) to `locale` — `fa` by default, so the
+ * many callers that never pass one keep the exact behaviour they always had.
+ */
+export function resolvePresentation(key: string, locale: Locale = 'fa'): ResolvedPresentation | null {
   const config = CONFIGS[key]
   const product = PRODUCTS[key]
   if (!config || !product) return null
-  return { key, product, config }
+  return {
+    key,
+    product: localizeProduct(product, locale),
+    config: localizePresentationConfig(config, locale),
+  }
 }
 
 export function findCoverVariant(config: PresentationConfig, id: string | null): CoverVariant | null {
@@ -824,11 +924,25 @@ export function totalPrice(product: ProductData, variant: CoverVariant | null): 
 export function coverSurface(
   config: PresentationConfig,
   variant: CoverVariant | null
-): { roughness: number; metalness: number; clearcoat: number } {
+): {
+  roughness: number
+  metalness: number
+  clearcoat: number
+  sheen?: number
+  sheenRoughness?: number
+  sheenColor?: string
+} {
+  const m = variant?.material
   return {
-    roughness: variant?.material?.roughness ?? 0.6,
-    metalness: variant?.material?.metalness ?? 0,
-    clearcoat: isMatte(config) ? 0 : variant?.material?.clearcoat ?? 0,
+    roughness: m?.roughness ?? 0.6,
+    metalness: m?.metalness ?? 0,
+    clearcoat: isMatte(config) ? 0 : m?.clearcoat ?? 0,
+    // Conditional, not `?? undefined`: a key present with value `undefined`
+    // still overwrites whatever setPaint's merge finds there, the same
+    // footgun `swatchPaint` below already avoids for `roughness`.
+    ...(m?.sheen !== undefined ? { sheen: m.sheen } : {}),
+    ...(m?.sheenRoughness !== undefined ? { sheenRoughness: m.sheenRoughness } : {}),
+    ...(m?.sheenColor !== undefined ? { sheenColor: m.sheenColor } : {}),
   }
 }
 
@@ -885,7 +999,13 @@ export function swatchUv(swatch: ZoneSwatch): SwatchUv | null {
 /** The render layer's view of a swatch, resolved from the manifest. */
 export function swatchSpec(swatch: ZoneSwatch): SwatchSpec | null {
   if (!isTextureSwatch(swatch)) return null
-  return { id: swatch.id, maps: swatch.maps!, materials: swatch.materials, uv: swatchUv(swatch) }
+  return {
+    id: swatch.id,
+    maps: swatch.maps!,
+    materials: swatch.materials,
+    uv: swatchUv(swatch),
+    normalScale: swatch.normalScale,
+  }
 }
 
 /**
@@ -915,7 +1035,14 @@ export function swatchPaint(swatch: ZoneSwatch, roughnessFallback?: number): Par
     maps: textured ? swatch.maps! : null,
     materials: textured ? swatch.materials ?? null : null,
     uv: textured ? swatchUv(swatch) : null,
+    normalScale: textured ? swatch.normalScale ?? null : null,
     ...(roughness !== undefined ? { roughness } : {}),
+    // Conditional, not nulled like the texture fields above: unlike a map, a
+    // swatch's sheen has a sensible "say nothing" state — inherit whatever
+    // the cover variant's own surface already set. @see coverSurface
+    ...(swatch.sheen !== undefined ? { sheen: swatch.sheen } : {}),
+    ...(swatch.sheenRoughness !== undefined ? { sheenRoughness: swatch.sheenRoughness } : {}),
+    ...(swatch.sheenColor !== undefined ? { sheenColor: swatch.sheenColor } : {}),
   }
 }
 

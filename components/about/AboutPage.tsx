@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useLocale } from "next-intl";
 import "./about.css";
 
 import AboutHeader from "./AboutHeader";
@@ -20,13 +21,18 @@ const FADE_MS = 180;
  * Bilingual About page — the single entry point of the portable
  * `components/about` module.
  *
- * Language is owned here rather than by the app's routing, because the host
- * layout is a single-locale document (`<html lang="fa" dir="rtl">`). Flipping
- * `lang`/`dir` on this wrapper scopes the second language to this page alone
- * and leaves the rest of the site untouched.
+ * Language is owned here rather than by the app's routing — `/about` is not
+ * one of the routes the site-wide `[locale]` segment fully translates, so it
+ * keeps its own toggle. It does seed that toggle from the global locale
+ * (`useLocale()`) rather than always opening on `fa`, so a visitor who
+ * already switched to English on `/en/...` and follows a link into `/about`
+ * lands on the language they picked, not back on Persian. `defaultLang`
+ * still wins when passed explicitly, for any caller outside the app's own
+ * `[locale]` tree.
  */
-export default function AboutPage({ defaultLang = "fa" }: { defaultLang?: Lang }) {
-  const [lang, setLang] = useState<Lang>(defaultLang);
+export default function AboutPage({ defaultLang }: { defaultLang?: Lang }) {
+  const appLocale = useLocale() as Lang;
+  const [lang, setLang] = useState<Lang>(defaultLang ?? appLocale);
   const [fading, setFading] = useState(false);
   const timer = useRef<number | null>(null);
 

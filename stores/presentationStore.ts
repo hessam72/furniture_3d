@@ -39,6 +39,22 @@ export interface ZonePaint {
   materials?: string[] | null
   /** UV override. Null → each slot inherits the transform it replaces. */
   uv?: SwatchUv | null
+
+  /**
+   * Fabric sheen — a soft, grazing-angle highlight real cloth has and a bare
+   * `MeshStandardMaterial` cannot render at all. `undefined` means "this
+   * material was never upgraded to genuinely Physical," not "sheen is zero" —
+   * every consumer guards on that, the same way `clearcoat` already is.
+   * @see lib/three/layerMaterials.ts's `physical` opt-in
+   */
+  sheen?: number
+  sheenRoughness?: number
+  sheenColor?: string
+  /** Normal-map intensity for the swapped map, when the swatch wants a
+   *  different depth than the map's own authored scale — several fabrics can
+   *  share one weave normal and still read at different depths. Null → the
+   *  target's own authored scale. */
+  normalScale?: number | null
 }
 
 export type ZonePaintConfig = Record<PresentationZone, ZonePaint>

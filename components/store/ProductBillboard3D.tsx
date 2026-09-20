@@ -4,6 +4,7 @@ import { Text, RoundedBox, useGLTF } from '@react-three/drei'
 import { useRouter } from 'next/navigation'
 import { useRef, useState, useMemo, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
+import { useTranslations } from 'next-intl'
 import * as THREE from 'three'
 
 interface FurnitureColor {
@@ -35,6 +36,8 @@ interface ProductBillboard3DProps {
 
 export default function ProductBillboard3D({ product, onClose, onViewAR }: ProductBillboard3DProps) {
   const router = useRouter()
+  const ts = useTranslations('specs')
+  const tc = useTranslations('common')
   const groupRef = useRef<THREE.Group>(null)
   const arButtonRef = useRef<THREE.Group>(null)
   const [hovered, setHovered] = useState(false)
@@ -213,7 +216,7 @@ export default function ProductBillboard3D({ product, onClose, onViewAR }: Produ
           fillOpacity={0.7}
           font="/fonts/shabnam/Shabnam-Bold-FD.ttf"
         >
-          {'ابعاد\nجنس\nوزن'}
+          {`${ts('dimensions')}\n${ts('material')}\n${ts('weight')}`}
         </Text>
 
         <Text
@@ -226,7 +229,7 @@ export default function ProductBillboard3D({ product, onClose, onViewAR }: Produ
           lineHeight={1.8}
           font="/fonts/baloo/BalooBhaijaan2-VariableFont_wght.ttf"
         >
-          {`${product.dimensions || 'موجود نیست'}\n${product.material || 'موجود نیست'}\n${product.weight || 'موجود نیست'}`}
+          {`${product.dimensions || ts('notAvailable')}\n${product.material || ts('notAvailable')}\n${product.weight || ts('notAvailable')}`}
         </Text>
 
         {/* Specs - second section (RTL) */}
@@ -241,7 +244,11 @@ export default function ProductBillboard3D({ product, onClose, onViewAR }: Produ
           fillOpacity={0.7}
           font="/fonts/shabnam/Shabnam-Bold-FD.ttf"
         >
-          {product.seatingCapacity ? 'ظرفیت نشستن\nدسته‌بندی\nنوع' : product.shelves ? 'تعداد قفسه\nدسته‌بندی\nنوع' : 'دسته‌بندی\nنوع\nرنگ‌ها'}
+          {product.seatingCapacity
+            ? `${ts('seatingCapacity')}\n${ts('category')}\n${ts('type')}`
+            : product.shelves
+              ? `${ts('shelves')}\n${ts('category')}\n${ts('type')}`
+              : `${ts('category')}\n${ts('type')}\n${ts('colors')}`}
         </Text>
 
         <Text
@@ -255,10 +262,10 @@ export default function ProductBillboard3D({ product, onClose, onViewAR }: Produ
           font="/fonts/baloo/BalooBhaijaan2-VariableFont_wght.ttf"
         >
           {product.seatingCapacity
-            ? `${product.seatingCapacity}\n${product.category || 'موجود نیست'}\n${product.type || 'موجود نیست'}`
+            ? `${product.seatingCapacity}\n${product.category || ts('notAvailable')}\n${product.type || ts('notAvailable')}`
             : product.shelves
-            ? `${product.shelves}\n${product.category || 'موجود نیست'}\n${product.type || 'موجود نیست'}`
-            : `${product.category || 'موجود نیست'}\n${product.type || 'موجود نیست'}\n${product.colors?.length || 0} گزینه`}
+            ? `${product.shelves}\n${product.category || ts('notAvailable')}\n${product.type || ts('notAvailable')}`
+            : `${product.category || ts('notAvailable')}\n${product.type || ts('notAvailable')}\n${ts('options', { count: product.colors?.length || 0 })}`}
         </Text>
 
         {/* View in AR button */}
@@ -290,7 +297,7 @@ export default function ProductBillboard3D({ product, onClose, onViewAR }: Produ
             fontWeight={700}
             font="/fonts/shabnam/Shabnam-Bold-FD.ttf"
           >
-            مشاهده در واقعیت افزوده
+            {tc('viewInAR')}
           </Text>
         </group>
       </group>

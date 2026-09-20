@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
+import { useLocale, useTranslations } from 'next-intl'
+import { Link } from '@/i18n/navigation'
 import { ChevronRight, Heart, SlidersHorizontal } from 'lucide-react'
 import QualitySelector from '@/components/car/QualitySelector'
+import LocaleSwitcher from '@/components/i18n/LocaleSwitcher'
 import { useShop } from '@/stores/storeShopStore'
 import type { QualityPreset } from '@/lib/config/quality'
 import { useQuality } from '@/contexts/QualityContext'
@@ -15,14 +17,16 @@ interface Props {
   catalogId: string | null
 }
 
-const QUALITY_LABELS: Record<QualityPreset, string> = {
-  low: 'کم',
-  medium: 'متوسط',
-  high: 'زیاد',
-  ultra: 'حداکثر',
-}
-
 export default function PresentationTopBar({ productName, catalogId }: Props) {
+  const locale = useLocale()
+  const t = useTranslations('product')
+  const tq = useTranslations('quality')
+  const QUALITY_LABELS: Record<QualityPreset, string> = {
+    low: tq('low'),
+    medium: tq('medium'),
+    high: tq('high'),
+    ultra: tq('ultra'),
+  }
   const liked = useShop((s) => s.liked)
   const toggleLike = useShop((s) => s.toggleLike)
   const isLiked = !!catalogId && liked.includes(catalogId)
@@ -54,19 +58,19 @@ export default function PresentationTopBar({ productName, catalogId }: Props) {
 
   return (
     <div
-      dir="rtl"
+      dir={locale === 'fa' ? 'rtl' : 'ltr'}
       className="font-persian pointer-events-none fixed inset-x-0 top-0 z-[100] flex items-center
                  justify-between gap-3 px-4 pt-[max(0.75rem,env(safe-area-inset-top))]"
     >
       <Link
         href="/store"
-        aria-label="بازگشت به شوروم"
+        aria-label={t('backToShowroomAria')}
         className="glass pointer-events-auto flex h-10 items-center gap-1.5 rounded-full px-3
                    text-[13px] text-[var(--text-primary)] transition-colors
                    hover:text-[var(--gold-primary)]"
       >
-        <ChevronRight className="h-4 w-4" />
-        شوروم
+        <ChevronRight className={locale === 'fa' ? 'h-4 w-4' : 'h-4 w-4 rotate-180'} />
+        {t('backToShowroom')}
       </Link>
 
       <span
@@ -89,7 +93,7 @@ export default function PresentationTopBar({ productName, catalogId }: Props) {
         <div ref={qualityRef} className="relative">
           <button
             onClick={() => setQualityOpen((v) => !v)}
-            aria-label="کیفیت گرافیک"
+            aria-label={tq('heading')}
             aria-expanded={qualityOpen}
             className="glass pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full
                        text-[var(--text-secondary)] transition-colors hover:text-[var(--gold-primary)]"
@@ -105,16 +109,22 @@ export default function PresentationTopBar({ productName, catalogId }: Props) {
               className="pointer-events-auto absolute left-0 top-12 w-56 rounded-2xl border border-white/10
                          bg-black/75 p-4 shadow-[0_16px_48px_rgba(0,0,0,0.5)] backdrop-blur-2xl"
             >
-              <QualitySelector labels={QUALITY_LABELS} heading="کیفیت گرافیک" />
+              <QualitySelector labels={QUALITY_LABELS} heading={tq('heading')} />
             </div>
           )}
         </div>
         )}
 
+        {/* Not folded into the quality popover: that panel is hidden outright
+            on a single-rung phone (@see SURFACE_POLICY above), which on this
+            branch is most visitors — and the language switch has to reach
+            every one of them, not just desktops with a quality choice. */}
+        <LocaleSwitcher className="pointer-events-auto" />
+
         {catalogId ? (
           <button
             onClick={() => toggleLike(catalogId)}
-            aria-label={isLiked ? 'حذف از علاقه‌مندی' : 'افزودن به علاقه‌مندی'}
+            aria-label={isLiked ? t('likeRemove') : t('likeAdd')}
             aria-pressed={isLiked}
             className="glass pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full
                        text-[var(--text-secondary)] transition-colors hover:text-[var(--gold-primary)]"

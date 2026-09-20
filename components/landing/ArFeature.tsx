@@ -1,4 +1,5 @@
-import { AR_FEATURE } from "@/lib/content/home";
+import { useLocale } from "next-intl";
+import { getHomeCopy } from "@/lib/content/home";
 import SectionHeading from "./SectionHeading";
 import SmartImage from "./SmartImage";
 import GoldButton from "./GoldButton";
@@ -6,8 +7,9 @@ import Reveal from "./Reveal";
 import Section from "./Section";
 
 export default function ArFeature() {
+  const { arFeature: AR_FEATURE } = getHomeCopy(useLocale());
   return (
-    <Section tone="c" id={AR_FEATURE?.id} labelledBy="ar-heading">
+    <Section tone="c" id={AR_FEATURE.id} labelledBy="ar-heading">
       <Reveal className="flex w-full flex-col items-center gap-8">
         <SectionHeading
           eyebrow={AR_FEATURE.eyebrow}

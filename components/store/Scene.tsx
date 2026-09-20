@@ -35,6 +35,9 @@ import {
   type FocusOverride
 } from '@/lib/store/catalog'
 import { useShop } from '@/stores/storeShopStore'
+import { useLocale } from 'next-intl'
+import type { Locale } from '@/i18n/routing'
+import { localizeCatalog, localizeProduct } from '@/lib/i18n/localize'
 // Lazily, like every other AR call site. A static import puts model-viewer —
 // which inlines its own copy of three — in this page's critical path, for an
 // overlay most visitors never open.
@@ -222,6 +225,7 @@ type PendingFocus = {
 }
 
 export default function Scene({ recovery }: { recovery: ContextRecovery }) {
+  const locale = useLocale() as Locale
   const { config, loading, error } = useStoreConfig()
   const { settings, preset, device, gpu } = useQuality()
 
@@ -236,15 +240,6 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
    */
   useGltfCacheEviction(useMemo(() => config?.files.map((f) => f.url) ?? [], [config]))
 
-  // Listeners, transcoder priming and — the part R3F skips — a real
-  // `gl.dispose()` on unmount. @see useCanvasLifecycle
-  const handleCanvasCreated = useCanvasLifecycle({
-    label: 'store',
-    onContextLost: recovery.handleContextLost,
-    onCreated: useCallback((state: RootState) => {
-      r3fRef.current = state
-    }, []),
-  })
   const [joystickInputRef, setJoystickInputRef] = useState<React.RefObject<{ x: number; y: number }> | null>(null)
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('loading')
   const [loadedCount, setLoadedCount] = useState(0)
@@ -253,6 +248,24 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
   const [selectedObjectPosition, setSelectedObjectPosition] = useState<[number, number, number] | null>(null)
   const [showAR, setShowAR] = useState(false)
   const [arProduct, setArProduct] = useState<ProductData | null>(null)
+
+  // Listeners, transcoder priming and — the part R3F skips — a real
+  // `gl.dispose()` on unmount. @see useCanvasLifecycle
+  //
+  // `active: !showAR` matters as much as the listener itself: this Canvas is
+  // conditionally rendered from inside `Scene`, which stays mounted for the
+  // AR round trip, so without it the release below only ever fires when the
+  // visitor leaves /store — not when AR hides the Canvas — and R3F's own
+  // delayed `forceContextLoss()` on that orphaned canvas then reads as a real
+  // GPU loss the moment AR is closed. @see the note on `active` in the hook.
+  const handleCanvasCreated = useCanvasLifecycle({
+    label: 'store',
+    active: !showAR,
+    onContextLost: recovery.handleContextLost,
+    onCreated: useCallback((state: RootState) => {
+      r3fRef.current = state
+    }, []),
+  })
   const [gyroEnabled, setGyroEnabled] = useState(false)
   const [galleryError, setGalleryError] = useState<string | null>(null)
   const [modelsKey, setModelsKey] = useState(0)
@@ -340,12 +353,14 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
       fetch('/config/catalog.json').then((r) => r.json()),
       fetch('/config/products.json').then((r) => r.json())
     ])
-      .then(([cat, prods]) => {
-        setCatalog(cat)
-        setProducts(prods)
+      .then(([cat, prods]: [Catalog, Record<string, ProductData>]) => {
+        setCatalog(localizeCatalog(cat, locale))
+        setProducts(
+          Object.fromEntries(Object.entries(prods).map(([key, p]) => [key, localizeProduct(p, locale)]))
+        )
       })
       .catch((err) => console.error('Failed to load catalog:', err))
-  }, [])
+  }, [locale])
 
   /** Take off — shared by menu picks and direct taps */
   const beginFocus = useCallback(
@@ -720,7 +735,7 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
       {loadingPhase === 'ready' && (
         <>
           <div
-            dir="rtl"
+            dir={locale === 'fa' ? 'rtl' : 'ltr'}
             className="font-persian pointer-events-none fixed inset-x-0 top-0 z-30
                        px-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-6 md:pt-5"
           >

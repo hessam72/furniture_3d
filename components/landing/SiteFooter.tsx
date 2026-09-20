@@ -1,11 +1,9 @@
-import {
-  BRAND,
-  FOOTER,
-  CONTACT_PHONE_DISPLAY,
-  CONTACT_PHONE_HREF,
-} from "@/lib/content/home";
+import { useLocale } from "next-intl";
+import { getHomeCopy } from "@/lib/content/home";
 
 export default function SiteFooter() {
+  const { brand: BRAND, footer: FOOTER, contactPhoneDisplay: CONTACT_PHONE_DISPLAY, contactPhoneHref: CONTACT_PHONE_HREF } =
+    getHomeCopy(useLocale());
   return (
     <footer className="px-5 pb-12 pt-6 sm:px-6">
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-4">
