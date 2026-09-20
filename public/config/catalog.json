@@ -6,17 +6,29 @@
       "subCategories": [
         {
           "id": "l-shape",
-          "label": "مبل ال"
+          "label": "مبل ال",
+          "en": {
+            "label": "L-Shaped Sofa"
+          }
         },
         {
           "id": "sectional",
-          "label": "مبل سگمنتال"
+          "label": "مبل سگمنتال",
+          "en": {
+            "label": "Sectional Sofa"
+          }
         },
         {
           "id": "single",
-          "label": "مبل تک‌نفره"
+          "label": "مبل تک‌نفره",
+          "en": {
+            "label": "Single-Seat Sofa"
+          }
         }
-      ]
+      ],
+      "en": {
+        "label": "Sofas"
+      }
     },
     {
       "id": "chair",
@@ -24,17 +36,29 @@
       "subCategories": [
         {
           "id": "dining",
-          "label": "صندلی غذاخوری"
+          "label": "صندلی غذاخوری",
+          "en": {
+            "label": "Dining Chair"
+          }
         },
         {
           "id": "office",
-          "label": "صندلی اداری"
+          "label": "صندلی اداری",
+          "en": {
+            "label": "Office Chair"
+          }
         },
         {
           "id": "accent",
-          "label": "صندلی راحتی"
+          "label": "صندلی راحتی",
+          "en": {
+            "label": "Accent Chair"
+          }
         }
-      ]
+      ],
+      "en": {
+        "label": "Chairs"
+      }
     },
     {
       "id": "table",
@@ -42,17 +66,29 @@
       "subCategories": [
         {
           "id": "coffee",
-          "label": "میز جلومبلی"
+          "label": "میز جلومبلی",
+          "en": {
+            "label": "Coffee Table"
+          }
         },
         {
           "id": "dining-table",
-          "label": "میز غذاخوری"
+          "label": "میز غذاخوری",
+          "en": {
+            "label": "Dining Table"
+          }
         },
         {
           "id": "side",
-          "label": "میز عسلی"
+          "label": "میز عسلی",
+          "en": {
+            "label": "Side Table"
+          }
         }
-      ]
+      ],
+      "en": {
+        "label": "Tables"
+      }
     },
     {
       "id": "storage",
@@ -60,17 +96,29 @@
       "subCategories": [
         {
           "id": "buffet",
-          "label": "بوفه"
+          "label": "بوفه",
+          "en": {
+            "label": "Sideboard"
+          }
         },
         {
           "id": "wardrobe",
-          "label": "کمد دیواری"
+          "label": "کمد دیواری",
+          "en": {
+            "label": "Wardrobe"
+          }
         },
         {
           "id": "bookshelf",
-          "label": "قفسه کتاب"
+          "label": "قفسه کتاب",
+          "en": {
+            "label": "Bookshelf"
+          }
         }
-      ]
+      ],
+      "en": {
+        "label": "Cabinets & Sideboards"
+      }
     }
   ],
   "items": [
@@ -85,6 +133,9 @@
         "azimuthDeg": -45,
         "elevationDeg": 15,
         "distance": 4
+      },
+      "en": {
+        "name": "L-Shaped Sofa"
       }
     },
     {
@@ -98,19 +149,21 @@
         "azimuthDeg": 0,
         "elevationDeg": 15,
         "distance": 6
+      },
+      "en": {
+        "name": "Classic Sectional Sofa"
       }
     },
-   
     {
       "id": "accent-comfy",
       "name": "صندلی راحتی آکسانت",
       "price": 9800000,
       "mainCategory": "chair",
       "subCategory": "accent",
-      "sceneObject": "coffee-table"
-    
+      "sceneObject": "coffee-table",
+      "en": {
+        "name": "Accent Lounge Chair"
+      }
     }
-   
-   
   ]
 }

@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { ArrowIcon } from "./icons";
 import { cn } from "@/lib/utils";
 
 /**
- * Dark, gold-bordered, glowing CTA. Renders a next/link for internal routes
- * and a plain anchor for `tel:` / external hrefs.
+ * Dark, gold-bordered, glowing CTA. Renders a locale-aware `Link` (from
+ * `i18n/navigation`) for real internal routes, and a plain anchor for
+ * same-page `#anchor` hrefs, `tel:` and other external hrefs — a hash has no
+ * locale of its own for the locale-aware `Link` to prefix.
  *
  * `solid` glows and carries the brighter border; `outline` is the quieter
  * sibling for secondary actions.
@@ -50,7 +52,7 @@ export default function GoldButton({
     </>
   );
 
-  const isInternal = href.startsWith("/") || href.startsWith("#");
+  const isInternal = href.startsWith("/");
 
   return isInternal ? (
     <Link href={href} className={classes}>

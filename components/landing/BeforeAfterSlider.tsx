@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { useLocale } from "next-intl";
 import SmartImage from "./SmartImage";
 import { DragIcon } from "./icons";
-import { COLOR_SWAP } from "@/lib/content/home";
-import { toFaDigits } from "@/lib/utils";
+import { getHomeCopy } from "@/lib/content/home";
+import { formatPercent } from "@/lib/utils";
 
 type Img = { src: string; alt: string; label: string };
 
@@ -30,6 +31,8 @@ export default function BeforeAfterSlider({
   before: Img;
   after: Img;
 }) {
+  const locale = useLocale();
+  const { colorSwap: COLOR_SWAP } = getHomeCopy(locale);
   const containerRef = useRef<HTMLDivElement>(null);
   const frame = useRef(0);
   const [pos, setPos] = useState(50);
@@ -140,7 +143,7 @@ export default function BeforeAfterSlider({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(pos)}
-        aria-valuetext={`${toFaDigits(Math.round(pos))} درصد`}
+        aria-valuetext={formatPercent(Math.round(pos), locale)}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}

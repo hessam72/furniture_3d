@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { useLocale, useTranslations } from 'next-intl'
+import { Link } from '@/i18n/navigation'
 import { motion, PanInfo } from 'framer-motion'
 import { X, ChevronDown, ShoppingBag, Sparkles } from 'lucide-react'
 import { hasPresentation } from '@/lib/product/presentation'
 import { useFurnitureConfig } from '@/stores/furnitureConfigStore'
-import { faPrice } from '@/lib/store/catalog'
+import { formatPrice } from '@/lib/store/catalog'
 import type { ProductData } from './ProductInteraction'
 import { SpecDetails, SpecDimensions, SpecFabric } from './productSpecTabs'
 
@@ -22,12 +23,6 @@ interface ProductDrawerProps {
 
 type Tab = 'details' | 'fabric' | 'dimensions'
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'details', label: 'جزییات' },
-  { id: 'fabric', label: 'جنس پارچه' },
-  { id: 'dimensions', label: 'ابعاد' }
-]
-
 const SPRING = { type: 'spring' as const, damping: 34, stiffness: 320, mass: 0.8 }
 
 export default function ProductDrawer({
@@ -37,6 +32,15 @@ export default function ProductDrawer({
   onViewAR,
   onAddToCart
 }: ProductDrawerProps) {
+  const locale = useLocale()
+  const t = useTranslations('store')
+  const tc = useTranslations('common')
+  const ts = useTranslations('specs')
+  const TABS: { id: Tab; label: string }[] = [
+    { id: 'details', label: tc('details') },
+    { id: 'fabric', label: t('fabricSpec') },
+    { id: 'dimensions', label: ts('dimensions') },
+  ]
   const [activeTab, setActiveTab] = useState<Tab>('details')
   const [expanded, setExpanded] = useState(false)
   const { setColor, currentColor } = useFurnitureConfig()
@@ -57,7 +61,7 @@ export default function ProductDrawer({
 
   return (
     <motion.div
-      dir="rtl"
+      dir={locale === 'fa' ? 'rtl' : 'ltr'}
       drag="y"
       dragConstraints={{ top: 0, bottom: 0 }}
       dragElastic={{ top: 0.04, bottom: 0.35 }}
@@ -81,7 +85,7 @@ export default function ProductDrawer({
       {/* Grab handle — doubles as the expand/collapse toggle */}
       <button
         onClick={() => setExpanded((v) => !v)}
-        aria-label={expanded ? 'بستن جزییات' : 'نمایش جزییات'}
+        aria-label={expanded ? t('hideDetails') : t('showDetails')}
         className="flex w-full cursor-grab justify-center pt-3 pb-1.5 active:cursor-grabbing"
       >
         <span className="h-1 w-10 rounded-full bg-white/25 transition-colors hover:bg-white/40" />
@@ -101,14 +105,14 @@ export default function ProductDrawer({
                          text-[var(--text-secondary)] transition-colors hover:bg-white/[0.06]
                          hover:text-[var(--gold-primary)]"
             >
-              {expanded ? 'کمتر' : 'جزییات بیشتر'}
+              {expanded ? tc('lessDetails') : tc('moreDetails')}
               <ChevronDown
                 className={`h-3.5 w-3.5 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
               />
             </button>
             <button
               onClick={onClose}
-              aria-label="بستن"
+              aria-label={tc('close')}
               className="rounded-full p-1.5 text-[var(--text-muted)] transition-colors
                          hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
             >
@@ -159,7 +163,7 @@ export default function ProductDrawer({
                      hover:bg-[var(--gold-primary)]/10"
         >
           <Sparkles className="h-4 w-4" />
-          مشاهده با جزییات
+          {t('viewWithDetails')}
         </Link>
 
         {/* Expanded detail pane */}
@@ -207,7 +211,7 @@ export default function ProductDrawer({
                            text-[13px] text-[var(--gold-primary)] transition-colors
                            hover:bg-[var(--gold-primary)]/10"
               >
-                مشاهده در واقعیت افزوده
+                {tc('viewInAR')}
               </button>
             )}
           </div>
@@ -220,7 +224,7 @@ export default function ProductDrawer({
               <span className="truncate text-[11px] text-[var(--text-muted)]">{activeColorName}</span>
             )}
             <span className="persian-number text-[17px] font-bold leading-tight text-[var(--gold-primary)]">
-              {product.price ? faPrice(product.price) : 'استعلام قیمت'}
+              {product.price ? formatPrice(product.price, locale) : tc('priceOnRequest')}
             </span>
           </div>
 
@@ -232,7 +236,7 @@ export default function ProductDrawer({
                        transition-transform duration-200 active:scale-[0.97]"
           >
             <ShoppingBag className="h-4 w-4" />
-            افزودن
+            {tc('add')}
           </button>
         </div>
       </div>

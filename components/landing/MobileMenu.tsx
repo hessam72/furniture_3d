@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import Link from "next/link";
+import { useLocale } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { useLenis } from "@/components/layout/LenisProvider";
-import { NAV_LINKS, BRAND } from "@/lib/content/home";
+import { getHomeCopy } from "@/lib/content/home";
 import { CloseIcon } from "./icons";
+import LocaleSwitcher from "@/components/i18n/LocaleSwitcher";
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -18,6 +20,7 @@ export default function MobileMenu({
   onClose: () => void;
   returnFocusTo: React.RefObject<HTMLButtonElement>;
 }) {
+  const { brand: BRAND, navLinks: NAV_LINKS, ui } = getHomeCopy(useLocale());
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const lenis = useLenis();
@@ -105,7 +108,7 @@ export default function MobileMenu({
       className="fixed inset-0 z-[200] flex flex-col bg-ink-950/92 backdrop-blur-2xl"
       role="dialog"
       aria-modal="true"
-      aria-label="منوی اصلی"
+      aria-label={ui.mainMenu}
     >
       <div
         ref={panelRef}
@@ -116,7 +119,7 @@ export default function MobileMenu({
             ref={closeRef}
             type="button"
             onClick={onClose}
-            aria-label="بستن منو"
+            aria-label={ui.closeMenu}
             className="absolute right-0 grid h-11 w-11 place-items-center rounded-full border border-gold-line bg-ink-900/40 text-gold shadow-[inset_0_1px_0_rgb(247_235_214/18%)] transition-colors hover:border-gold-line-hi hover:text-gold-edge"
           >
             <CloseIcon className="h-5 w-5" />
@@ -128,29 +131,41 @@ export default function MobileMenu({
 
         <nav className="mt-10 flex-1">
           <ul className="flex flex-col gap-1">
-            {NAV_LINKS.map((link, i) => (
+            {NAV_LINKS.map((link) => (
               <li key={link.href}>
-                <Link
-                  href={link.href}
-                  onClick={handleClick(link.href)}
-                  className="font-persian flex items-center justify-between border-b border-white/8 py-4 text-lg font-bold text-white transition-colors hover:text-gold-soft"
-                >
-                  {link.label}
-                  {/* <span
-                    aria-hidden="true"
-                    className="persian-number text-xs text-gold/50"
+                {/* In-page anchors (`#top`, `#features`, …) stay on a plain
+                    anchor — the locale-aware Link only knows how to prefix
+                    real routes, and a hash has no locale of its own. Real
+                    routes (`/store`, `/about`) go through it so the current
+                    locale carries across the click. */}
+                {link.href.startsWith("#") ? (
+                  <a
+                    href={link.href}
+                    onClick={handleClick(link.href)}
+                    className="font-persian flex items-center justify-between border-b border-white/8 py-4 text-lg font-bold text-white transition-colors hover:text-gold-soft"
                   >
-                    {["۰۱", "۰۲", "۰۳", "۰۴", "۰۵", "۰۶"][i]}
-                  </span> */}
-                </Link>
+                    {link.label}
+                  </a>
+                ) : (
+                  <Link
+                    href={link.href}
+                    onClick={handleClick(link.href)}
+                    className="font-persian flex items-center justify-between border-b border-white/8 py-4 text-lg font-bold text-white transition-colors hover:text-gold-soft"
+                  >
+                    {link.label}
+                  </Link>
+                )}
               </li>
             ))}
           </ul>
         </nav>
 
-        <p className="font-persian text-center text-xs text-white/40">
-          {BRAND.tagline}
-        </p>
+        <div className="flex flex-col items-center gap-4">
+          <LocaleSwitcher />
+          <p className="font-persian text-center text-xs text-white/40">
+            {BRAND.tagline}
+          </p>
+        </div>
       </div>
     </div>
   );

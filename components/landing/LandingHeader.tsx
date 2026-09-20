@@ -1,20 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { BRAND } from "@/lib/content/home";
+import { useLocale } from "next-intl";
+import { Link } from "@/i18n/navigation";
+import { getHomeCopy, type HomeCopy } from "@/lib/content/home";
 import { MenuIcon } from "./icons";
 import MobileMenu from "./MobileMenu";
 import { cn } from "@/lib/utils";
 
 /** Logo, falling back to a gold wordmark until the image file exists. */
-function BrandMark() {
+function BrandMark({ brand }: { brand: HomeCopy["brand"] }) {
   const [failed, setFailed] = useState(false);
 
   if (failed) {
     return (
       <span className="font-persian text-gold-key text-base font-extrabold tracking-[0.18em] sm:text-lg">
-        {BRAND.name}
+        {brand.name}
       </span>
     );
   }
@@ -22,8 +23,8 @@ function BrandMark() {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={BRAND.logoSrc}
-      alt={BRAND.name}
+      src={brand.logoSrc}
+      alt={brand.name}
       onError={() => setFailed(true)}
       className="h-8 w-auto object-contain sm:h-10"
     />
@@ -31,6 +32,7 @@ function BrandMark() {
 }
 
 export default function LandingHeader() {
+  const { brand, ui } = getHomeCopy(useLocale());
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -67,16 +69,16 @@ export default function LandingHeader() {
           <Link
             href="/"
             className="absolute left-4 flex items-center sm:left-6"
-            aria-label={BRAND.name}
+            aria-label={brand.name}
           >
-            <BrandMark />
+            <BrandMark brand={brand} />
           </Link>
 
           <button
             ref={buttonRef}
             type="button"
             onClick={() => setOpen(true)}
-            aria-label="باز کردن منو"
+            aria-label={ui.openMenu}
             aria-expanded={open}
             aria-controls="site-menu"
             className="absolute right-4 grid h-11 w-11 place-items-center rounded-full border border-gold-line bg-ink-900/40 text-gold shadow-[inset_0_1px_0_rgb(247_235_214/18%)] transition-colors hover:border-gold-line-hi hover:text-gold-edge sm:right-6"

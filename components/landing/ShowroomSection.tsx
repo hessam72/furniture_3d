@@ -1,4 +1,5 @@
-import { SHOWROOM } from "@/lib/content/home";
+import { useLocale } from "next-intl";
+import { getHomeCopy } from "@/lib/content/home";
 import SectionHeading from "./SectionHeading";
 import SmartImage from "./SmartImage";
 import GoldButton from "./GoldButton";
@@ -6,6 +7,7 @@ import Reveal from "./Reveal";
 import Section from "./Section";
 
 export default function ShowroomSection() {
+  const { showroom: SHOWROOM } = getHomeCopy(useLocale());
   return (
     <Section tone="a" id={SHOWROOM.id} labelledBy="showroom-heading">
       <Reveal className="flex w-full flex-col items-center gap-8">

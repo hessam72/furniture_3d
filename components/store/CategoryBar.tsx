@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useLocale, useTranslations } from 'next-intl'
 import { ChevronLeft } from 'lucide-react'
-import { faPrice, itemsInSubCategory, type Catalog, type CatalogItem } from '@/lib/store/catalog'
+import { formatPrice, itemsInSubCategory, type Catalog, type CatalogItem } from '@/lib/store/catalog'
+import type { Locale } from '@/i18n/routing'
 
 const SPRING = { type: 'spring' as const, damping: 34, stiffness: 320, mass: 0.8 }
 const EASE = { duration: 0.3, ease: [0.16, 1, 0.3, 1] as const }
@@ -21,6 +23,8 @@ interface CategoryBarProps {
  * collapses the whole thing back to the four main pills.
  */
 export default function CategoryBar({ catalog, onSelect, collapsed }: CategoryBarProps) {
+  const locale = useLocale() as Locale
+  const tc = useTranslations('common')
   const [mainId, setMainId] = useState<string | null>(null)
   const [subId, setSubId] = useState<string | null>(null)
 
@@ -126,7 +130,7 @@ export default function CategoryBar({ catalog, onSelect, collapsed }: CategoryBa
                 >
                   {items.length === 0 && (
                     <li className="glass-flat rounded-xl px-3.5 py-3 text-center text-[11px] text-[var(--text-muted)]">
-                      به زودی
+                      {tc('comingSoon')}
                     </li>
                   )}
 
@@ -140,7 +144,7 @@ export default function CategoryBar({ catalog, onSelect, collapsed }: CategoryBa
                         }}
                         onClick={() => onSelect(item)}
                         className="glass-flat specular flex w-full items-center justify-between gap-3
-                                   rounded-xl px-3.5 py-2.5 text-right transition-colors duration-200
+                                   rounded-xl px-3.5 py-2.5 text-start transition-colors duration-200
                                    hover:border-[var(--color-gold-line-hi)] active:scale-[0.99]"
                       >
                         <span className="flex min-w-0 flex-col">
@@ -148,10 +152,12 @@ export default function CategoryBar({ catalog, onSelect, collapsed }: CategoryBa
                             {item.name}
                           </span>
                           <span className="persian-number text-[11px] text-[var(--gold-primary)]">
-                            {faPrice(item.price)}
+                            {formatPrice(item.price, locale)}
                           </span>
                         </span>
-                        <ChevronLeft className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
+                        <ChevronLeft
+                          className={`h-4 w-4 shrink-0 text-[var(--text-muted)] ${locale === 'en' ? 'rotate-180' : ''}`}
+                        />
                       </button>
                     </li>
                   ))}

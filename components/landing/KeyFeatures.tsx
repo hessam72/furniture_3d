@@ -1,4 +1,5 @@
-import { KEY_FEATURES, KEY_FEATURES_SECTION } from "@/lib/content/home";
+import { useLocale } from "next-intl";
+import { getHomeCopy } from "@/lib/content/home";
 import SectionHeading from "./SectionHeading";
 import GlassCard from "./GlassCard";
 import { FeatureGlyph } from "./icons";
@@ -6,6 +7,7 @@ import Reveal from "./Reveal";
 import Section from "./Section";
 
 export default function KeyFeatures() {
+  const { keyFeatures: KEY_FEATURES, keyFeaturesSection: KEY_FEATURES_SECTION } = getHomeCopy(useLocale());
   return (
     <Section tone="b" id={KEY_FEATURES_SECTION.id} labelledBy="keyfeatures-heading">
       <Reveal className="flex w-full flex-col items-center gap-10">

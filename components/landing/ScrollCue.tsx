@@ -1,13 +1,15 @@
-import { HERO, SHOWROOM } from "@/lib/content/home";
+import { useLocale } from "next-intl";
+import { getHomeCopy } from "@/lib/content/home";
 import { ChevronDownIcon } from "./icons";
 
 /** CSS-only scroll gesture. Native anchor jump — Lenis smooths it anyway. */
 export default function ScrollCue() {
+  const { hero: HERO, showroom: SHOWROOM, ui } = getHomeCopy(useLocale());
   return (
     <a
       href={`#${SHOWROOM.id}`}
       className="group flex flex-col items-center gap-2 pt-2"
-      aria-label="رفتن به بخش شوروم سه‌بعدی"
+      aria-label={ui.scrollToShowroom}
     >
       <span className="font-persian text-[0.7rem] text-white/45 transition-colors group-hover:text-white/70">
         {HERO.scrollCue}

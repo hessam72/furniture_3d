@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { Layers } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { usePresentation, type LayerStep } from '@/stores/presentationStore'
 import type { PresentationConfig } from '@/lib/product/presentation'
 
@@ -16,6 +17,7 @@ export default function LayerStepper({
   config: PresentationConfig
   explode?: boolean
 }) {
+  const t = useTranslations('product')
   const layerStep = usePresentation((s) => s.layerStep)
   const exploded = usePresentation((s) => s.exploded)
   const setLayerStep = usePresentation((s) => s.setLayerStep)
@@ -40,7 +42,7 @@ export default function LayerStepper({
     <div className="space-y-3">
       <div
         role="radiogroup"
-        aria-label="لایه‌های محصول"
+        aria-label={t('layersAria')}
         className={`flex gap-1.5 rounded-full bg-white/[0.04] p-1 ${
           exploded ? 'pointer-events-none opacity-60 saturate-50' : ''
         }`}
@@ -88,7 +90,7 @@ export default function LayerStepper({
       >
         <span className="flex items-center gap-2">
           <Layers className="h-4 w-4" />
-          نمای انفجاری
+          {t('explodedView')}
         </span>
         <span
           aria-hidden

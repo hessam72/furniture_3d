@@ -1,5 +1,4 @@
 {
- 
   "nilper": {
     "id": "modern-sofa-01",
     "category": "مبل",
@@ -13,9 +12,27 @@
     "weight": "85 kg",
     "price": 48500000,
     "colors": [
-      { "name": "خاکستری ذغالی", "hex": "#36454F" },
-      { "name": "یاسی", "hex": "#aaaaee" },
-      { "name": "آبی نفتی", "hex": "#1B2F5C" }
+      {
+        "name": "خاکستری ذغالی",
+        "hex": "#36454F",
+        "en": {
+          "name": "Charcoal Grey"
+        }
+      },
+      {
+        "name": "یاسی",
+        "hex": "#aaaaee",
+        "en": {
+          "name": "Lilac"
+        }
+      },
+      {
+        "name": "آبی نفتی",
+        "hex": "#1B2F5C",
+        "en": {
+          "name": "Petrol Blue"
+        }
+      }
     ],
     "fabricType": "پارچه مخملی ضد لک",
     "detailedDescription": "مبل راحتی مدرن با طراحی سگمنتال و امکان تغییر آرایش. فریم چوب جامد با رویه پارچه مخملی درجه یک، فوم با تراکم بالا برای راحتی بیشتر. مناسب برای فضاهای خانوادگی و پذیرایی.",
@@ -25,9 +42,27 @@
       "چوب راش خشک شده",
       "پایه‌های فلزی ضد زنگ"
     ],
-    "billboardPosition": [2, 1, 0]
+    "billboardPosition": [
+      2,
+      1,
+      0
+    ],
+    "en": {
+      "category": "Sofa",
+      "type": "Lounge",
+      "name": "Modern Sectional Sofa",
+      "material": "Fabric and solid wood",
+      "seatingCapacity": "4–5 people",
+      "fabricType": "Stain-resistant velvet",
+      "detailedDescription": "A modern sectional sofa with a reconfigurable layout. Solid-wood frame upholstered in premium velvet, with high-density foam for extra comfort. Ideal for family rooms and living spaces.",
+      "fabricMaterials": [
+        "Premium velvet fabric",
+        "High-density (35) cold foam",
+        "Kiln-dried beech wood",
+        "Rust-resistant metal legs"
+      ]
+    }
   },
-
   "dining-chair": {
     "id": "modern-sofa-02",
     "category": "مبل",
@@ -41,9 +76,27 @@
     "weight": "6.5 kg",
     "price": 7200000,
     "colors": [
-      { "name": "بلوط طبیعی", "hex": "#C19A6B" },
-      { "name": "گردوی تیره", "hex": "#5C4033" },
-      { "name": "قرمز", "hex": "#781e00" }
+      {
+        "name": "بلوط طبیعی",
+        "hex": "#C19A6B",
+        "en": {
+          "name": "Natural Oak"
+        }
+      },
+      {
+        "name": "گردوی تیره",
+        "hex": "#5C4033",
+        "en": {
+          "name": "Dark Walnut"
+        }
+      },
+      {
+        "name": "قرمز",
+        "hex": "#781e00",
+        "en": {
+          "name": "Red"
+        }
+      }
     ],
     "fabricType": "چرم طبیعی دست‌دوز",
     "detailedDescription": "صندلی غذاخوری به سبک اسکاندیناوی با طراحی ارگونومیک. ساختار چوبی مقاوم از بلوط طبیعی و نشیمن چرمی دست‌دوز. مناسب برای میز غذاخوری و فضاهای کاری.",
@@ -53,14 +106,32 @@
       "رنگ پایه آب",
       "پیچ و مهره استیل"
     ],
-    "billboardPosition": [-4, 0.8, 0]
+    "billboardPosition": [
+      -4,
+      0.8,
+      0
+    ],
+    "en": {
+      "category": "Sofa",
+      "type": "Lounge",
+      "name": "Nordic Dining Chair",
+      "material": "Oak wood and leather",
+      "seatingCapacity": "1 person",
+      "fabricType": "Hand-stitched genuine leather",
+      "detailedDescription": "A Scandinavian-style dining chair with an ergonomic design. Sturdy natural-oak frame with a hand-stitched leather seat. Ideal for dining tables and work spaces.",
+      "fabricMaterials": [
+        "Genuine cowhide leather",
+        "European oak wood",
+        "Water-based finish",
+        "Stainless steel fittings"
+      ]
+    }
   },
-
   "coffee-table": {
     "id": "modern-sofa-03",
     "category": "مبل",
     "type": "راحتی",
-    "name":  "صندلی راحتی آکسانت",
+    "name": "صندلی راحتی آکسانت",
     "glbPath": "/models/Furniture/3DModel-optimized.glb",
     "usdzPath": "/models/Furniture/3DModel-optimized.usdz",
     "dimensions": "120cm × 60cm × 45cm",
@@ -68,9 +139,27 @@
     "weight": "22 kg",
     "price": 15900000,
     "colors": [
-      { "name": "شیشه شفاف", "hex": "#E8F4F8" },
-      { "name": "دودی", "hex": "#595959" },
-      { "name": "برنز", "hex": "#CD7F32" }
+      {
+        "name": "شیشه شفاف",
+        "hex": "#E8F4F8",
+        "en": {
+          "name": "Clear Glass"
+        }
+      },
+      {
+        "name": "دودی",
+        "hex": "#595959",
+        "en": {
+          "name": "Smoke"
+        }
+      },
+      {
+        "name": "برنز",
+        "hex": "#CD7F32",
+        "en": {
+          "name": "Bronze"
+        }
+      }
     ],
     "fabricType": "شیشه سکوریت ۱۲ میل",
     "detailedDescription": "میز جلو مبلی با صفحه شیشه سکوریت ضدضربه و پایه‌های فلزی. طراحی مینیمال و مدرن با قابلیت تمیز کردن آسان. ایده‌آل برای فضاهای کوچک و بزرگ.",
@@ -80,5 +169,24 @@
       "پوشش نانو ضد لک",
       "پایه‌های تنظیم ارتفاع"
     ],
-    "billboardPosition": [5, 1, -5.2]
-  }}
+    "billboardPosition": [
+      5,
+      1,
+      -5.2
+    ],
+    "en": {
+      "category": "Sofa",
+      "type": "Lounge",
+      "name": "Accent Lounge Chair",
+      "material": "Shatter-resistant glass and metal",
+      "fabricType": "12mm tempered glass",
+      "detailedDescription": "A coffee table with an impact-resistant tempered-glass top and metal legs. Minimal, modern design that wipes clean easily. Ideal for small and large spaces alike.",
+      "fabricMaterials": [
+        "12mm tempered glass",
+        "Rust-resistant steel",
+        "Nano stain-resistant coating",
+        "Height-adjustable feet"
+      ]
+    }
+  }
+}

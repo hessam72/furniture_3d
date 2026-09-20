@@ -1,10 +1,12 @@
-import { WHY_US, WHY_US_SECTION } from "@/lib/content/home";
+import { useLocale } from "next-intl";
+import { getHomeCopy } from "@/lib/content/home";
 import SectionHeading from "./SectionHeading";
 import { WhyGlyph } from "./icons";
 import Reveal from "./Reveal";
 import Section from "./Section";
 
 export default function WhyUs() {
+  const { whyUs: WHY_US, whyUsSection: WHY_US_SECTION } = getHomeCopy(useLocale());
   return (
     <Section tone="c" id={WHY_US_SECTION.id} labelledBy="why-heading">
       <Reveal className="flex w-full flex-col items-center gap-10">

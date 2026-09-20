@@ -1,8 +1,5 @@
-import {
-  CALL_TO_ACTION,
-  CONTACT_PHONE_DISPLAY,
-  CONTACT_PHONE_HREF,
-} from "@/lib/content/home";
+import { useLocale } from "next-intl";
+import { getHomeCopy } from "@/lib/content/home";
 import { Heading } from "./SectionHeading";
 import GoldButton from "./GoldButton";
 import { PhoneIcon } from "./icons";
@@ -20,8 +17,10 @@ function Corner({ className }: { className: string }) {
 }
 
 export default function CallToAction() {
+  const { callToAction: CALL_TO_ACTION, contactPhoneDisplay: CONTACT_PHONE_DISPLAY, contactPhoneHref: CONTACT_PHONE_HREF } =
+    getHomeCopy(useLocale());
   return (
-    
+
     <Section tone="d" id={CALL_TO_ACTION.id} labelledBy="cta-heading" className="relative">
       <Corner className="left-4 top-4 border-l border-t" />
       <Corner className="right-4 top-4 border-r border-t" />

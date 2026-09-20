@@ -1,4 +1,5 @@
 import type { ProductData } from '@/components/store/ProductInteraction'
+import type { Locale } from '@/i18n/routing'
 
 /**
  * The merchandising tree, loaded from /config/catalog.json.
@@ -13,12 +14,15 @@ import type { ProductData } from '@/components/store/ProductInteraction'
 export interface SubCategory {
   id: string
   label: string
+  /** English override — falls back to `label` (fa) when absent. @see lib/i18n/localize */
+  en?: { label: string }
 }
 
 export interface MainCategory {
   id: string
   label: string
   subCategories: SubCategory[]
+  en?: { label: string }
 }
 
 /** Optional per-item override of the automatic bounds-derived camera pose */
@@ -40,6 +44,7 @@ export interface CatalogItem {
   /** products.json key — resolves both the base product and the mesh to fly to */
   sceneObject: string
   focus?: FocusOverride
+  en?: { name: string }
 }
 
 export interface Catalog {
@@ -85,5 +90,12 @@ export function findCatalogItemBySceneObject(
   return catalog.items.find(i => i.sceneObject === sceneObjectKey) ?? null
 }
 
-/** Persian price, shared with the product drawer */
-export const faPrice = (n: number) => `${new Intl.NumberFormat('fa-IR').format(n)} تومان`
+/**
+ * Locale-formatted price, shared by the product drawer, the dock and the
+ * sheet. `fa` keeps the original Persian-digit "تومان" reading; `en` reads
+ * the same Toman amount with Latin digits.
+ */
+export function formatPrice(n: number, locale: Locale = 'fa'): string {
+  if (locale === 'en') return `${new Intl.NumberFormat('en-US').format(n)} Toman`
+  return `${new Intl.NumberFormat('fa-IR').format(n)} تومان`
+}

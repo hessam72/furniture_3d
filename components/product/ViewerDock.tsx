@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
+import { useLocale, useTranslations } from 'next-intl'
 import { Box, Check, ChevronLeft, FileText, Layers, Palette, ShoppingBag, Sparkles } from 'lucide-react'
 import { usePresentation } from '@/stores/presentationStore'
 import { useShop } from '@/stores/storeShopStore'
-import { faPrice, findCatalogItemBySceneObject, type Catalog } from '@/lib/store/catalog'
+import { formatPrice, findCatalogItemBySceneObject, type Catalog } from '@/lib/store/catalog'
 import catalog from '@/public/config/catalog.json'
 import {
   coverPalette,
@@ -58,11 +59,7 @@ const SPRING = { type: 'spring' as const, damping: 32, stiffness: 340, mass: 0.7
 
 type DockTab = 'finish' | 'structure' | 'specs'
 
-const TABS: { id: DockTab; label: string; Icon: typeof Palette }[] = [
-  { id: 'finish', label: 'رنگ و پارچه', Icon: Palette },
-  { id: 'structure', label: 'جنس بدنه', Icon: Box },
-  { id: 'specs', label: 'مشخصات', Icon: FileText },
-]
+const TAB_ICONS: Record<DockTab, typeof Palette> = { finish: Palette, structure: Box, specs: FileText }
 
 interface Props {
   presentation: ResolvedPresentation
@@ -76,6 +73,14 @@ interface Props {
 
 export default function ViewerDock({ presentation, arBuilding = false, hidden = false }: Props) {
   const { key: productKey, product, config } = presentation
+  const locale = useLocale()
+  const t = useTranslations('product')
+  const tc = useTranslations('common')
+  const TABS: { id: DockTab; label: string; Icon: typeof Palette }[] = [
+    { id: 'finish', label: t('tabFinish'), Icon: TAB_ICONS.finish },
+    { id: 'structure', label: t('tabStructure'), Icon: TAB_ICONS.structure },
+    { id: 'specs', label: t('tabSpecs'), Icon: TAB_ICONS.specs },
+  ]
 
   const paint = usePresentation((s) => s.paint)
   const setPaint = usePresentation((s) => s.setPaint)
@@ -105,7 +110,7 @@ export default function ViewerDock({ presentation, arBuilding = false, hidden = 
       zone === 'cover' ? coverPalette(config, variant) : config.palettes[zone] ?? []
     const source = config.parts?.length
       ? config.parts.map((part) => ({ zone: part.zone, label: part.label }))
-      : [{ zone: 'cover' as PresentationZone, label: config.layers.cover.label ?? 'رویه' }]
+      : [{ zone: 'cover' as PresentationZone, label: config.layers.cover.label ?? t('coverMaterial') }]
 
     const seen = new Set<PresentationZone>()
     return source
@@ -113,7 +118,7 @@ export default function ViewerDock({ presentation, arBuilding = false, hidden = 
       .filter((part) => (seen.has(part.zone) ? false : (seen.add(part.zone), true)))
       .map((part) => ({ ...part, swatches: palette(part.zone) }))
       .filter((part) => part.swatches.length > 0)
-  }, [config, variant])
+  }, [config, variant, t])
 
   const woodSwatches = config.palettes.wood ?? []
   const variants = config.layers.cover.variants
@@ -257,7 +262,7 @@ export default function ViewerDock({ presentation, arBuilding = false, hidden = 
                      md:rounded-r-none md:border-r-0 md:pl-4 md:pr-5"
         >
           <Sparkles className="h-4 w-4 text-blue-400" />
-          شخصی‌سازی
+          {t('customize')}
         </button>
       )}
 
@@ -276,8 +281,8 @@ export default function ViewerDock({ presentation, arBuilding = false, hidden = 
       >
         <aside
           ref={panelRef}
-          dir="rtl"
-          aria-label="شخصی‌سازی محصول"
+          dir={locale === 'fa' ? 'rtl' : 'ltr'}
+          aria-label={t('customizeAria')}
           /* `translate` rather than unmounting: the measured box survives, so
              reopening does not re-solve the camera from scratch.
 
@@ -311,7 +316,7 @@ export default function ViewerDock({ presentation, arBuilding = false, hidden = 
           <button
             type="button"
             onClick={() => setOpen(false)}
-            aria-label="بستن پنل"
+            aria-label={t('closePanel')}
             className="group flex w-full shrink-0 justify-center pb-1 pt-3 md:hidden"
           >
             <span className="h-1 w-10 rounded-full bg-white/25 transition-colors group-hover:bg-white/45" />
@@ -319,13 +324,13 @@ export default function ViewerDock({ presentation, arBuilding = false, hidden = 
 
           <header className="flex items-start justify-between gap-3 px-5 pb-3 pt-2 md:pt-4">
             <div className="min-w-0">
-              <p className="text-[10.5px] uppercase tracking-[0.22em] text-blue-400/80">شخصی‌سازی</p>
+              <p className="text-[10.5px] uppercase tracking-[0.22em] text-blue-400/80">{t('customize')}</p>
               <h2 className="mt-1 truncate text-[15px] font-semibold tracking-tight">{product.name}</h2>
             </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              aria-label="بستن پنل"
+              aria-label={t('closePanel')}
               className="-mt-0.5 hidden h-9 w-9 shrink-0 items-center justify-center rounded-full
                          text-white/45 transition-colors hover:bg-white/[0.08] hover:text-white md:flex"
             >
@@ -334,7 +339,7 @@ export default function ViewerDock({ presentation, arBuilding = false, hidden = 
           </header>
 
           {/* The three questions, as three places. @see the note on this file. */}
-          <div role="tablist" aria-label="بخش‌های شخصی‌سازی" className="flex gap-1 px-4">
+          <div role="tablist" aria-label={t('sectionsAria')} className="flex gap-1 px-4">
             {TABS.map(({ id, label, Icon }) => {
               const selected = tab === id
               return (
@@ -373,8 +378,8 @@ export default function ViewerDock({ presentation, arBuilding = false, hidden = 
                     with a single segment is a label pretending to be a control. */}
                 {variants.length > 1 && (
                   <section className="space-y-2">
-                    <Legend>جنس رویه</Legend>
-                    <div role="radiogroup" aria-label="جنس رویه" className="flex gap-1 rounded-2xl bg-white/[0.05] p-1">
+                    <Legend>{t('coverMaterial')}</Legend>
+                    <div role="radiogroup" aria-label={t('coverMaterial')} className="flex gap-1 rounded-2xl bg-white/[0.05] p-1">
                       {variants.map((entry) => {
                         const selected = entry.id === coverId
                         return (
@@ -409,8 +414,8 @@ export default function ViewerDock({ presentation, arBuilding = false, hidden = 
                 {/* Which part of the piece is being dressed. */}
                 {parts.length > 1 && (
                   <section className="space-y-2">
-                    <Legend>بخش</Legend>
-                    <div role="tablist" aria-label="بخش‌های مبل" className="flex gap-1.5">
+                    <Legend>{t('part')}</Legend>
+                    <div role="tablist" aria-label={t('partsAria')} className="flex gap-1.5">
                       {parts.map((entry) => {
                         const selected = entry.zone === activePart
                         return (
@@ -462,9 +467,9 @@ export default function ViewerDock({ presentation, arBuilding = false, hidden = 
 
                 {cloths.length > 0 && (
                   <section className="space-y-2.5">
-                    <Legend value={activeSwatch?.name}>پارچه {part.label}</Legend>
+                    <Legend value={activeSwatch?.name}>{t('fabricOf', { part: part.label })}</Legend>
                     <SwatchGrid
-                      label={`پارچه ${part.label}`}
+                      label={t('fabricOf', { part: part.label })}
                       swatches={cloths}
                       activeId={partPaint?.swatchId}
                       pendingId={pendingSwatch}
@@ -475,9 +480,9 @@ export default function ViewerDock({ presentation, arBuilding = false, hidden = 
 
                 {tints.length > 0 && (
                   <section className="space-y-2.5">
-                    <Legend>رنگ {part.label}</Legend>
+                    <Legend>{t('colorOf', { part: part.label })}</Legend>
                     <ColorDots
-                      label={`رنگ ${part.label}`}
+                      label={t('colorOf', { part: part.label })}
                       swatches={tints}
                       activeId={partPaint?.swatchId}
                       onPick={(swatch) => pick(part.zone, swatch)}
@@ -491,9 +496,9 @@ export default function ViewerDock({ presentation, arBuilding = false, hidden = 
               <div className="space-y-5">
                 {woodSwatches.length > 0 && (
                   <section className="space-y-2.5">
-                    <Legend>پرداخت چوب و پایه</Legend>
+                    <Legend>{t('woodFinish')}</Legend>
                     <MaterialTiles
-                      label="پرداخت چوب و پایه"
+                      label={t('woodFinish')}
                       swatches={woodSwatches}
                       activeId={paint.wood?.swatchId}
                       onPick={(swatch) => pick('wood', swatch)}
@@ -522,16 +527,16 @@ export default function ViewerDock({ presentation, arBuilding = false, hidden = 
                     <Layers className="h-[18px] w-[18px]" strokeWidth={1.8} />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium">نمایش سازه داخلی</span>
+                    <span className="block text-[13px] font-medium">{t('showFrame')}</span>
                     <span className="block truncate text-[11.5px] text-white/40">
-                      {showingFrame ? 'در حال نمایش اسکلت چوبی' : 'ساختار چوبی، فنرها و لایه‌های داخلی'}
+                      {showingFrame ? t('showingFrame') : t('frameDesc')}
                     </span>
                   </span>
                 </button>
 
                 {!woodSwatches.length && (
                   <p className="text-[12.5px] leading-7 text-white/40">
-                    برای این محصول پرداخت چوبی قابل انتخابی ثبت نشده است.
+                    {t('noWoodFinish')}
                   </p>
                 )}
               </div>
@@ -546,10 +551,10 @@ export default function ViewerDock({ presentation, arBuilding = false, hidden = 
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-[10.5px] text-white/35">
-                  {arBuilding ? 'در حال آماده‌سازی نمای واقعیت افزوده…' : variant ? variant.name : 'قیمت'}
+                  {arBuilding ? t('preparingAR') : variant ? variant.name : t('price')}
                 </p>
                 <p className="persian-number truncate text-[17px] font-bold leading-tight text-white">
-                  {price ? faPrice(price) : 'استعلام قیمت'}
+                  {price ? formatPrice(price, locale) : tc('priceOnRequest')}
                 </p>
               </div>
 
@@ -566,7 +571,7 @@ export default function ViewerDock({ presentation, arBuilding = false, hidden = 
                             }`}
               >
                 {added ? <Check className="h-[18px] w-[18px]" strokeWidth={3} /> : <ShoppingBag className="h-[18px] w-[18px]" />}
-                {added ? 'افزوده شد' : 'افزودن به سبد'}
+                {added ? tc('added') : tc('addToCart')}
               </button>
             </div>
           </footer>

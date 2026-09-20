@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
+import { useTranslations } from 'next-intl'
 import { useEnvironment, useGLTF, useTexture } from '@react-three/drei'
 import { QualityProvider } from '@/contexts/QualityContext'
 import { useAssetProbe } from '@/hooks/useAssetProbe'
@@ -33,7 +34,7 @@ import { RendererStatsOverlay } from '@/components/three/RendererStatsOverlay'
 import { useContextRecovery } from '@/hooks/useContextRecovery'
 import { useGltfCacheEviction, useSwatchCacheEviction } from '@/hooks/useGltfCacheEviction'
 import { preloadGltf } from '@/lib/three/gltfLoaders'
-import { WEBGL_UNAVAILABLE_FA, webglUnavailable } from '@/lib/three/gpuClass'
+import { webglUnavailable } from '@/lib/three/gpuClass'
 import PresentationLoading from '@/components/product/PresentationLoading'
 import type { Catalog } from '@/lib/store/catalog'
 
@@ -49,6 +50,8 @@ const ARProductViewer = dynamic(() => import('@/components/store/ARProductViewer
 
 export default function ProductPageClient({ presentation }: { presentation: ResolvedPresentation }) {
   const { key, product, config } = presentation
+  const t = useTranslations('product')
+  const tc = useTranslations('common')
   const [showAR, setShowAR] = useState(false)
   const [arSupported, setArSupported] = useState(false)
   const [probeKey, setProbeKey] = useState(0)
@@ -62,7 +65,7 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
    *  with /simple, /showroom, /view and /store. @see useContextRecovery */
   const recovery = useContextRecovery({
     surface: 'presentation',
-    onLost: () => setLayerError('نمایش سه‌بعدی متوقف شد — حافظه گرافیکی دستگاه پر شد'),
+    onLost: () => setLayerError(t('gpuLost')),
   })
   const { lost: contextLost, canvasKey } = recovery
 
@@ -340,7 +343,7 @@ export default function ProductPageClient({ presentation }: { presentation: Reso
           <MissingAssetsNotice
             productName={product.name}
             kind={layerError || noWebgl ? 'error' : 'missing'}
-            missing={noWebgl ? [WEBGL_UNAVAILABLE_FA] : layerError ? [layerError] : missing}
+            missing={noWebgl ? [tc('webglUnavailable')] : layerError ? [layerError] : missing}
             // Nothing to retry on a browser that cannot build a renderer.
             onRetry={noWebgl ? undefined : retry}
           />

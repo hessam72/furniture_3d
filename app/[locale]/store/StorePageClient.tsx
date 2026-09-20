@@ -7,7 +7,7 @@ const StoreScene = dynamic(() => import('@/components/store/Scene'), {
   ssr: false,
 })
 
-export default function StorePage() {
+export default function StorePageClient() {
   /**
    * Held above the provider so the rungs a lost context costs reach the tier
    * that is resolved from them. This page had no `webglcontextlost` listener at

@@ -1,6 +1,7 @@
 'use client'
 
-import Link from 'next/link'
+import { useLocale, useTranslations } from 'next-intl'
+import { Link } from '@/i18n/navigation'
 
 /**
  * `public/models` and `public/store-models` are gitignored, so a fresh clone or
@@ -20,23 +21,22 @@ export default function MissingAssetsNotice({
   kind?: 'missing' | 'error'
   onRetry?: () => void
 }) {
+  const locale = useLocale()
+  const t = useTranslations('product')
+  const tc = useTranslations('common')
   const broken = kind === 'error'
   return (
     <div
-      dir="rtl"
+      dir={locale === 'fa' ? 'rtl' : 'ltr'}
       className="font-persian absolute inset-0 z-[150] flex flex-col items-center justify-center
                  gap-4 bg-[var(--surface-0)]/95 px-6 text-center"
     >
-      <p className="text-[10px] tracking-[0.45em] text-[var(--gold-primary)]/70">نمای ویژه محصول</p>
+      <p className="text-[10px] tracking-[0.45em] text-[var(--gold-primary)]/70">{t('notFoundEyebrow')}</p>
       <h2 className="text-xl font-light text-[var(--text-primary)]">
-        {broken
-          ? `مدل سه‌بعدی ${productName} باز نشد`
-          : `فایل‌های سه‌بعدی ${productName} روی سرور موجود نیست`}
+        {broken ? t('missingTitleError', { name: productName }) : t('missingTitle', { name: productName })}
       </h2>
       <p className="max-w-sm text-[13px] leading-7 text-[var(--text-muted)]">
-        {broken
-          ? 'فایل روی سرور هست اما خوانده نشد. احتمالاً هنگام خروجی گرفتن یا آپلود آسیب دیده است.'
-          : `${missing.length} فایل پیدا نشد. پس از بارگذاری مدل‌ها این صفحه بدون تغییر کد کار خواهد کرد.`}
+        {broken ? t('missingBodyError') : t('missingBody', { count: missing.length })}
       </p>
 
       <ul dir="ltr" className="max-w-sm space-y-1 text-[11px] text-[var(--text-muted)]/70">
@@ -55,7 +55,7 @@ export default function MissingAssetsNotice({
                        text-[var(--text-secondary)] transition-colors hover:border-white/40
                        hover:text-[var(--text-primary)]"
           >
-            تلاش دوباره
+            {tc('retry')}
           </button>
         )}
         <Link
@@ -63,7 +63,7 @@ export default function MissingAssetsNotice({
           className="rounded-full border border-[var(--gold-primary)]/40 px-6 py-2.5 text-[13px]
                      text-[var(--gold-primary)] transition-colors hover:bg-[var(--gold-primary)]/10"
         >
-          بازگشت به شوروم
+          {tc('backToShowroom')}
         </Link>
       </div>
     </div>
