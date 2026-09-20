@@ -175,7 +175,7 @@ function Piece({
   paintable?: boolean
 }) {
   const gltf = useGLTF(path, false, true, extendGltfLoader)
-  const { settings } = useQuality()
+  const { settings, preset } = useQuality()
   const invalidate = useThree((s) => s.invalidate)
   // Read at clone time without making the clone depend on it. @see below.
   const anisotropyRef = useRef(settings.anisotropyLevel)
@@ -195,9 +195,12 @@ function Piece({
 
     // An unpainted piece keeps every material the file shipped with — nothing
     // is cloned, so nothing is recoloured and nothing needs disposing.
-    // `physical: true` — this page wants fabric sheen, which needs a genuine
-    // MeshPhysicalMaterial to render at all. @see lib/three/layerMaterials.ts
-    const collected = paintable ? collectZoneTargets(clone, { zone, parts, physical: true }) : []
+    // `physical` wants a genuine MeshPhysicalMaterial for sheen, which is a
+    // different, heavier compiled shader than a plain clone's — held back at
+    // `low`, the rung a crashed device lands on, so that path never picks up
+    // a shader variant it did not have before this existed. @see the
+    // `low`-is-untouched invariant, arch-docs/plans/plan-for-increase-quality-of-simple-page.md
+    const collected = paintable ? collectZoneTargets(clone, { zone, parts, physical: preset !== 'low' }) : []
     if (paintable) {
       const { paint } = usePresentation.getState()
       applyFirstCoat(collected, paint)
@@ -241,7 +244,7 @@ function Piece({
       footprint: Math.max(size.x, size.z) / 2,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gltf.scene, path, envIntensity, zone, parts, paintable])
+  }, [gltf.scene, path, envIntensity, zone, parts, paintable, preset])
 
   /**
    * Anisotropy is applied to the existing clone, not baked into the memo above.
