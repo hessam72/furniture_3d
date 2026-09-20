@@ -193,50 +193,7 @@
             "name": "Orange"
           }
         },
-        {
-          "id": "wool-oat",
-          "name": "پشم ",
-          "hex": "#b9ae9c",
-          "roughness": 0.95,
-          "sheen": 0.15,
-          "sheenRoughness": 0.6,
-          "normalScale": 0.85,
-          "maps": {
-            "map": "/textures/covers/wool-oat.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
-          },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
-          "thumbnail": "/images/fabrics/wool-oat.png",
-          "en": {
-            "name": "Wool"
-          }
-        },
-        {
-          "id": "boucle-stone",
-          "name": "بوکله سنگی",
-          "hex": "#a9a49c",
-          "roughness": 0.9,
-          "sheen": 0.25,
-          "sheenRoughness": 0.55,
-          "normalScale": 1.4,
-          "maps": {
-            "map": "/textures/covers/boucle-stone.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
-          },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
-          "thumbnail": "/images/fabrics/boucle-stone.png",
-          "en": {
-            "name": "Stone Bouclé"
-          }
-        },
+       
         {
           "id": "linen-ash",
           "name": "کتان خاکستری",
@@ -257,49 +214,7 @@
             "name": "Ash Linen"
           }
         },
-        {
-          "id": "velvet-emerald",
-          "name": "مخمل زمردی",
-          "hex": "#1f5f4a",
-          "roughness": 0.42,
-          "sheen": 0.55,
-          "sheenRoughness": 0.3,
-          "sheenColor": "#3d7d68",
-          "maps": {
-            "map": "/textures/covers/velvet-emerald.v1.ktx2"
-          },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
-          "thumbnail": "/images/fabrics/velvet-emerald.png",
-          "en": {
-            "name": "Emerald Velvet"
-          }
-        },
-        {
-          "id": "chenille-sand",
-          "name": "شنیل شنی",
-          "hex": "#c4b49b",
-          "roughness": 0.88,
-          "sheen": 0.2,
-          "sheenRoughness": 0.5,
-          "normalScale": 1.15,
-          "maps": {
-            "map": "/textures/covers/chenille-sand.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
-          },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
-          "thumbnail": "/images/fabrics/chenille-sand.png",
-          "en": {
-            "name": "Sand Chenille"
-          }
-        },
+      
         {
           "id": "corduroy-rust",
           "name": "مخمل کبریتی زنگاری",
@@ -357,25 +272,7 @@
             "name": "Slate Herringbone"
           }
         },
-        {
-          "id": "jacquard-ivory",
-          "name": "ژاکارد عاجی",
-          "hex": "#d8cdb8",
-          "roughness": 0.85,
-          "maps": {
-            "map": "/textures/covers/jacquard-ivory.v1.ktx2",
-            "normalMap": "/textures/covers/twill-normal.v1.ktx2"
-          },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
-          "thumbnail": "/images/fabrics/jacquard-ivory.png",
-          "en": {
-            "name": "Ivory Jacquard"
-          }
-        },
+       
         {
           "id": "twill-navy",
           "name": "سرژه سرمه‌ای",
@@ -534,34 +431,7 @@
             "name": "Linen"
           }
         },
-        {
-          "id": "cushion-wool",
-          "name": "پشمی",
-          "hex": "#b9ae9c",
-          "roughness": 0.95,
-          "maps": {
-            "map": "/textures/covers/wool-oat.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
-          },
-          "thumbnail": "/images/fabrics/wool-oat.png",
-          "en": {
-            "name": "Wool"
-          }
-        },
-        {
-          "id": "cushion-weave",
-          "name": "بافت",
-          "hex": "#cbbfae",
-          "roughness": 0.92,
-          "maps": {
-            "map": "/textures/covers/weave-ecru.v1.ktx2",
-            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
-          },
-          "thumbnail": "/images/fabrics/weave-ecru.png",
-          "en": {
-            "name": "Weave"
-          }
-        },
+        
         {
           "id": "cushion-velvet-emerald",
           "name": "مخمل زمردی",
@@ -589,20 +459,7 @@
             "name": "Sand Chenille"
           }
         },
-        {
-          "id": "cushion-tweed-charcoal",
-          "name": "توید ذغالی",
-          "hex": "#3c3f44",
-          "roughness": 0.95,
-          "maps": {
-            "map": "/textures/covers/tweed-charcoal.v1.ktx2",
-            "normalMap": "/textures/covers/twill-normal.v1.ktx2"
-          },
-          "thumbnail": "/images/fabrics/tweed-charcoal.png",
-          "en": {
-            "name": "Charcoal Tweed"
-          }
-        },
+       
         {
           "id": "cushion-jacquard-ivory",
           "name": "ژاکارد عاجی",
