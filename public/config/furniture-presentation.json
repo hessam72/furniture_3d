@@ -36,7 +36,8 @@
           {
             "id": "velvet",
             "name": "مخمل",
-            "path": "/ktx-optimized/Furniture high Test3-optimized.glb",
+                        "path": "/ktx-optimized/Furniture high Test2-optimized.glb",
+
             "arPath": "",
             "thumbnail": "/images/covers/velvet.jpeg",
             "priceDelta": 0,
@@ -51,8 +52,8 @@
           },
           {
             "id": "leather",
-            "name": "چرم طبیعی",
-            "path": "/ktx-optimized/Furniture high Test2-optimized.glb",
+            "name": "صندلی برند نیلپر",
+            "path": "/ktx-optimized/Nilper Final glb-optimized (1).glb",
             "arPath": "",
             "thumbnail": "/images/covers/leather.png",
             "priceDelta": 4500000,
