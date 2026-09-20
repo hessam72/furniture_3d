@@ -68,9 +68,14 @@ export interface Fit {
   radius: number
   horizontal: number
   vertical: number
+  /** Y of the piece's underside, in the centred space the viewer draws in —
+   *  where a ground belongs. @see ViewerBackdrop, ContactShadows */
+  bottom: number
+  /** Half the piece's footprint — what a ground shadow has to cover. */
+  footprint: number
 }
 
-const EMPTY_FIT: Fit = { radius: 0, horizontal: 0, vertical: 0 }
+const EMPTY_FIT: Fit = { radius: 0, horizontal: 0, vertical: 0, bottom: 0, footprint: 0 }
 
 /** The opening three-quarter view: slightly off-axis and slightly above, which
  *  is how furniture is photographed. Normalised on use. */
@@ -274,10 +279,15 @@ function Piece({
               // solved against the pair or the stage clips out of frame.
               horizontal: extent.horizontal * 1.2,
               vertical: extent.vertical * 1.2,
+              // Coordinates, not extents — a plinth does not move where the
+              // piece's own underside is, and ViewerPlinth already renders
+              // from these two unscaled. @see the primitive below.
+              bottom,
+              footprint,
             }
-          : { radius, ...extent }
+          : { radius, ...extent, bottom, footprint }
       ),
-    [radius, extent, plinth, onFit]
+    [radius, extent, plinth, onFit, bottom, footprint]
   )
 
   return (
