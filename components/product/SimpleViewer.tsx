@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useThree, type RootState } from '@react-three/fiber'
-import { Environment, OrbitControls, useGLTF } from '@react-three/drei'
+import { ContactShadows, Environment, OrbitControls, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { NeutralToneMapping } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
@@ -63,6 +63,17 @@ const VIEWER_TOUCH_DPR_MAX = 2.2
 /** A stable identity for an unset callback prop, so a component that always
  *  mounts its watcher does not hand it a fresh closure every render. */
 const NOOP = () => {}
+
+/**
+ * What `<ContactShadows>` actually costs: a blur ping-pong pair, RGBA8, at
+ * `resolution` each. Measured to ~2.1MB at 512² against the drei source, and
+ * `reserveBytes` wants the same unit `dprBudget` prices the drawing buffer
+ * in, so the two compete for one honestly-accounted allowance rather than the
+ * shadow eating room the budget does not know it gave up.
+ */
+function contactShadowBytes(resolution: number): number {
+  return resolution * resolution * 4 * 2
+}
 
 /**
  * What the camera frames on: the piece's measured size.
@@ -557,6 +568,16 @@ export default function SimpleViewer({
    *  bytes per pixel — so the budget is told which of the two this is. */
   const antialias = device === 'desktop'
 
+  /**
+   * The contact shadow's own gate — off on a weak GPU or the `low` rung,
+   * which is where a crashed device lands and must stay exactly what it was.
+   * `resolution` is clamped separately on touch, so the render-target cost
+   * below and the mounted `<ContactShadows>` (further down) never disagree.
+   */
+  const groundShadowOn = device === 'desktop' || (gpu !== 'weak' && preset !== 'low')
+  const groundShadowResolution =
+    device === 'desktop' ? settings.groundShadowResolution : Math.min(settings.groundShadowResolution, 512)
+
   const dpr = useMemo<[number, number]>(() => {
     // Weight 1 with MSAA off: this page holds a plain canvas and nothing else —
     // no composer, no shadow map, no second scene render — which is exactly why
@@ -568,9 +589,19 @@ export default function SimpleViewer({
     // stay exactly what it was.
     const [tierMin, tierMax] = settings.dpr
     const askMax = device !== 'desktop' && preset !== 'low' ? Math.max(tierMax, VIEWER_TOUCH_DPR_MAX) : tierMax
-    const [min, max] = clampDprToBudget([tierMin, askMax], device, antialias ? COMPOSER_PIXEL_WEIGHT : 1, gpu)
+    // The contact shadow's render targets, so this is the one place that
+    // prices every byte this canvas spends, not just the drawing buffer.
+    // Ignored on desktop by clampDprToBudget itself. @see contactShadowBytes
+    const reserveBytes = groundShadowOn ? contactShadowBytes(groundShadowResolution) : 0
+    const [min, max] = clampDprToBudget(
+      [tierMin, askMax],
+      device,
+      antialias ? COMPOSER_PIXEL_WEIGHT : 1,
+      gpu,
+      reserveBytes
+    )
     return [min, Math.max(min, +(max * perfScale).toFixed(2))]
-  }, [settings.dpr, device, gpu, antialias, perfScale, preset])
+  }, [settings.dpr, device, gpu, antialias, perfScale, preset, groundShadowOn, groundShadowResolution])
 
   const handleFit = useCallback(
     (next: Fit) => {
@@ -685,6 +716,24 @@ export default function SimpleViewer({
       </Suspense>
 
       <Frame fit={fit} coverage={coverage} dock={dockCoverage} view={view} controls={controls} />
+
+      {/* A frozen contact shadow so the piece sits on something instead of
+          floating. `frames={1}`: the piece never moves, only the camera
+          orbits, so one bake is the whole shadow for the mount's lifetime.
+          Keyed on the model so a cover swap — a different footprint, a
+          different height — re-bakes it rather than stretching the old one. */}
+      {groundShadowOn && fit.footprint > 0 && (
+        <ContactShadows
+          key={view.model}
+          frames={1}
+          position={[0, fit.bottom, 0]}
+          scale={Math.max(fit.footprint * 2.4, 0.1)}
+          resolution={groundShadowResolution}
+          blur={view.ground.blur}
+          opacity={view.ground.opacity}
+          far={view.ground.far}
+        />
+      )}
 
       {/* Rotate and dolly, nothing else. Panning would slide the piece off the
           pivot the orbit turns about, which is the one thing this camera must

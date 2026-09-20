@@ -468,6 +468,12 @@ export interface SimpleViewerMeta {
    */
   backdrop?: { top?: string; bottom?: string; vignette?: number }
   /**
+   * The frozen contact shadow under the piece. Omitted → the defaults below,
+   * chosen to look right on a white or near-white ground — which is what
+   * every product renders on until `backdrop` says otherwise.
+   */
+  ground?: { blur?: number; opacity?: number; far?: number }
+  /**
    * Vertical field of view.
    *
    * Long by default. A wide lens bows straight edges, which is the first thing
@@ -521,6 +527,7 @@ export interface ResolvedSimpleViewer {
   maxZoom: number
   lighting: { ambient: number; key: number; fill: number; rim: number; bounce: number; hemi: number }
   backdrop: { top: string; bottom: string; vignette: number }
+  ground: { blur: number; opacity: number; far: number }
 }
 
 /** The `simple` block with every default filled in, in the shape of
@@ -552,6 +559,11 @@ export function simpleViewer(config: PresentationConfig): ResolvedSimpleViewer {
       top: s.backdrop?.top ?? background,
       bottom: s.backdrop?.bottom ?? background,
       vignette: s.backdrop?.vignette ?? 0,
+    },
+    ground: {
+      blur: s.ground?.blur ?? 2.6,
+      opacity: s.ground?.opacity ?? 0.45,
+      far: s.ground?.far ?? 2.2,
     },
   }
 }
