@@ -127,11 +127,7 @@
             "map": "/textures/covers/weave-ecru.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+         
           "thumbnail": "/images/fabrics/weave-ecru.png",
           "en": {
             "name": "Ecru Weave"
@@ -146,11 +142,7 @@
             "map": "/textures/covers/green_fabric_03_diffuse (2)_UASTC.ktx2",
             "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+         
           "thumbnail": "/images/fabrics/green_fabric.webp",
           "en": {
             "name": "Emerald Velvet"
@@ -165,11 +157,7 @@
             "map": "/textures/covers/blue_fabric_12_diffuse copy_UASTC.ktx2",
             "normalMap": "/textures/covers/blue_fabric_12_normal copy_UASTC.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+         
           "thumbnail": "/images/fabrics/blue_fabric.webp",
           "en": {
             "name": "Petrol Blue"
@@ -184,11 +172,7 @@
             "map": "/textures/covers/orange_fabric_03_diffuse copy_UASTC.ktx2",
             "normalMap": "/textures/covers/orange_fabric_03_normal copy_UASTC.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+         
           "thumbnail": "/images/fabrics/orange_fabric.webp",
           "en": {
             "name": "Orange"
@@ -205,11 +189,7 @@
             "map": "/textures/covers/linen-ash.v1.ktx2",
             "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+         
           "thumbnail": "/images/fabrics/linen-ash.png",
           "en": {
             "name": "Ash Linen"
@@ -225,11 +205,7 @@
             "map": "/textures/covers/corduroy-rust.v1.ktx2",
             "normalMap": "/textures/covers/corduroy-normal.v1.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+         
           "thumbnail": "/images/fabrics/corduroy-rust.png",
           "en": {
             "name": "Rust Corduroy"
@@ -244,11 +220,7 @@
             "map": "/textures/covers/tweed-charcoal.v1.ktx2",
             "normalMap": "/textures/covers/twill-normal.v1.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+         
           "thumbnail": "/images/fabrics/tweed-charcoal.png",
           "en": {
             "name": "Charcoal Tweed"
@@ -263,11 +235,7 @@
             "map": "/textures/covers/herringbone-slate.v1.ktx2",
             "normalMap": "/textures/covers/herringbone-normal.v1.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+         
           "thumbnail": "/images/fabrics/herringbone-slate.png",
           "en": {
             "name": "Slate Herringbone"
@@ -283,11 +251,7 @@
             "map": "/textures/covers/twill-navy.v1.ktx2",
             "normalMap": "/textures/covers/twill-normal.v1.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+         
           "thumbnail": "/images/fabrics/twill-navy.png",
           "en": {
             "name": "Navy Twill"
@@ -302,11 +266,7 @@
             "map": "/textures/covers/leather-cognac.v1.ktx2",
             "normalMap": "/textures/covers/pebble-normal.v1.ktx2"
           },
-          "materials": [
-            "Fabric_1",
-            "fabric_03",
-            "vray_rene_sofa_011"
-          ],
+         
           "thumbnail": "/images/fabrics/leather-cognac.png",
           "en": {
             "name": "Cognac Leather"
@@ -742,7 +702,8 @@
         ],
         "materials": [
           "Fabric_1",
-          "vray_rene_sofa_010"
+          "vray_rene_sofa_010",
+          "Nilper Final glb BLND-optimized.glb"
         ],
         "en": {
           "label": "Sofa Body"
