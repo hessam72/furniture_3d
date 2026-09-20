@@ -31,6 +31,23 @@ export interface ZonePaint {
    * route carries the swatch in its own query parameter instead.
    */
   swatchId?: string
+  /**
+   * True while this zone has never been given a real paint — the piece shows
+   * exactly what its GLB was exported with. `/simple` opens every zone this
+   * way (@see unconfiguredPaint in lib/product/presentation); `/product` and
+   * `/showroom` never do, because a presentation page opens on a real, sellable
+   * finish, not a blank one.
+   *
+   * `applyFirstCoat` and `useZonePaint` both skip a zone flagged this way —
+   * `color`/`metalness`/`roughness`/`clearcoat` above still have to carry
+   * *some* value to satisfy the type, but nothing ever reads them while this
+   * is true, so the cloned material keeps whatever the GLB authored.
+   *
+   * Cleared the moment a real swatch lands: `swatchPaint` always returns
+   * `authored: false`, and that is the only place a real pick is described,
+   * so there is one gate rather than one per call site.
+   */
+  authored?: boolean
   /** Texture URLs for `swatchId`, or null for the plain colour path. Carried in
    *  the store rather than looked up, because the render layer never sees the
    *  manifest — `applyFirstCoat(targets, getState().paint)` is its only channel. */

@@ -16,13 +16,12 @@ import { arModelUrl, arUsdzUrl, swatchIdsFromPaint } from '@/lib/ar/arSource'
 import { AR_GLB_MAX_BYTES, AR_GLB_WARN_BYTES, AR_TRIANGLE_WARN, countTriangles } from '@/lib/ar/budget'
 import {
   arModelPath,
-  defaultPaint,
-  openingSwatchMaps,
   restSwatchMaps,
   findCoverVariant,
   finishedPiecePath,
   simpleViewer,
   simpleViewerQuality,
+  unconfiguredPaint,
   type DeviceClass,
   type PresentationZone,
   type ResolvedPresentation,
@@ -215,34 +214,20 @@ function Viewer({
   useSwatchCacheEviction()
 
   /**
-   * When the page may start fetching anything that is not the piece itself.
+   * When the dock's chips may start fetching their photographs.
    *
-   * Desktop: as soon as the probe clears, which is what this page has always
-   * done — bandwidth is not the constraint there and the piece should arrive
-   * already dressed.
+   * The piece itself opens `unconfigured` (@see unconfiguredPaint) — no swatch
+   * is applied and nothing here needs warming for it, the GLB's own materials
+   * are already on screen the instant it decodes. What is still worth timing
+   * is the dock: its chip images are ~0.25MB and, started early on touch, do
+   * not merely add to the download, they take connections away from it.
+   * Apache proxies this site over HTTP/1.1, so the browser has six, and every
+   * one spent on a chip is one the GLB does not have.
    *
-   * Touch: not until the piece is on screen. The opening fabrics are ~1.8MB of
-   * KTX2 and the dock's chips another quarter of a megabyte, and started early
-   * they do not merely add to the download — they take connections away from
-   * it. Apache proxies this site over HTTP/1.1, so the browser has six, and
-   * every one spent on a swatch is one the GLB does not have. The cost of
-   * waiting is that the piece is briefly in the cloth its GLB was exported in
-   * and then changes; the cost of not waiting was measured in seconds of blank
-   * screen, and on a phone in tabs that did not survive to the end of it.
+   * Desktop: as soon as the probe clears — bandwidth is not the constraint
+   * there. Touch: not until the piece is on screen.
    */
   const dressNow = device === 'desktop' ? state === 'ready' : ready
-
-  // The opening fabric. @see dressNow for why touch holds it back.
-  useEffect(() => {
-    if (!dressNow) return
-    const opening = openingSwatchMaps(config)
-    if (!opening.length) return
-    let stop = () => {}
-    void import('@/lib/three/swatchTextures').then(({ preloadSwatchMaps }) => {
-      stop = preloadSwatchMaps(opening)
-    })
-    return () => stop()
-  }, [dressNow, config])
 
   /** Only what *this* view needs has to be present — a missing variant is the
    *  sheet's problem to report, not a reason to blank the page. */
@@ -252,7 +237,9 @@ function Viewer({
   )
 
   useEffect(() => {
-    initProduct(productKey, defaultPaint(config), config.layers.cover.default, config.layers.startStep ?? 1)
+    // unconfiguredPaint, not defaultPaint: this page opens on the piece as its
+    // GLB was exported, not on a pre-selected finish. @see ZonePaint.authored
+    initProduct(productKey, unconfiguredPaint(), config.layers.cover.default, config.layers.startStep ?? 1)
     return () => reset()
   }, [productKey, config, initProduct, reset])
 

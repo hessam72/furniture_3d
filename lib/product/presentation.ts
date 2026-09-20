@@ -670,6 +670,23 @@ export function defaultPaint(config: PresentationConfig): ZonePaintConfig {
   }
 }
 
+/**
+ * Every zone left exactly as its GLB was exported — no swatch, no synthetic
+ * colour, nothing chosen.
+ *
+ * `/simple` opens on this instead of `defaultPaint`. That page is not a
+ * presentation of the piece as sold; it is the blank canvas a customer is
+ * about to dress themselves, and a fabric already applied at open reads as a
+ * choice already made for them. The four field values below exist only to
+ * satisfy `ZonePaint`'s required fields — `authored: true` means nothing ever
+ * reads them, @see ZonePaint.authored — so every zone can safely share one
+ * object rather than needing four near-identical ones.
+ */
+export function unconfiguredPaint(): ZonePaintConfig {
+  const untouched: ZonePaint = { color: '#ffffff', metalness: 0, roughness: 0.6, clearcoat: 0, authored: true }
+  return { wood: untouched, cover: untouched, cushion: untouched, shawl: untouched }
+}
+
 export function lightingMode(config: PresentationConfig): RoomLighting {
   return config.room.lightingMode ?? 'studio'
 }
@@ -1033,6 +1050,11 @@ export function swatchPaint(swatch: ZoneSwatch, roughnessFallback?: number): Par
   const textured = isTextureSwatch(swatch)
   const roughness = swatch.roughness ?? roughnessFallback
   return {
+    // A real pick, always — this is the one place that clears `authored`, so
+    // every path that applies a real choice (the dock, defaultPaint's seed,
+    // ShowroomFeatured) goes through the same gate rather than each
+    // remembering to. @see ZonePaint.authored
+    authored: false,
     swatchId: swatch.id,
     color: textured ? '#ffffff' : swatch.hex,
     maps: textured ? swatch.maps! : null,

@@ -17,11 +17,13 @@ import type { ZoneTarget } from '@/lib/three/layerMaterials'
 
 /** Applies the current zone colours to freshly cloned materials, synchronously.
  *  Called from the clone useMemo so a layer never renders one frame in its
- *  authored GLB colour before the effect below can correct it. */
+ *  authored GLB colour before the effect below can correct it — except a zone
+ *  flagged `authored`, which is never corrected at all: that GLB colour is the
+ *  point. @see ZonePaint.authored */
 export function applyFirstCoat(targets: ZoneTarget[], paint: ZonePaintConfig) {
   targets.forEach(({ material, zone }) => {
     const zoneConfig = paint[zone]
-    if (!zoneConfig) return
+    if (!zoneConfig || zoneConfig.authored) return
     material.color.set(zoneConfig.color)
     material.metalness = zoneConfig.metalness
     material.roughness = zoneConfig.roughness
@@ -81,10 +83,11 @@ export function useZonePaint(targets: ZoneTarget[]) {
       return
     }
     // Sheen snaps here, undamped — @see applySheen — while everything else
-    // below enters the lerp.
+    // below enters the lerp. A zone still flagged `authored` gets neither: it
+    // has not been picked yet, so there is nothing to blend toward.
     targets.forEach(({ material, zone }) => {
       const zoneConfig = paint[zone]
-      if (zoneConfig) applySheen(material, zoneConfig)
+      if (zoneConfig && !zoneConfig.authored) applySheen(material, zoneConfig)
     })
     animatingRef.current = true
     invalidate()
@@ -98,6 +101,9 @@ export function useZonePaint(targets: ZoneTarget[]) {
 
     targets.forEach(({ material, zone }) => {
       const zoneConfig = paint[zone]
+      // Still showing the GLB's own material — nothing to damp toward until a
+      // real swatch clears this. @see ZonePaint.authored
+      if (zoneConfig.authored) return
       scratch.set(zoneConfig.color)
       material.color.lerp(scratch, d)
       material.metalness = THREE.MathUtils.damp(material.metalness, zoneConfig.metalness, 10, delta)
