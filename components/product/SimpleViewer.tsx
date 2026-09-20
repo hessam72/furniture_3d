@@ -11,6 +11,7 @@ import { RendererStatsProbe } from '@/components/three/RendererStatsProbe'
 import { isDebug } from '@/components/three/rendererStatsStore'
 import { extendGltfLoader } from '@/lib/three/gltfLoaders'
 import { useCanvasLifecycle } from '@/hooks/useCanvasLifecycle'
+import { useVramWatchdog } from '@/hooks/useVramWatchdog'
 import { PartErrorBoundary } from '@/components/three/PartErrorBoundary'
 import { COMPOSER_PIXEL_WEIGHT, clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
@@ -26,6 +27,7 @@ import { applyFirstSwatch, useSwatchTextures } from '@/hooks/useSwatchTextures'
 import { usePresentation } from '@/stores/presentationStore'
 import {
   simpleViewer,
+  type DeviceClass,
   type PresentationConfig,
   type PresentationPart,
   type PresentationZone,
@@ -57,6 +59,10 @@ const MAX_DOCK_COVERAGE = 0.45
  * iPhone 15's panel, so this is the ask, not the grant.
  */
 const VIEWER_TOUCH_DPR_MAX = 2.2
+
+/** A stable identity for an unset callback prop, so a component that always
+ *  mounts its watcher does not hand it a fresh closure every render. */
+const NOOP = () => {}
 
 /**
  * What the camera frames on: the piece's measured size.
@@ -432,6 +438,21 @@ function EmbeddedGestures() {
   return null
 }
 
+/** `useVramWatchdog` needs `useThree`/`useFrame`, which only work inside the
+ *  Canvas — this is the mount point for it. @see the hook for what it does. */
+function VramWatchdog({
+  modelPath,
+  device,
+  demote,
+}: {
+  modelPath: string
+  device: DeviceClass
+  demote: () => void
+}) {
+  useVramWatchdog({ modelPath, device, demote })
+  return null
+}
+
 interface Props {
   config: PresentationConfig
   /** Fraction of the viewport height the control panel covers, measured by the
@@ -472,6 +493,10 @@ interface Props {
   label?: string
   /** The GPU dropped the buffer. The host decides what to show. */
   onContextLost?: () => void
+  /** The VRAM watchdog wants a rung dropped, live — no context lost, no
+   *  remount. Omitted → the watchdog still measures (under `?debug` it still
+   *  logs) but has nothing to call. @see hooks/useVramWatchdog */
+  onDemote?: () => void
 }
 
 /**
@@ -518,6 +543,7 @@ export default function SimpleViewer({
   paintable = true,
   label = 'viewer',
   onContextLost,
+  onDemote,
 }: Props) {
   const { settings, device, gpu, preset } = useQuality()
   const [perfScale, setPerfScale] = useState(1)
@@ -604,6 +630,11 @@ export default function SimpleViewer({
           purpose is judging a finish, a piece that goes soft the moment you
           turn it is the wrong trade. */}
       <PerfLadder onScale={setPerfScale} adaptive={false} />
+
+      {/* Catches the allocation PerfLadder can't: a cover swap to a variant
+          nobody has measured yet, checked before the frame it would cost is
+          asked to draw. @see hooks/useVramWatchdog */}
+      <VramWatchdog modelPath={view.model} device={device} demote={onDemote ?? NOOP} />
 
       {/* The image-based light, and the reason the material reads as leather or
           velvet rather than as flat colour. Its own boundary: `useEnvironment`

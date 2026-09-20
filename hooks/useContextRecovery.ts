@@ -51,6 +51,11 @@ export interface ContextRecovery {
   retry: (purge?: () => void) => void
   /** Remount without counting a failure — the AR return path. */
   remount: () => void
+  /** Drop a rung live, without counting a loss — the VRAM watchdog's
+   *  demotion. No context goes and nothing unmounts: `downgrades` moving is
+   *  enough on its own to shrink the DPR the canvas asks for. @see
+   *  hooks/useVramWatchdog */
+  demote: (by?: number) => void
 }
 
 /** Long enough to mean the lower tier is holding, short enough that a customer
@@ -190,6 +195,21 @@ export function useContextRecovery(options: {
 
   const remount = useCallback(() => setCanvasKey((n) => n + 1), [])
 
+  // Same write `handleContextLost` makes — a rung the rest of this tab's
+  // visit should keep — but no `writeCrashed`: the context never went, so
+  // there is nothing to hold against the device for the next 7 days, and no
+  // `losses` bump, so it never counts against `retryable`.
+  const demote = useCallback(
+    (by = step) => {
+      setDowngrades((n) => {
+        const next = n + by
+        writeDowngrades(surface, next)
+        return next
+      })
+    },
+    [step, surface]
+  )
+
   // Survived a minute at the lower tier: forget the rung for the next visit.
   // The current page view keeps it — moving the tier back up under a customer
   // who is looking at the piece is its own kind of broken.
@@ -210,5 +230,6 @@ export function useContextRecovery(options: {
     handleContextLost,
     retry,
     remount,
+    demote,
   }
 }

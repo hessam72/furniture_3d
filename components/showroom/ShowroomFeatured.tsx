@@ -362,6 +362,7 @@ export default function ShowroomFeatured({
                   background={featured.viewer?.background}
                   onReady={handleReady}
                   onContextLost={recovery.handleContextLost}
+                  onDemote={recovery.demote}
                   downgrades={recovery.downgrades}
                   onError={handleError}
                 />

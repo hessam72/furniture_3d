@@ -383,6 +383,7 @@ function Viewer({
           onReady={handleReady}
           onError={handleError}
           onContextLost={recovery.handleContextLost}
+          onDemote={recovery.demote}
         />
       )}
 
