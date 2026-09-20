@@ -785,7 +785,7 @@
       "near": 0.1,
       "far": 130,
       "padding": 1.55,
-      "minZoom": 0.3,
+      "minZoom": 0.1,
       "maxZoom": 2,
       "startZoom": 0.8,
       "tiltLimitDeg": 0,
@@ -838,7 +838,7 @@
       "background": "#ffffff",
       "fov": 35,
       "padding": 1.1,
-      "minZoom": 0.3,
+      "minZoom": 0.1,
       "maxZoom": 2.6,
       "backdrop": {
         "top": "#fbfaf7",

@@ -411,7 +411,7 @@ function Viewer({
                    md:ps-[calc(var(--dock-w)+1.5rem)]"
       >
         <Link
-          href={`/product/${productKey}`}
+          href={`/showroom/nilper`}
           aria-label={t('fullViewAria')}
           className="pointer-events-auto flex h-9 items-center gap-1.5 rounded-full border border-white/10
                      bg-[#0a0e15]/70 px-3.5 text-[12px] text-white/70 backdrop-blur-xl
@@ -419,7 +419,7 @@ function Viewer({
                      md:h-10 md:px-4 md:text-[12.5px]"
         >
           <ChevronRight className={locale === 'en' ? 'h-4 w-4 rotate-180' : 'h-4 w-4'} />
-          {t('fullView')}
+          {t('backToShowroom')}
         </Link>
 
         <div className="flex flex-col items-end gap-2">
