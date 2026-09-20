@@ -31,15 +31,28 @@ const nextConfig = {
     // removeConsole: { exclude: ['error', 'warn'] },
   },
   async headers() {
-    return IMMUTABLE_ASSET_PATHS.map((source) => ({
-      source,
-      headers: [
-        {
-          key: 'Cache-Control',
-          value: 'public, max-age=31536000, immutable',
-        },
-      ],
-    }));
+    return [
+      ...IMMUTABLE_ASSET_PATHS.map((source) => ({
+        source,
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      })),
+      {
+        // The one file here that must never be cached. A service worker
+        // outlives the deploy that installed it, so a stale copy of this is a
+        // bug that cannot be fixed by shipping — the browser has to be able to
+        // see the new one. @see public/sw.js
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
+      },
+    ];
   },
 };
 

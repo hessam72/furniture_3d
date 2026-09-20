@@ -127,7 +127,7 @@
             "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
           },
          
-          "thumbnail": "/images/fabrics/green_fabric.webp",
+          "thumbnail": "/images/fabrics/weave-test.png",
           "en": {
             "name": "Emerald Velvet"
           }
@@ -142,7 +142,7 @@
             "normalMap": "/textures/covers/blue_fabric_12_normal copy_UASTC.ktx2"
           },
          
-          "thumbnail": "/images/fabrics/blue_fabric.webp",
+          "thumbnail": "/images/fabrics/weave-blue.png",
           "en": {
             "name": "Petrol Blue"
           }
@@ -157,7 +157,7 @@
             "normalMap": "/textures/covers/orange_fabric_03_normal copy_UASTC.ktx2"
           },
          
-          "thumbnail": "/images/fabrics/orange_fabric.webp",
+          "thumbnail": "/images/fabrics/weave-orange.png",
           "en": {
             "name": "Orange"
           }
@@ -329,7 +329,7 @@
             "map": "/textures/covers/green_fabric_03_diffuse (2)_UASTC.ktx2",
             "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
           },
-          "thumbnail": "/images/fabrics/green_fabric.webp",
+          "thumbnail": "/images/fabrics/weave-test.png",
           "en": {
             "name": "Emerald Velvet"
           }
@@ -343,7 +343,7 @@
             "map": "/textures/covers/blue_fabric_12_diffuse copy_UASTC.ktx2",
             "normalMap": "/textures/covers/blue_fabric_12_normal copy_UASTC.ktx2"
           },
-          "thumbnail": "/images/fabrics/blue_fabric.webp",
+          "thumbnail": "/images/fabrics/weave-blue.png",
           "en": {
             "name": "Petrol Blue"
           }
@@ -357,7 +357,7 @@
             "map": "/textures/covers/orange_fabric_03_diffuse copy_UASTC.ktx2",
             "normalMap": "/textures/covers/orange_fabric_03_normal copy_UASTC.ktx2"
           },
-          "thumbnail": "/images/fabrics/orange_fabric.webp",
+          "thumbnail": "/images/fabrics/weave-orange.png",
           "en": {
             "name": "Orange"
           }
@@ -460,7 +460,7 @@
             "map": "/textures/covers/green_fabric_03_diffuse (2)_UASTC.ktx2",
             "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
           },
-          "thumbnail": "/images/fabrics/green_fabric.webp",
+          "thumbnail": "/images/fabrics/weave-test.png",
           "en": {
             "name": "Emerald Velvet"
           }
@@ -474,7 +474,7 @@
             "map": "/textures/covers/blue_fabric_12_diffuse copy_UASTC.ktx2",
             "normalMap": "/textures/covers/blue_fabric_12_normal copy_UASTC.ktx2"
           },
-          "thumbnail": "/images/fabrics/blue_fabric.webp",
+          "thumbnail": "/images/fabrics/weave-blue.png",
           "en": {
             "name": "Petrol Blue"
           }
@@ -488,7 +488,7 @@
             "map": "/textures/covers/orange_fabric_03_diffuse copy_UASTC.ktx2",
             "normalMap": "/textures/covers/orange_fabric_03_normal copy_UASTC.ktx2"
           },
-          "thumbnail": "/images/fabrics/orange_fabric.webp",
+          "thumbnail": "/images/fabrics/weave-orange.png",
           "en": {
             "name": "Orange"
           }

@@ -19,11 +19,15 @@ export default function ColorDots({
   activeId,
   onPick,
   label,
+  images = true,
 }: {
   swatches: ZoneSwatch[]
   activeId?: string
   onPick: (swatch: ZoneSwatch) => void
   label: string
+  /** False → the dot is its `hex` alone and fetches nothing, which is all a
+   *  tint swatch ever needed. @see SwatchGrid's `images` */
+  images?: boolean
 }) {
   return (
     <div role="radiogroup" aria-label={label} className="flex flex-wrap items-center gap-2.5">
@@ -48,7 +52,9 @@ export default function ColorDots({
               className="absolute inset-0 rounded-full shadow-[inset_0_0_0_1px_rgb(255_255_255/0.22)]"
               style={{
                 backgroundColor: swatch.hex,
-                ...(swatch.thumbnail ? { backgroundImage: `url(${swatch.thumbnail})`, backgroundSize: 'cover' } : {}),
+                ...(images && swatch.thumbnail
+                  ? { backgroundImage: `url(${swatch.thumbnail})`, backgroundSize: 'cover' }
+                  : {}),
               }}
             />
             {/* A ring sitting *outside* the disc, so selecting one never changes

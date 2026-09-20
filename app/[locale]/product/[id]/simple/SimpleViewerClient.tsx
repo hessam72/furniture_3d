@@ -42,6 +42,10 @@ const SimpleViewer = dynamic(() => import('@/components/product/SimpleViewer'), 
 
 const ARProductViewer = dynamic(() => import('@/components/store/ARProductViewer'), { ssr: false })
 
+/** A stable empty list, so a probe that is not due yet does not hand
+ *  `useAssetProbe` a fresh array on every render. */
+const EMPTY_PROBE: string[] = []
+
 /**
  * A stripped viewer for the same piece the presentation page dresses.
  *
@@ -157,30 +161,80 @@ function Viewer({
     [config, modelPath]
   )
 
+  /** Every GLB this page can reach, for the cache to let go of on the way out. */
+  const layerAssets = useMemo(
+    () =>
+      Array.from(
+        new Set([config.layers.frame.path, ...config.layers.cover.variants.map((v) => v.path)])
+      ),
+    [config]
+  )
+
   /**
-   * Every file the sheet can switch to, probed once.
+   * The two files the first frame cannot be drawn without: the layer the page
+   * opens on, and the environment that lights it.
    *
-   * `public/models` is gitignored, so without the probe a mis-typed manifest
-   * path white-screens behind a Suspense fallback that never resolves. Probing
-   * the whole set rather than the file currently on screen is what keeps the
-   * sheet on screen: a per-layer probe re-enters `checking` on every switch,
-   * and the sheet would blink out of existence mid-tap.
+   * The probe exists because `public/models` is gitignored, so a mis-typed
+   * manifest path would otherwise white-screen behind a Suspense fallback that
+   * never resolves. But it used to cover *every* layer the sheet can switch to,
+   * and the canvas waited on all of them — so the opening GLB could not start
+   * downloading until a `HEAD` had come back for files nobody had asked to see.
+   * On a phone, over HTTP/1.1, that is a round trip per variant in front of the
+   * only request that matters.
+   *
+   * The set is deliberately **stable**: derived from the manifest's opening
+   * layer rather than from the live `modelPath`. A probe keyed on what is
+   * currently shown re-enters `checking` on every layer tap, and the sheet
+   * would blink out of existence mid-tap — which is the reason the whole set
+   * was probed at once in the first place. @see restAssets for the other half.
    */
-  const probeAssets = useMemo(() => {
-    const paths = [config.layers.frame.path, ...config.layers.cover.variants.map((v) => v.path)]
-    if (view.hdr) paths.push(view.hdr)
-    return Array.from(new Set(paths))
+  const gateAssets = useMemo(() => {
+    const opening =
+      (config.layers.startStep ?? 1) === 0 ? config.layers.frame.path : finishedPiecePath(config)
+    return view.hdr ? [opening, view.hdr] : [opening]
   }, [config, view.hdr])
-  const { state, missing } = useAssetProbe(probeAssets)
+  const { state, missing: gateMissing } = useAssetProbe(gateAssets)
+
+  /**
+   * The rest of the layers, probed once the piece is actually on screen.
+   *
+   * Same guarantee as before — a layer the sheet offers but the deploy does not
+   * carry still reports itself rather than hanging — just not in front of the
+   * first paint. Nothing here can put the page back into `checking`, so the
+   * verdict arriving late cannot unmount the dock.
+   */
+  const restAssets = useMemo(
+    () => layerAssets.filter((path) => !gateAssets.includes(path)),
+    [layerAssets, gateAssets]
+  )
+  const { missing: restMissing } = useAssetProbe(ready ? restAssets : EMPTY_PROBE)
+  const missing = useMemo(() => [...gateMissing, ...restMissing], [gateMissing, restMissing])
 
   // The layer set this page can reach, released when the visitor leaves it.
-  useGltfCacheEviction(probeAssets.filter((path) => path.endsWith('.glb')))
+  useGltfCacheEviction(layerAssets.filter((path) => path.endsWith('.glb')))
   useSwatchCacheEviction()
 
-  // The opening fabric, warmed before the canvas rather than on idle: it is what
-  // this page renders with, and nothing here animates a swap to hide a late one.
+  /**
+   * When the page may start fetching anything that is not the piece itself.
+   *
+   * Desktop: as soon as the probe clears, which is what this page has always
+   * done — bandwidth is not the constraint there and the piece should arrive
+   * already dressed.
+   *
+   * Touch: not until the piece is on screen. The opening fabrics are ~1.8MB of
+   * KTX2 and the dock's chips another quarter of a megabyte, and started early
+   * they do not merely add to the download — they take connections away from
+   * it. Apache proxies this site over HTTP/1.1, so the browser has six, and
+   * every one spent on a swatch is one the GLB does not have. The cost of
+   * waiting is that the piece is briefly in the cloth its GLB was exported in
+   * and then changes; the cost of not waiting was measured in seconds of blank
+   * screen, and on a phone in tabs that did not survive to the end of it.
+   */
+  const dressNow = device === 'desktop' ? state === 'ready' : ready
+
+  // The opening fabric. @see dressNow for why touch holds it back.
   useEffect(() => {
-    if (state !== 'ready') return
+    if (!dressNow) return
     const opening = openingSwatchMaps(config)
     if (!opening.length) return
     let stop = () => {}
@@ -188,7 +242,7 @@ function Viewer({
       stop = preloadSwatchMaps(opening)
     })
     return () => stop()
-  }, [state, config])
+  }, [dressNow, config])
 
   /** Only what *this* view needs has to be present — a missing variant is the
    *  sheet's problem to report, not a reason to blank the page. */
@@ -466,7 +520,12 @@ function Viewer({
       </header>
 
       {live && (
-        <ViewerDock presentation={presentation} arBuilding={arBuilding} hidden={showAR} />
+        <ViewerDock
+          presentation={presentation}
+          arBuilding={arBuilding}
+          hidden={showAR}
+          images={dressNow}
+        />
       )}
 
       {(blocked.length > 0 || error || recovery.lost || noWebgl) && (

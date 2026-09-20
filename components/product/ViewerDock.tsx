@@ -69,9 +69,24 @@ interface Props {
   /** Slides the whole thing away while the AR overlay owns the screen. Kept
    *  mounted, so the open tab and the measured coverage survive the round trip. */
   hidden?: boolean
+  /**
+   * Whether the chips may fetch their photographs yet.
+   *
+   * The dock mounts with the canvas, so its chips would otherwise start
+   * downloading alongside the piece and take six HTTP/1.1 connections off it.
+   * Held false until the piece is on screen, the chips are their own `hex` —
+   * which is the fallback SwatchGrid is built around either way. @see
+   * SwatchGrid's `images`
+   */
+  images?: boolean
 }
 
-export default function ViewerDock({ presentation, arBuilding = false, hidden = false }: Props) {
+export default function ViewerDock({
+  presentation,
+  arBuilding = false,
+  hidden = false,
+  images = true,
+}: Props) {
   const { key: productKey, product, config } = presentation
   const locale = useLocale()
   const t = useTranslations('product')
@@ -474,6 +489,7 @@ export default function ViewerDock({ presentation, arBuilding = false, hidden = 
                       activeId={partPaint?.swatchId}
                       pendingId={pendingSwatch}
                       onPick={(swatch) => pick(part.zone, swatch)}
+                      images={images}
                     />
                   </section>
                 )}
@@ -486,6 +502,7 @@ export default function ViewerDock({ presentation, arBuilding = false, hidden = 
                       swatches={tints}
                       activeId={partPaint?.swatchId}
                       onPick={(swatch) => pick(part.zone, swatch)}
+                      images={images}
                     />
                   </section>
                 )}
