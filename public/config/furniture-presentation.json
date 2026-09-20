@@ -798,38 +798,42 @@
       "rim": 60,
       "bounce": 6,
       "ambient": 1.1,
-      "hemi": 0.8,
-      "gallery": {
-        "spots": 3,
-        "track": 1,
-        "wash": 1,
-        "angle": 0.6,
-        "color": "#fff2df"
-      }
+      "hemi": 0.8
+    
     },
-    "sun": {
-      "enabled": true,
-      "position": [
-        -1,
-        2,
-        1.5
-      ],
-      "target": [
-        0.007048580466527676,
-        1.496530166182611,
-        0.7229428589840117
-      ],
-      "intensity": 6,
-      "color": "#ffe3c2",
-      "soft": {
-        "size": 20,
-        "samples": 16,
-        "focus": 0
-      }
+   "sun": {
+    "enabled": true,
+    "position": [
+      -1,
+      2,
+      0.5
+    ],
+    "target": [
+      0.007048580466527676,
+      1.496530166182611,
+      0.7229428589840117
+    ],
+    "intensity": 6,
+    "color": "#ffe3c2",
+    "soft": {
+      "size": 20,
+      "samples": 16,
+      "focus": 0
     },
+    "shadow": {
+      "left": -11.231447273503278,
+      "right": 10.078113755735181,
+      "top": 7.1620356728587495,
+      "bottom": -9.62405315681729,
+      "near": 0.1,
+      "far": 7.831464431115272,
+      "bias": -0.0001,
+      "normalBias": 0.03
+    }
+  },
     "quality": {
       "preset": "high",
-      "mobile": "medium"
+      "mobile": "high"
     },
     "simple": {
       "arModel": "",
@@ -848,9 +852,9 @@
       "lighting": {
         "ambient": 0.35,
         "key": 1.1,
-        "fill": 0.35,
-        "rim": 0.5,
-        "bounce": 0.6,
+        "fill": 0.2,
+        "rim": 0.2,
+        "bounce": 0,
         "hemi": 0.4
       },
       "quality": {
