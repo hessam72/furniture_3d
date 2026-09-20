@@ -628,28 +628,29 @@ export default function SimpleViewer({
   const sun = config.simple?.sun ?? config.sun
 
   /**
-   * The real sun — gated on **tier, not device**. A phone that has earned
-   * `high` or `ultra` (the on-screen picker, tapped deliberately — the tier
-   * never defaults there on a phone, @see SURFACE_POLICY.viewer.fallback)
-   * gets the identical rig a desktop does: same light, same PCSS shadow, same
-   * `SHADOW_BUDGET`-scaled map size a strong tablet already gets. `medium`
-   * and below keep the cheaper contact shadow — @see groundShadowOn — and
-   * `low` keeps neither, on any device: that rung is where a crashed device
-   * lands and must render with nothing new at all.
+   * `high`/`ultra` only, on **tier alone** — no `device`, and deliberately no
+   * `gpu` either. `readGpuClass`'s probe (texture-size / sample-count limits,
+   * core count, `navigator.deviceMemory`) is exactly the kind of signal iOS
+   * Safari answers unreliably: `deviceMemory` isn't exposed at all there, and
+   * Safari 17+ masks the unmasked-renderer string the capability checks lean
+   * on, so real iPhones were reading `weak` and losing the sun for a reason
+   * that has nothing to do with what the hardware can hold. A device that
+   * cannot actually afford this is still caught downstream — the VRAM
+   * watchdog demotes it live, and a lost context lands it on `low`, which is
+   * still the one rung that renders with nothing new at all, unconditionally.
    */
-  const sunOn = !!sun?.enabled && gpu !== 'weak' && (preset === 'high' || preset === 'ultra')
+  const highTier = preset === 'high' || preset === 'ultra'
+
+  /** The real sun. `medium` and below keep no floor plane at all — @see
+   *  groundShadowOn — not even the contact shadow this used to fall back to. */
+  const sunOn = !!sun?.enabled && highTier
 
   /**
-   * The contact shadow's own gate — off at the `low` rung, which is where a
-   * crashed device lands and must render with no floor plane at all, on
-   * every device including desktop. (`gpu !== 'weak'` is redundant with
-   * `preset !== 'low'` here — `resolveTier` already caps a weak GPU to `low`
-   * — kept only for readability.) `resolution` is clamped separately on
-   * touch, so the render-target cost below and the mounted `<ContactShadows>`
-   * (further down) never disagree. Off whenever the real sun is live: the
-   * two are never both worth paying for at once.
+   * The contact shadow: the `high`/`ultra` fallback for a product with no
+   * `sun` authored, never a `medium` consolation prize. `low` and `medium`
+   * render with no floor plane on any device, full stop.
    */
-  const groundShadowOn = !sunOn && gpu !== 'weak' && preset !== 'low'
+  const groundShadowOn = !sunOn && highTier
   const groundShadowResolution =
     device === 'desktop' ? settings.groundShadowResolution : Math.min(settings.groundShadowResolution, 512)
 
