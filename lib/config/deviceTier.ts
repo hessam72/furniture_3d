@@ -200,7 +200,7 @@ export const SURFACE_POLICY: Record<RenderSurface, SurfacePolicy> = {
      * is a function of what the visitor walks into, which is not known up front.
      * Until those have ceilings of their own, this one stays.
      */
-    ceiling: { phone: 'medium', tablet: 'medium', desktop: 'ultra' },
+    ceiling: { phone: 'high', tablet: 'high', desktop: 'ultra' },
     fallback: { phone: 'medium', tablet: DEFAULT_QUALITY, desktop: DEFAULT_QUALITY },
     honoursStored: true,
   },

@@ -89,7 +89,7 @@ export const QUALITY_PRESETS: Record<QualityPreset, QualitySettings> = {
     experimentalSSGI: false,
   },
   medium: {
-    dpr: [1, 1.6],
+    dpr: [1, 2],
     adaptiveDpr: true,
     shadowResolution: 1024,
     floorReflectionsEnabled: true,
