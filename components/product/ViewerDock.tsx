@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, type PanInfo } from 'framer-motion'
 import { useLocale, useTranslations } from 'next-intl'
 import { Box, Check, ChevronLeft, FileText, Layers, Palette, ShoppingBag, Sparkles } from 'lucide-react'
 import { usePresentation } from '@/stores/presentationStore'
@@ -261,6 +261,28 @@ export default function ViewerDock({
 
   if (!part) return null
 
+  /**
+   * Where the panel rests, on whichever axis this layout actually uses.
+   *
+   * `wide` decides the axis — a slide-out dock on desktop, a bottom sheet on a
+   * phone — so `drag="y"` below can own the sheet's position without an inline
+   * transform fighting the desktop resting state on the other axis.
+   */
+  const panelRest = { x: 0, y: 0 }
+  const panelClosed = wide
+    ? { x: 'calc(100% + 1.5rem)', y: 0 }
+    : { x: 0, y: 'calc(100% + 1rem)' }
+  const panelHidden = wide ? { x: 'calc(100% + 1.5rem)', y: 0 } : { x: 0, y: '100%' }
+  const panelTarget = hidden ? panelHidden : !open ? panelClosed : panelRest
+
+  /** Pulling the sheet down past a real flick or a real distance minimizes it —
+   *  the same threshold `/product`'s sheet uses for the same gesture. A short
+   *  drag springs back to open rather than doing nothing, which is what makes
+   *  the pull itself feel connected to the panel instead of decorative. */
+  const handleSheetDragEnd = (_: unknown, info: PanInfo) => {
+    if (info.offset.y > 90 || info.velocity.y > 600) setOpen(false)
+  }
+
   return (
     <>
       {/* The way back in. Only rendered while collapsed, so there is never a
@@ -294,11 +316,21 @@ export default function ViewerDock({
         className="pointer-events-none fixed inset-0 z-30 flex items-end justify-stretch
                    md:items-start md:justify-start md:p-3"
       >
-        <aside
+        <motion.aside
           ref={panelRef}
           dir={locale === 'fa' ? 'rtl' : 'ltr'}
           aria-label={t('customizeAria')}
-          /* `translate` rather than unmounting: the measured box survives, so
+          /* Pull-to-minimize, mobile only — the dock on a wide screen is a side
+             panel with no such gesture. Disabled while `hidden` too, or a drag
+             mid-AR would fight the slide-away it is already mid-animation on. */
+          drag={!wide && !hidden ? 'y' : false}
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={{ top: 0.04, bottom: 0.25 }}
+          onDragEnd={handleSheetDragEnd}
+          initial={false}
+          animate={panelTarget}
+          transition={SPRING}
+          /* `animate` rather than unmounting: the measured box survives, so
              reopening does not re-solve the camera from scratch.
 
              The sheet caps well under MAX_PANEL_COVERAGE (0.5) in SimpleViewer,
@@ -307,14 +339,11 @@ export default function ViewerDock({
              at the ceiling a wide sectional on a portrait phone is framed into a
              strip. The panel scrolls instead, and the handle, the tabs and the
              footer stay put around it. */
-          className={`pointer-events-auto relative flex max-h-[50vh] w-full flex-col overflow-hidden
+          className="pointer-events-auto relative flex max-h-[50vh] w-full flex-col overflow-hidden
                       rounded-t-[26px] border-t border-white/[0.07] bg-[#0a0e15]/85 text-white
                       shadow-[0_-20px_60px_-25px_rgb(0_0_0/0.95)] backdrop-blur-2xl
-                      transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)]
                       md:max-h-full md:w-[var(--dock-w)] md:rounded-[26px] md:border
-                      md:shadow-[0_30px_80px_-30px_rgb(0_0_0/0.95)]
-                      ${hidden ? 'translate-y-full md:translate-x-[calc(100%+1.5rem)] md:translate-y-0' : ''}
-                      ${!hidden && !open ? 'translate-y-[calc(100%+1rem)] md:translate-x-[calc(100%+1.5rem)] md:translate-y-0' : ''}`}
+                      md:shadow-[0_30px_80px_-30px_rgb(0_0_0/0.95)]"
         >
         {/* A single hairline of light along the top edge — the one piece of
             ornament here, and what keeps a dark panel on a dark page from
@@ -325,9 +354,11 @@ export default function ViewerDock({
                        from-transparent via-white/25 to-transparent"
           />
 
-          {/* A grab bar on the sheet, because that is the shape a phone reader
-              already knows how to dismiss. The dock gets a chevron instead: a
-              handle on a side panel promises a drag that does not exist. */}
+          {/* A grab bar on the sheet — draggable, so pulling it down minimizes
+              the panel the way a phone reader already expects. A tap still
+              closes it too, for anyone who does not drag. The dock gets a
+              chevron instead: a handle on a side panel promises a drag it
+              cannot honour on that axis. */}
           <button
             type="button"
             onClick={() => setOpen(false)}
@@ -592,7 +623,7 @@ export default function ViewerDock({
               </button>
             </div>
           </footer>
-        </aside>
+        </motion.aside>
       </div>
     </>
   )
