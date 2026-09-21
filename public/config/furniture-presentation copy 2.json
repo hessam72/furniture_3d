@@ -711,7 +711,20 @@
           "label": "Cushion"
         }
       },
-      
+      {
+        "id": "shawl",
+        "label": "شال",
+        "zone": "shawl",
+        "objects": [
+          "rene_sofa-012"
+        ],
+        "materials": [
+          "vray_rene_sofa_011"
+        ],
+        "en": {
+          "label": "Throw"
+        }
+      },
       {
         "id": "wood",
         "label": "پایه چوبی",
