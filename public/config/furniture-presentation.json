@@ -19,7 +19,7 @@
     },
     "layers": {
       "frame": {
-        "path": "/models/presentation/nilper/frame.glb",
+        "path": "/ktx-optimized/Nilper-Final-Struc.glb",
         "arPath": "",
         "label": "اسکلت چوبی",
         "desc": "چوب راش خشک‌شده با اتصالات فاق و زبانه",
@@ -74,7 +74,7 @@
         },
         {
           "id": "ash",
-          "name": "زبان‌گنجشک",
+          "name": "بلوط سفید",
           "hex": "#d9c7ad",
           "roughness": 0.65,
           "en": {
