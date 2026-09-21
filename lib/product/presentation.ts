@@ -422,6 +422,26 @@ export function finishedPiecePath(config: PresentationConfig): string {
 }
 
 /**
+ * A manifest path, or `null` when the slot is empty.
+ *
+ * **`""` counts as unset, not as a path.** Every AR slot in these manifests —
+ * `arPath`, `arModel`, a product's `usdzPath` — sits there empty waiting for a
+ * file that may never be authored, and that is the spelling used for "none".
+ * `??` does not help: it falls through on `null` and `undefined` only, so
+ * `usdzPath ?? buildOne()` hands `""` on as a real answer and whatever
+ * receives it treats an empty string as a URL.
+ *
+ * That is not hypothetical. It is exactly how the iOS AR button disappeared
+ * from `/simple`: `""` reached `<model-viewer ios-src>`, which reads a blank
+ * `ios-src` as "no USDZ", and the page correctly refused to offer a button it
+ * could not honour. Route every one of these fields through here.
+ */
+export function authoredPath(path: string | null | undefined): string | null {
+  const value = path?.trim()
+  return value ? value : null
+}
+
+/**
  * The file AR should place in the room, for the layer the viewer is showing.
  *
  * Falls through to the displayed model wherever no `arPath`/`arModel` is
@@ -442,11 +462,10 @@ export function finishedPiecePath(config: PresentationConfig): string {
  * (@see app/api/ar/[key]/model.glb); the other surfaces serve it as authored.
  */
 export function arModelPath(config: PresentationConfig, layer: string | null): string | null {
-  // `""` counts as unset, not as a path. The fields sit in the manifest empty,
-  // waiting for a file that may never be authored, and `??` alone would hand an
-  // empty string to the route as a real answer.
+  // A GLB slot, so a `.usdz` sitting in it is a mis-filed path rather than an
+  // answer. @see authoredPath for the blank rule underneath.
   const authored = (path: string | undefined) => {
-    const value = path?.trim()
+    const value = authoredPath(path)
     return value && !/\.usdz(?:$|[?#])/i.test(value) ? value : null
   }
 

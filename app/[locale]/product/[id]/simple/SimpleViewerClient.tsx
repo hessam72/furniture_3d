@@ -16,6 +16,7 @@ import { arModelUrl, arUsdzUrl, swatchIdsFromPaint } from '@/lib/ar/arSource'
 import { AR_GLB_MAX_BYTES, AR_GLB_WARN_BYTES, AR_TRIANGLE_WARN, countTriangles } from '@/lib/ar/budget'
 import {
   arModelPath,
+  authoredPath,
   restSwatchMaps,
   findCoverVariant,
   finishedPiecePath,
@@ -317,15 +318,20 @@ function Viewer({
    * it proves the file exists on this deploy — `public/models` is gitignored —
    * and reports what it weighs before a phone has to carry it.
    *
-   * The USDZ half is the exception: when the product has a published
-   * `usdzPath`, that file is used outright and `/api/ar/[key]/model.usdz`'s
-   * per-request GLB→USDZ conversion is never asked to run for this open. That
-   * route already redirects to the same published file on a *failed*
-   * conversion — this is the same fallback taken proactively, on the
-   * reasoning that a known-good, already-verified file beats a fresh
-   * conversion that might not open in Quick Look at all. The GLB side is
-   * unaffected: model-viewer's own inline preview and Android's Scene Viewer
-   * still get the live, configured model exactly as before.
+   * Both halves are per-configuration, and the USDZ half deliberately so.
+   * `/api/ar/[key]/model.usdz` builds the file from the same layer, paint and
+   * swatches the GLB half carries, which is the only way the chosen cloth
+   * reaches iOS at all — Quick Look is handed a finished file and cannot be
+   * told about a colour after the fact.
+   *
+   * This route briefly preferred `product.usdzPath` outright when one was
+   * published, on the reasoning that an already-verified file beats a fresh
+   * conversion. It cost more than it bought: iOS silently showed the piece in
+   * its authored finish whatever the customer had picked, and the moment that
+   * field was blanked to opt back out, `??` handed `""` on as a real path and
+   * took the AR button with it. The published file is a *fallback*, and it
+   * already has one home — this route's own 302 on a failed conversion. One
+   * fallback, in one place. @see app/api/ar/[key]/model.usdz
    */
   const openAR = useCallback(async () => {
     const layer = showingFrame ? 'frame' : coverId ?? 'default'
@@ -336,18 +342,13 @@ function Viewer({
     // and cloth did not. Zones wearing a plain colour contribute nothing.
     const swatches = swatchIdsFromPaint(paint)
     const url = arModelUrl(productKey, layer, zone, paint, swatches)
-    const publishedUsdz = product.usdzPath
-    const usdz = publishedUsdz ?? arUsdzUrl(productKey, layer, zone, paint, swatches)
+    const usdz = arUsdzUrl(productKey, layer, zone, paint, swatches)
     const debug = new URLSearchParams(window.location.search).has('debug')
 
-    if (debug && publishedUsdz) {
-      console.log(`[AR] usdz → published ${publishedUsdz}, skipping the per-configuration build`)
-    }
-
     setArBuilding(true)
-    // Already true when a published USDZ stands in for the live configuration
-    // — the colour Quick Look shows may not be the one just picked.
-    setArStale(!!publishedUsdz)
+    // The room is about to show what this canvas shows. Only the catch below,
+    // where the published file stands in, makes that untrue.
+    setArStale(false)
     try {
       const head = await fetch(url, { method: 'HEAD' })
       const size = Number(head.headers.get('content-length') ?? 0)
@@ -402,7 +403,7 @@ function Viewer({
     } finally {
       setArBuilding(false)
     }
-  }, [config, coverId, device, modelPath, product.glbPath, product.usdzPath, productKey, showingFrame, zone])
+  }, [config, coverId, device, modelPath, product.glbPath, productKey, showingFrame, zone])
 
   /**
    * Leaving AR remounts the canvas: it was unmounted to give the overlay the
@@ -563,11 +564,13 @@ function Viewer({
            *
            * `arUsdz` carries the same query as `arUrl`, so the cloth the
            * customer picked reaches the room on iOS exactly as it does on
-           * Android. The static `product.usdzPath` remains as the floor: it is
-           * what the route redirects to if a conversion ever fails, and what
-           * this falls back to before one has been built.
+           * Android. The static `product.usdzPath` remains as the floor, for
+           * the catch branch above where there is no configured URL at all —
+           * and it goes through `authoredPath`, because a blank slot in the
+           * manifest is not a file, and handing `""` down here is what makes
+           * the iOS button vanish.
            */
-          usdzPath={arUsdz ?? product.usdzPath}
+          usdzPath={arUsdz ?? authoredPath(product.usdzPath) ?? undefined}
           productName={product.name}
           // Explicit rather than inherited: WebXR first so a capable Android
           // stays in the page, then Scene Viewer, which can now fetch the model
