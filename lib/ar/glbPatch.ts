@@ -51,7 +51,7 @@ export type InjectableSlot = 'baseColorTexture' | 'normalTexture'
  * A fabric to put into the served GLB, so the piece a customer places in their
  * room is the one they configured.
  *
- * Colours already travel — `zoneEditsFromJson` writes four numeric factors — but
+ * Colours already travel — `editsFromZones` writes four numeric factors — but
  * an image is not a number, and naming a different one means adding it to the
  * file. @see patchGlbMaterials
  */
@@ -168,28 +168,35 @@ function applyEdit(material: any, edit: MaterialEdit) {
   return true
 }
 
+/** One primitive, and the zone the page would have dressed it in. */
+interface PrimitiveClaim {
+  node: number
+  mesh: number
+  primitive: number
+  material: number
+  zone: PresentationZone
+}
+
 /**
- * Which zone each glTF material wears, resolved the way the page resolves it.
+ * Every primitive in the file, with the zone it wears.
  *
  * The raw-JSON twin of `collectZoneTargets`, and it has to walk the node tree
- * for the same reason: a sofa GLB names the *group* — `Couch`, `Cushions`,
- * `Shawl` — and a match claims everything under it. A flat pass over
+ * for the same reason: a sofa GLB names the *group* — `fur-1`, `Cushion-3`,
+ * `Struc-1` — and a match claims everything under it. A flat pass over
  * `json.meshes` cannot see that structure at all, because a mesh does not know
  * which node references it.
  *
  * Precedence matches the page exactly: `extras.zone` on the node or mesh, then a
  * part's `materials` rule, then the nearest named ancestor, then `fallback`.
  *
- * **Known limit, unchanged:** one glTF material shared by two groups in
- * different zones cannot be split here — there is one material index and one
- * `baseColorFactor`. The page clones per mesh and can. First claim wins, so the
- * result is at least stable rather than order-dependent on the caller.
+ * `extras` is where the override lives, because that is what `GLTFLoader` copies
+ * into `userData`, which is what `zoneOverride` reads.
  */
-export function zonesByMaterial(
+function claimPrimitives(
   json: any,
   fallback: PresentationZone,
   parts?: PresentationPart[] | null
-): Map<number, PresentationZone> {
+): PrimitiveClaim[] {
   const rules = parts ?? []
   const nodes: any[] = json.nodes ?? []
   const meshes: any[] = json.meshes ?? []
@@ -210,11 +217,7 @@ export function zonesByMaterial(
     return rules.find((part) => part.materials?.some((needle) => haystack.includes(lower(needle)))) ?? null
   }
 
-  const out = new Map<number, PresentationZone>()
-  const claim = (materialIndex: number, zone: PresentationZone) => {
-    if (!out.has(materialIndex)) out.set(materialIndex, zone)
-  }
-
+  const claims: PrimitiveClaim[] = []
   const seen = new Set<number>()
   const walk = (nodeIndex: number, inherited: PresentationZone) => {
     // Guard against a malformed file pointing a child back up its own chain.
@@ -228,10 +231,16 @@ export function zonesByMaterial(
     if (typeof node.mesh === 'number') {
       const mesh = meshes[node.mesh]
       const meshZone = readZone(mesh?.extras) ?? partForName(mesh?.name)?.zone ?? here
-      ;(mesh?.primitives ?? []).forEach((primitive: any) => {
+      ;(mesh?.primitives ?? []).forEach((primitive: any, primitiveIndex: number) => {
         if (typeof primitive.material !== 'number') return
         const byMaterial = partForMaterial(json.materials?.[primitive.material]?.name)
-        claim(primitive.material, byMaterial?.zone ?? meshZone)
+        claims.push({
+          node: nodeIndex,
+          mesh: node.mesh,
+          primitive: primitiveIndex,
+          material: primitive.material,
+          zone: byMaterial?.zone ?? meshZone,
+        })
       })
     }
 
@@ -240,7 +249,131 @@ export function zonesByMaterial(
 
   const roots: number[] = json.scenes?.[json.scene ?? 0]?.nodes ?? nodes.map((_, i) => i)
   roots.forEach((root) => walk(root, fallback))
-  return out
+  return claims
+}
+
+/** glTF is plain JSON, so this is a deep copy — and it keeps the module free of
+ *  `structuredClone`, which the browser half of it cannot count on. */
+function cloneJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value))
+}
+
+/**
+ * Which glTF material index wears which zone — **splitting any material that
+ * two zones share**, so each zone can be dressed on its own.
+ *
+ * This used to collapse to one zone per material index, first claim wins, and
+ * dismissed the rest as a known limit that `/simple` could not reach. It reached
+ * it. `Nilper-last.glb` carries the whole sofa on two materials: `Material__25`
+ * is worn by the body (`fur-1`, cover) *and* the cushions (`Cushion-3`,
+ * cushion), and `Material__26` by the legs (`Struc-1`, wood) *and* an unmatched
+ * group that falls through to the fallback zone. With one zone per index the
+ * cushion's cloth was dropped for having no materials of its own and the
+ * cover's was injected into both — which is how the customer's green fabric
+ * reached the room on the cushions and on the legs.
+ *
+ * The page never had the problem: `collectZoneTargets` clones the material per
+ * mesh, so one glTF material becomes many three.js ones. This is that clone,
+ * expressed in the JSON chunk — an appended `materials` entry and a rewritten
+ * `primitive.material`, both of which leave BIN untouched, so Draco stays Draco
+ * and KTX2 stays KTX2.
+ *
+ * **Mutates `json`**, which is why `patchGlbMaterials` takes the document back
+ * as an argument rather than re-parsing the bytes: the caller's copy is now the
+ * one the material indices belong to.
+ *
+ * A file whose materials each serve one zone — every other product in the
+ * catalogue — is left exactly as it was, down to the byte.
+ */
+export function splitZonesByMaterial(
+  json: any,
+  fallback: PresentationZone,
+  parts?: PresentationPart[] | null
+): Map<number, PresentationZone> {
+  const claims = claimPrimitives(json, fallback, parts)
+  const materials: any[] = (json.materials ??= [])
+  const meshes: any[] = (json.meshes ??= [])
+  const nodes: any[] = json.nodes ?? []
+
+  /**
+   * Meshes first, because the material rewrite below edits a primitive in place.
+   *
+   * One `meshes[i]` referenced by two nodes in different zones would take the
+   * edit for both, so the minority node gets its own copy of the mesh entry —
+   * which re-references the same accessors, and so adds no geometry. Rare, and
+   * a correctness hole if it is skipped.
+   */
+  const byMesh = new Map<number, PrimitiveClaim[]>()
+  claims.forEach((claim) => {
+    const list = byMesh.get(claim.mesh)
+    if (list) list.push(claim)
+    else byMesh.set(claim.mesh, [claim])
+  })
+
+  byMesh.forEach((list, meshIndex) => {
+    const byNode = new Map<number, PrimitiveClaim[]>()
+    list.forEach((claim) => {
+      const at = byNode.get(claim.node)
+      if (at) at.push(claim)
+      else byNode.set(claim.node, [claim])
+    })
+
+    const signatures = new Map<string, PrimitiveClaim[]>()
+    byNode.forEach((nodeClaims) => {
+      const key = nodeClaims
+        .map((claim) => `${claim.primitive}:${claim.zone}`)
+        .sort()
+        .join('|')
+      const at = signatures.get(key)
+      if (at) at.push(...nodeClaims)
+      else signatures.set(key, [...nodeClaims])
+    })
+    if (signatures.size < 2) return
+
+    let first = true
+    signatures.forEach((group) => {
+      // The first reading keeps the original mesh; the others are copied off it.
+      if (first) {
+        first = false
+        return
+      }
+      meshes.push(cloneJson(meshes[meshIndex]))
+      const cloneIndex = meshes.length - 1
+      group.forEach((claim) => {
+        if (nodes[claim.node]) nodes[claim.node].mesh = cloneIndex
+        claim.mesh = cloneIndex
+      })
+    })
+  })
+
+  const zones = new Map<number, PresentationZone>()
+  const byMaterial = new Map<number, PrimitiveClaim[]>()
+  claims.forEach((claim) => {
+    const list = byMaterial.get(claim.material)
+    if (list) list.push(claim)
+    else byMaterial.set(claim.material, [claim])
+  })
+
+  byMaterial.forEach((list, materialIndex) => {
+    if (!materials[materialIndex]) return
+    const worn = [...new Set(list.map((claim) => claim.zone))]
+    // First claim keeps the original index, so a file that needs no split comes
+    // out of here identical to what the old collapse produced.
+    zones.set(materialIndex, worn[0])
+
+    worn.slice(1).forEach((zone) => {
+      materials.push(cloneJson(materials[materialIndex]))
+      const cloneIndex = materials.length - 1
+      zones.set(cloneIndex, zone)
+      list.forEach((claim) => {
+        if (claim.zone !== zone) return
+        const primitive = meshes[claim.mesh]?.primitives?.[claim.primitive]
+        if (primitive) primitive.material = cloneIndex
+      })
+    })
+  })
+
+  return zones
 }
 
 /** Which material indices carry a name matching any of these substrings.
@@ -368,10 +501,20 @@ function injectTexture(
 export function patchGlbMaterials(
   bytes: ArrayBuffer,
   edits: Map<number, MaterialEdit>,
-  injections?: TextureInjection[]
+  injections?: TextureInjection[],
+  /**
+   * The document to emit, when the caller already has one.
+   *
+   * `splitZonesByMaterial` appends materials and rewrites `primitive.material`
+   * on the JSON it was handed, and `edits` and `injections` are keyed on the
+   * indices that produced. Re-parsing the bytes here would throw all of that
+   * away and write those indices into the original material list. Omitted, this
+   * reads the document out of `bytes` as it always did.
+   */
+  doc?: any
 ): ArrayBuffer {
   const chunks = readChunks(bytes)
-  const json = JSON.parse(new TextDecoder().decode(chunks[0].data))
+  const json = doc ?? JSON.parse(new TextDecoder().decode(chunks[0].data))
   const materials: any[] = json.materials ?? []
 
   let clearcoatAdded = false
@@ -476,44 +619,32 @@ export function patchGlbMaterials(
 }
 
 /**
- * Which glTF material index wears which zone's paint.
+ * A zone map, as the material factors the patch writes.
  *
  * This is `collectZoneTargets` + `applyFirstCoat` (lib/three/layerMaterials.ts,
  * hooks/useZonePaint.ts) restated against the raw JSON. It has to agree with
  * them exactly or AR shows a colour the page never displayed.
  *
- * The mesh-name `match` rule those two support is deliberately not implemented:
- * the plain viewer never passes one, and guessing at it here would be a second,
- * silently diverging copy of a rule that only the layered page uses. The `parts`
- * rule *is* implemented, because the plain viewer very much does pass it — that
- * is what tells a couch from the shawl lying on it. @see zonesByMaterial
- *
- * `extras` is where the override lives, because that is what `GLTFLoader` copies
- * into `userData`, which is what `zoneOverride` reads.
+ * Takes the map rather than the document because the zones come from
+ * `splitZonesByMaterial`, which appends materials as it resolves them: walking
+ * the document a second time here would meet the clones and claim them afresh.
  */
-export function zoneEditsFromJson(
-  json: any,
-  zone: PresentationZone,
-  paint: ZonePaintConfig,
-  parts?: PresentationPart[] | null
+export function editsFromZones(
+  zones: Map<number, PresentationZone>,
+  paint: ZonePaintConfig
 ): Map<number, MaterialEdit> {
-  const editFor = (z: PresentationZone): MaterialEdit | null => {
-    const p = paint[z]
-    if (!p) return null
-    return {
+  const edits = new Map<number, MaterialEdit>()
+  zones.forEach((zone, materialIndex) => {
+    const p = paint[zone]
+    // A zone with no paint in this configuration leaves its materials as
+    // authored, rather than falling back to another zone's colour.
+    if (!p) return
+    edits.set(materialIndex, {
       color: hexToLinearRgb(p.color),
       metalness: p.metalness,
       roughness: p.roughness,
       clearcoat: p.clearcoat,
-    }
-  }
-
-  const edits = new Map<number, MaterialEdit>()
-  zonesByMaterial(json, zone, parts).forEach((materialZone, materialIndex) => {
-    const edit = editFor(materialZone)
-    // A zone with no paint in this configuration leaves its materials as
-    // authored, rather than falling back to another zone's colour.
-    if (edit) edits.set(materialIndex, edit)
+    })
   })
   return edits
 }

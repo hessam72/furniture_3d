@@ -198,6 +198,17 @@ export function arUsdzUrl(
   return arModelUrl(key, layer, zone, paint, swatches).replace('/model.glb?', '/model.usdz?')
 }
 
+/**
+ * Bumped when a fix changes the bytes a given configuration produces.
+ *
+ * The responses are `immutable` for a year, so without this a phone that has
+ * already opened AR keeps the file it cached and never sees the fix — which is
+ * exactly what would have happened with the per-zone material split: same
+ * query, different (correct) bytes. The route ignores the parameter; all it has
+ * to do is be part of the cache key.
+ */
+const AR_MODEL_REVISION = '2'
+
 export function arModelUrl(
   key: string,
   layer: string,
@@ -205,7 +216,7 @@ export function arModelUrl(
   paint: ZonePaintConfig,
   swatches?: SwatchSelection | null
 ): string {
-  const query = new URLSearchParams({ layer, zone, paint: encodePaint(paint) })
+  const query = new URLSearchParams({ layer, zone, paint: encodePaint(paint), v: AR_MODEL_REVISION })
   const tex = swatches ? encodeSwatches(swatches) : ''
   if (tex) query.set('tex', tex)
   return `/api/ar/${encodeURIComponent(key)}/model.glb?${query.toString()}`
