@@ -61,13 +61,34 @@ import { isDebug } from '@/components/three/rendererStatsStore'
 import { useCanvasLifecycle } from '@/hooks/useCanvasLifecycle'
 import { useGltfCacheEviction } from '@/hooks/useGltfCacheEviction'
 import type { ContextRecovery } from '@/hooks/useContextRecovery'
-import { SHADOW_BUDGET } from '@/lib/config/deviceTier'
+import { SHADOW_BUDGET, type DeviceClass } from '@/lib/config/deviceTier'
 import { PartErrorBoundary } from '@/components/three/PartErrorBoundary'
+import { disposeObject3D } from '@/lib/three/disposeObject3D'
+import { useVramWatchdog } from '@/hooks/useVramWatchdog'
+import { useStoreAR } from './hooks/useStoreAR'
+import { usePresentation } from '@/stores/presentationStore'
 
 // Demand frameloop with idle physics pause — the /car performance model
 // adapted for a walkable scene. Kill-switch: set to false to restore
 // frameloop="always" + variable timestep (all other quality wiring stays).
 const IDLE_DEMAND = true
+
+/** Live, pre-draw VRAM demotion — /store's own copy of the guard every other
+ *  canvas in the app already runs (@see hooks/useVramWatchdog), catching the
+ *  second allocation PerfLadder cannot: a gallery retry nobody has measured.
+ *  Has to live inside the Canvas (useThree/useFrame), unlike Scene itself. */
+function StoreVramWatchdog({
+  modelKey,
+  device,
+  demote,
+}: {
+  modelKey: string
+  device: DeviceClass
+  demote: () => void
+}) {
+  useVramWatchdog({ modelPath: modelKey, device, demote })
+  return null
+}
 
 function ErrorScreen({ message }: { message: string }) {
   return (
@@ -246,8 +267,7 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
   const [totalCount, setTotalCount] = useState(0)
   const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null)
   const [selectedObjectPosition, setSelectedObjectPosition] = useState<[number, number, number] | null>(null)
-  const [showAR, setShowAR] = useState(false)
-  const [arProduct, setArProduct] = useState<ProductData | null>(null)
+  const { showAR, arBuilding, arProduct, arGlbUrl, arUsdzUrl: arUsdzSrc, openAR, closeAR } = useStoreAR()
 
   // Listeners, transcoder priming and — the part R3F skips — a real
   // `gl.dispose()` on unmount. @see useCanvasLifecycle
@@ -269,6 +289,14 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
   const [gyroEnabled, setGyroEnabled] = useState(false)
   const [galleryError, setGalleryError] = useState<string | null>(null)
   const [modelsKey, setModelsKey] = useState(0)
+  /** The cache's own loaded scene per url, reported by ModelLoader — walked
+   *  and disposed in retryGallery right before it evicts that url from the
+   *  loader cache, so a repeatedly-failing gallery doesn't orphan GPU
+   *  resources on every retry. @see lib/three/disposeObject3D */
+  const loadedScenesRef = useRef<Map<string, THREE.Object3D>>(new Map())
+  const handleSceneLoaded = useCallback((url: string, scene: THREE.Object3D) => {
+    loadedScenesRef.current.set(url, scene)
+  }, [])
 
   // Browsing layer: catalogue tree, sidebar, and the camera flight
   const [catalog, setCatalog] = useState<Catalog | null>(null)
@@ -282,7 +310,7 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
    *  pendingFocus, and what /product/[id] is keyed on. */
   const [focusedKey, setFocusedKey] = useState<string | null>(null)
 
-  const { selectFurniture, initializeColor, currentColor, originalColor } = useFurnitureConfig()
+  const { selectFurniture } = useFurnitureConfig()
   const addToCart = useShop((s) => s.addToCart)
 
   // Sustained-FPS ladder scale (same mechanism as /car)
@@ -331,6 +359,15 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
   }, [])
 
   const retryGallery = useCallback(() => {
+    // Free whatever loaded successfully before its siblings failed — the
+    // cache is about to be cleared for every file below, which is what turns
+    // a successfully-loaded sibling's geometries/materials/textures from
+    // "cached, reused next mount" into genuinely orphaned GPU resources.
+    config?.files.forEach((f) => {
+      const scene = loadedScenesRef.current.get(f.url)
+      if (scene) disposeObject3D(scene)
+    })
+    loadedScenesRef.current.clear()
     // Purge the cached rejections, then remount the loader block
     config?.files.forEach((f) => useLoader.clear(GLTFLoader, f.url))
     setLoadedCount(0)
@@ -409,14 +446,13 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
       if (!resolved) return
 
       selectFurniture(pending.id || pending.sceneObject, pending.object ?? null)
-      initializeColor()
       setSelectedProduct(resolved)
       setFocusedName(pending.item?.name ?? resolved.name)
       setFocusedKey(pending.sceneObject)
       // Likes are per catalogue entry; a direct tap has no catalogue identity
       setFocusedId(pending.item?.id ?? null)
     },
-    [products, selectFurniture, initializeColor]
+    [products, selectFurniture]
   )
 
   /** Flight landed */
@@ -557,7 +593,12 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
               here instead of blanking the page. */}
           <Suspense fallback={null} key={modelsKey}>
             <PartErrorBoundary category="gallery" onError={handleGalleryError}>
-              <ModelLoader files={config.files} onModelsLoaded={handleModelsLoaded} onProgress={setLoadedCount} />
+              <ModelLoader
+                files={config.files}
+                onModelsLoaded={handleModelsLoaded}
+                onProgress={setLoadedCount}
+                onSceneLoaded={handleSceneLoaded}
+              />
             </PartErrorBoundary>
           </Suspense>
 
@@ -629,7 +670,7 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
 
 
           {/* Furniture color applier - applies colors to scene furniture */}
-          {loadingPhase === 'ready' && <FurnitureColorApplier />}
+          {loadingPhase === 'ready' && <FurnitureColorApplier productKey={focusedKey} />}
 
           {/* Reflective Floor — resolution/off-switch follow the quality tier
               (the reflection pass re-renders the scene every drawn frame) */}
@@ -648,6 +689,7 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
           */}
           {/* Post-Processing (tier-driven; SSGI lazy on ultra opt-in) */}
           <PostProcessing />
+          <StoreVramWatchdog modelKey={`gallery:${modelsKey}`} device={device} demote={recovery.demote} />
           {isDebug() && <RendererStatsProbe label="store" />}
         </Physics>
       </Canvas>
@@ -665,9 +707,12 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
             product={selectedProduct}
             productKey={focusedKey}
             onClose={closeProduct}
+            arBuilding={arBuilding}
             onViewAR={() => {
-              setArProduct(selectedProduct)
-              setShowAR(true)
+              // The exact paint FurnitureColorApplier has the piece wearing
+              // right now — same source /simple's own openAR() reads from.
+              const { paint } = usePresentation.getState()
+              void openAR(selectedProduct, focusedKey, paint)
               setSelectedProduct(null)
             }}
             onAddToCart={() => addToCart(focusedId ?? selectedProduct.id)}
@@ -676,15 +721,12 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
       </AnimatePresence>
 
       {/* AR Product Viewer - outside Canvas */}
-      {showAR && arProduct?.glbPath && (
+      {showAR && arGlbUrl && (
         <ARProductViewer
-          glbPath={arProduct.glbPath}
-          usdzPath={arProduct.usdzPath || ''}
-          productName={arProduct.name}
-          onClose={() => {
-            setShowAR(false)
-            setArProduct(null)
-          }}
+          glbPath={arGlbUrl}
+          usdzPath={arUsdzSrc}
+          productName={arProduct?.name ?? ''}
+          onClose={closeAR}
         />
       )}
 

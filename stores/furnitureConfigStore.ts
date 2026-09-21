@@ -1,41 +1,25 @@
 /**
  * Zustand Store: Store Furniture Selection
  *
- * Purpose: Tracks selected furniture in 3D walkable store + color transitions
- * Why Zustand: Selection state shared between raycaster (click handler) and UI panel
- * Pattern: Object ref + color interpolation state
- * Used By: /store page - furniture selection and color picker
+ * Purpose: Tracks which furniture is selected in the 3D walkable store —
+ * shared between the raycaster (click handler) and the UI panel.
+ *
+ * Colour/fabric paint state used to live here too (a flat hex). It now lives
+ * in `usePresentation` (stores/presentationStore.ts) instead — the same
+ * store /simple and /product use — because the real zone-paint and
+ * swatch-texture engine (`useZonePaint`, `useSwatchTextures`) reads that
+ * store directly and isn't written to take an injected source.
+ * @see components/store/FurnitureColorApplier.tsx
  */
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import * as THREE from 'three'
 
-export interface FurnitureColor {
-  name: string
-  hex: string
-}
-
-export interface FurnitureItem {
-  id: string
-  name: string
-  colors: FurnitureColor[]
-  glbPath: string
-  usdzPath: string
-}
-
 export interface FurnitureConfigState {
   selectedFurnitureId: string | null
   selectedObject: THREE.Object3D | null
-  currentColor: string | null
-  originalColor: string | null
-  colorTransitioning: boolean
-  colorInitialized: boolean
 
-  selectFurniture: (furnitureId: string, object: THREE.Object3D | null, defaultColor?: string) => void
-  setColor: (colorHex: string) => void
-  setOriginalColor: (colorHex: string) => void
-  initializeColor: () => void
-  setColorTransitioning: (transitioning: boolean) => void
+  selectFurniture: (furnitureId: string, object: THREE.Object3D | null) => void
   resetConfig: () => void
 }
 
@@ -44,56 +28,12 @@ export const useFurnitureConfig = create<FurnitureConfigState>()(
     (set) => ({
       selectedFurnitureId: null,
       selectedObject: null,
-      currentColor: null,
-      originalColor: null,
-      colorTransitioning: false,
-      colorInitialized: false,
 
-      selectFurniture: (furnitureId, object, defaultColor) => {
-        console.log('[FurnitureConfigStore] selectFurniture called:', {
-          furnitureId,
-          objectName: object?.name,
-          defaultColor,
-        })
-        set({
-          selectedFurnitureId: furnitureId,
-          selectedObject: object,
-          currentColor: defaultColor || null,
-          originalColor: null, // Will be set by FurnitureColorApplier
-          colorInitialized: false,
-        })
+      selectFurniture: (furnitureId, object) => {
+        set({ selectedFurnitureId: furnitureId, selectedObject: object })
       },
 
-      setColor: (colorHex) => {
-        console.log('[FurnitureConfigStore] setColor called:', colorHex)
-        set({
-          currentColor: colorHex,
-          colorTransitioning: true,
-        })
-      },
-
-      setOriginalColor: (colorHex) => {
-        console.log('[FurnitureConfigStore] setOriginalColor called:', colorHex)
-        set({ originalColor: colorHex })
-      },
-
-      initializeColor: () => {
-        console.log('[FurnitureConfigStore] initializeColor called')
-        set({ colorInitialized: true })
-      },
-
-      setColorTransitioning: (transitioning) =>
-        set({ colorTransitioning: transitioning }),
-
-      resetConfig: () =>
-        set({
-          selectedFurnitureId: null,
-          selectedObject: null,
-          currentColor: null,
-          originalColor: null,
-          colorTransitioning: false,
-          colorInitialized: false,
-        }),
+      resetConfig: () => set({ selectedFurnitureId: null, selectedObject: null }),
     }),
     { name: 'FurnitureConfigStore' }
   )

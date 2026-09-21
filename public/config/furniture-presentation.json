@@ -741,5 +741,150 @@
         }
       }
     ]
+  },
+  "dining-chair": {
+    "room": {},
+    "layers": {
+      "frame": {
+        "path": "/models/Furniture/Sofa ar-optimized.glb",
+        "label": "چوب و چرم",
+        "en": {
+          "label": "Oak and Leather"
+        }
+      },
+      "cover": {
+        "label": "رنگ",
+        "default": "default",
+        "variants": [
+          {
+            "id": "default",
+            "name": "استاندارد",
+            "path": "/models/Furniture/Sofa ar-optimized.glb",
+            "material": {
+              "roughness": 0.55,
+              "metalness": 0,
+              "clearcoat": 0.05
+            },
+            "en": {
+              "name": "Standard"
+            }
+          }
+        ]
+      }
+    },
+    "palettes": {
+      "cover": [
+        {
+          "id": "natural-oak",
+          "name": "بلوط طبیعی",
+          "hex": "#C19A6B",
+          "roughness": 0.55,
+          "maps": {
+            "map": "/textures/covers/leather-cognac.v1.ktx2"
+          },
+          "en": {
+            "name": "Natural Oak"
+          }
+        },
+        {
+          "id": "dark-walnut",
+          "name": "گردوی تیره",
+          "hex": "#5C4033",
+          "roughness": 0.55,
+          "en": {
+            "name": "Dark Walnut"
+          }
+        },
+        {
+          "id": "red",
+          "name": "قرمز",
+          "hex": "#781e00",
+          "roughness": 0.55,
+          "en": {
+            "name": "Red"
+          }
+        }
+      ]
+    },
+    "camera": {
+      "azimuthDeg": 0,
+      "elevationDeg": 8,
+      "fov": 50,
+      "padding": 1.6,
+      "minZoom": 0.2,
+      "maxZoom": 2,
+      "aimHeight": 0.5
+    }
+  },
+  "coffee-table": {
+    "room": {},
+    "layers": {
+      "frame": {
+        "path": "/models/Furniture/3DModel-optimized.glb",
+        "label": "شیشه و فلز",
+        "en": {
+          "label": "Glass and Metal"
+        }
+      },
+      "cover": {
+        "label": "پوشش",
+        "default": "default",
+        "variants": [
+          {
+            "id": "default",
+            "name": "استاندارد",
+            "path": "/models/Furniture/3DModel-optimized.glb",
+            "material": {
+              "roughness": 0.15,
+              "metalness": 0.3,
+              "clearcoat": 0.4
+            },
+            "en": {
+              "name": "Standard"
+            }
+          }
+        ]
+      }
+    },
+    "palettes": {
+      "cover": [
+        {
+          "id": "clear-glass",
+          "name": "شیشه شفاف",
+          "hex": "#E8F4F8",
+          "roughness": 0.05,
+          "en": {
+            "name": "Clear Glass"
+          }
+        },
+        {
+          "id": "smoke",
+          "name": "دودی",
+          "hex": "#595959",
+          "roughness": 0.15,
+          "en": {
+            "name": "Smoke"
+          }
+        },
+        {
+          "id": "bronze",
+          "name": "برنز",
+          "hex": "#CD7F32",
+          "roughness": 0.35,
+          "en": {
+            "name": "Bronze"
+          }
+        }
+      ]
+    },
+    "camera": {
+      "azimuthDeg": 0,
+      "elevationDeg": 12,
+      "fov": 45,
+      "padding": 1.7,
+      "minZoom": 0.2,
+      "maxZoom": 2,
+      "aimHeight": 0.3
+    }
   }
 }

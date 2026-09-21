@@ -18,9 +18,15 @@ type ModelLoaderProps = {
   files: ModelFile[]
   onModelsLoaded?: () => void
   onProgress?: (loaded: number) => void
+  /** Reports each file's loaded (uncloned) GLTF scene, keyed by url — so a
+   *  caller about to evict that url from the loader cache (@see retryGallery
+   *  in Scene.tsx) can free its GPU resources first. Not a general unmount
+   *  hook; disposing while the cache still owns the scene races whatever else
+   *  expects to reuse it. @see lib/three/disposeObject3D */
+  onSceneLoaded?: (url: string, scene: THREE.Object3D) => void
 }
 
-export function ModelLoader({ files, onModelsLoaded, onProgress }: ModelLoaderProps) {
+export function ModelLoader({ files, onModelsLoaded, onProgress, onSceneLoaded }: ModelLoaderProps) {
   const [loadedCount, setLoadedCount] = useState(0)
 
   // Sort by priority (0 = wireframe first)
@@ -50,6 +56,7 @@ export function ModelLoader({ files, onModelsLoaded, onProgress }: ModelLoaderPr
           url={file.url}
           isWireframe={file.priority === 0}
           onLoaded={handleModelLoaded}
+          onSceneLoaded={onSceneLoaded}
         />
       ))}
     </>
@@ -62,9 +69,10 @@ type ModelProps = {
   url: string
   isWireframe: boolean
   onLoaded?: () => void
+  onSceneLoaded?: (url: string, scene: THREE.Object3D) => void
 }
 
-function Model({ url, isWireframe, onLoaded }: ModelProps) {
+function Model({ url, isWireframe, onLoaded, onSceneLoaded }: ModelProps) {
   // Texture sharpening follows the shared quality tier (4/4/8/16)
   const { settings } = useQuality()
 
@@ -76,7 +84,10 @@ function Model({ url, isWireframe, onLoaded }: ModelProps) {
     if (gltf && onLoaded) {
       onLoaded()
     }
-  }, [gltf, onLoaded])
+    // Reports the cache's own scene (not the clone below) — retryGallery
+    // disposes this exact object right before it evicts `url`.
+    if (gltf) onSceneLoaded?.(url, gltf.scene)
+  }, [gltf, onLoaded, onSceneLoaded, url])
 
   const clonedScene = useMemo(() => {
     const clone = gltf.scene.clone(true)

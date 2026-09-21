@@ -1,7 +1,10 @@
 'use client'
 import dynamic from 'next/dynamic'
+import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { QualityProvider } from '@/contexts/QualityContext'
 import { useContextRecovery } from '@/hooks/useContextRecovery'
+import { webglUnavailable } from '@/lib/three/gpuClass'
 
 const StoreScene = dynamic(() => import('@/components/store/Scene'), {
   ssr: false,
@@ -15,6 +18,24 @@ export default function StorePageClient() {
    * in the app. @see useContextRecovery
    */
   const recovery = useContextRecovery({ surface: 'walkthrough' })
+  const tc = useTranslations('common')
+
+  /**
+   * No WebGL2 on this device at all — mirrors SimpleViewerClient's own check.
+   * Read in an effect, not the initialiser: this is page chrome that does
+   * server-render, and a value that differs between the server's HTML and the
+   * client's first render is a hydration mismatch. @see readGpuClass
+   */
+  const [noWebgl, setNoWebgl] = useState(false)
+  useEffect(() => setNoWebgl(webglUnavailable()), [])
+
+  if (noWebgl) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#060608] p-6 text-center">
+        <p className="max-w-sm text-sm text-white/55">{tc('webglUnavailable')}</p>
+      </div>
+    )
+  }
 
   return (
     // The visitor's remembered choice drives this page — a walkable scene's

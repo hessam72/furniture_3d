@@ -1,263 +1,128 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { useThree, useFrame } from '@react-three/fiber'
+import { useEffect, useRef, useState } from 'react'
+import { useThree } from '@react-three/fiber'
+import * as THREE from 'three'
+import { usePresentation } from '@/stores/presentationStore'
 import { useFurnitureConfig } from '@/stores/furnitureConfigStore'
 import { findSceneObject, describeSceneNames } from '@/lib/store/sceneObject'
-import * as THREE from 'three'
+import { collectZoneTargets, disposeTargets, type ZoneTarget } from '@/lib/three/layerMaterials'
+import { applyFirstCoat, useZonePaint } from '@/hooks/useZonePaint'
+import { applyFirstSwatch, useSwatchTextures } from '@/hooks/useSwatchTextures'
+import { unconfiguredPaint, hasPresentation } from '@/lib/product/presentation'
+import { useQuality } from '@/contexts/QualityContext'
+import { isDebug } from '@/components/three/rendererStatsStore'
 
-interface PaintTarget {
-  /** Kept so the clone can be handed back and freed. @see releasePaintTargets */
-  mesh: THREE.Mesh
-  material: THREE.MeshPhysicalMaterial | THREE.MeshStandardMaterial
-  initialColor: THREE.Color
-  meshName: string
+interface FurnitureColorApplierProps {
+  /** products.json / manifest key for the selected piece — @see focusedKey in
+   *  Scene.tsx. Distinct from selectedFurnitureId, which names the mesh in
+   *  the scene graph rather than the product in the manifest. */
+  productKey: string | null
 }
 
 /**
- * Put a piece back the way it was found, and dispose what we made.
+ * Put a mesh back exactly as collectZoneTargets found it.
  *
- * The clone below is mandatory — the room GLB is drei-cached, so painting a
- * material in place would leak the colour into every other user of that asset —
- * but nothing was ever undoing it. Every furniture selection cloned a fresh
- * material set and dropped the last one on the floor, and a material holds a
- * compiled program and a slot in the renderer's property maps until something
- * calls `dispose()`. Selecting six sofas leaked six sets.
- *
- * The restore is what makes disposing safe: `userData.originalMaterial` is the
- * cached asset's own material, so putting it back means the mesh is not left
- * pointing at something we just freed.
- *
- * The paired pattern this is modelled on is `collectZoneTargets` +
- * `disposeTargets` in lib/three/layerMaterials, which /product has used all
- * along. Same problem, same shape, two files.
+ * collectZoneTargets never does this itself — it's written for a page that
+ * clones a fresh GLB per mount, so there's nothing to restore. /store's room
+ * is one persistent, shared scene a shopper repeatedly selects pieces in and
+ * out of: without this, a reselect would clone *last* selection's already-
+ * cloned material instead of the authored one, compounding rather than
+ * repainting, and every selection after the first would leak the one before.
  */
-function releasePaintTargets(targets: PaintTarget[]) {
-  targets.forEach(({ mesh, material }) => {
-    const original = mesh.userData.originalMaterial as THREE.Material | undefined
+function restoreMeshes(meshes: THREE.Mesh[]) {
+  meshes.forEach((mesh) => {
+    const original = mesh.userData.originalMaterial as THREE.Material | THREE.Material[] | undefined
     if (original) {
       mesh.material = original
       delete mesh.userData.originalMaterial
     }
-    material.dispose()
   })
 }
 
-export function FurnitureColorApplier() {
+/**
+ * Real zone-painting and fabric-texture swapping for /store, reusing the same
+ * engine `/simple` and `/product` run — `collectZoneTargets`, `useZonePaint`,
+ * `useSwatchTextures` — rather than the old solid-tint-only implementation.
+ * /store only ever dresses the `cover` zone (no wood/cushion/shawl split).
+ *
+ * Paint state is the shared `usePresentation` store, not a shape of our own —
+ * `useZonePaint`/`useSwatchTextures` read it directly and are not written to
+ * take an injected source, so reusing them here at all means reusing that
+ * store too. Its other fields (`coverId`, `layerStep`, wipe timing) are
+ * /product's layered-presentation state; unused here, and harmless.
+ */
+export function FurnitureColorApplier({ productKey }: FurnitureColorApplierProps) {
   const { scene, invalidate } = useThree()
   const selectedFurnitureId = useFurnitureConfig((s) => s.selectedFurnitureId)
-  const currentColor = useFurnitureConfig((s) => s.currentColor)
-  const colorInitialized = useFurnitureConfig((s) => s.colorInitialized)
-  const setColorTransitioning = useFurnitureConfig((s) => s.setColorTransitioning)
-  const setOriginalColor = useFurnitureConfig((s) => s.setOriginalColor)
-  const setColor = useFurnitureConfig((s) => s.setColor)
+  const { preset, settings } = useQuality()
+  const initProduct = usePresentation((s) => s.initProduct)
+  const resetPaint = usePresentation((s) => s.reset)
 
-  const paintTargetsRef = useRef<PaintTarget[]>([])
-  const firstPaintRef = useRef(true)
-  const paintAnimatingRef = useRef(false)
-  const paintScratchRef = useRef(new THREE.Color())
+  const [targets, setTargets] = useState<ZoneTarget[]>([])
+  const meshesRef = useRef<THREE.Mesh[]>([])
 
-  // Collect paintable materials when furniture is selected
   useEffect(() => {
     if (!selectedFurnitureId) {
-      releasePaintTargets(paintTargetsRef.current)
-      paintTargetsRef.current = []
-      console.log('[FurnitureColorApplier] No furniture ID selected')
+      setTargets([])
       return
     }
-
-    // Shared tolerant resolver: the room is authored on names that don't always
-    // equal the products.json key, and an exact match here used to fail
-    // silently — leaving the furniture unpainted with no way to tell why
-    console.log(`[FurnitureColorApplier] Searching for object with name: "${selectedFurnitureId}"`)
 
     const furnitureObject = findSceneObject(scene, [selectedFurnitureId])
-
     if (!furnitureObject) {
-      console.warn(
-        `[FurnitureColorApplier] Furniture object "${selectedFurnitureId}" not found in scene. Scene names:`,
-        describeSceneNames(scene)
-      )
-      releasePaintTargets(paintTargetsRef.current)
-      paintTargetsRef.current = []
+      if (isDebug()) {
+        console.warn(
+          `[FurnitureColorApplier] "${selectedFurnitureId}" not found in scene. Scene names:`,
+          describeSceneNames(scene)
+        )
+      }
+      setTargets([])
       return
     }
 
-    console.log(
-      `[FurnitureColorApplier] Found object: "${furnitureObject.name}" (type: ${furnitureObject.type})`
-    )
-
-    const targets: PaintTarget[] = []
-    let meshCount = 0
-    let colorableCount = 0
-    let totalChildren = 0
-
-    console.log('[FurnitureColorApplier] Processing furniture:', selectedFurnitureId, 'Found object:', furnitureObject.name)
-    console.log('[FurnitureColorApplier] Object hierarchy:')
-
-    // Log hierarchy first to understand structure
-    const logHierarchy = (obj: THREE.Object3D, depth = 0) => {
-      const indent = '  '.repeat(depth)
-      const isMesh = obj instanceof THREE.Mesh
-      console.log(`${indent}- ${obj.name} (${obj.type})${isMesh ? ' [MESH]' : ''}`)
-      obj.children.forEach(child => logHierarchy(child, depth + 1))
-    }
-    logHierarchy(furnitureObject)
-
-    // Traverse ONLY this furniture object and find colorable meshes
-    furnitureObject.traverse((child: THREE.Object3D) => {
-      totalChildren++
-      if (child instanceof THREE.Mesh) {
-        meshCount++
-        const childName = child.name.toLowerCase()
-
-        // ONLY check mesh name for colorable keywords
-        const isColorable =
-          childName.includes('fabric') ||
-          childName.includes('cushion') ||
-          childName.includes('upholstery') ||
-          childName.includes('seat')
-
-        // Find parent chain for debugging
-        let parentChain = child.name
-        let parent = child.parent
-        while (parent && parent !== furnitureObject) {
-          parentChain = `${parent.name} > ${parentChain}`
-          parent = parent.parent
-        }
-
-        console.log(`  Mesh: ${child.name}, Path: ${parentChain}, colorable: ${isColorable}`)
-
-        if (isColorable) {
-          colorableCount++
-          // Clone material to avoid affecting other instances
-          if (!child.userData.originalMaterial) {
-            child.userData.originalMaterial = child.material
-            child.material = (child.material as THREE.Material).clone()
-          }
-
-          const material = child.material as THREE.MeshPhysicalMaterial | THREE.MeshStandardMaterial
-          targets.push({
-            mesh: child,
-            material,
-            initialColor: material.color.clone(),
-            meshName: child.name,
-          })
-          console.log(`    -> Added to color targets (depth: ${parentChain.split('>').length})`)
-        }
-      }
-    })
-
-    console.log(
-      `[FurnitureColorApplier] Found ${meshCount} meshes, ${colorableCount} colorable, ${targets.length} targets`
-    )
-
-    // Fallback: if no specific children found, color entire furniture
-    if (targets.length === 0 && meshCount > 0) {
-      console.log('[FurnitureColorApplier] No specific colorable children found, applying to all meshes (fallback)')
-      furnitureObject.traverse((child: THREE.Object3D) => {
-        if (child instanceof THREE.Mesh && child.material) {
-          if (!child.userData.originalMaterial) {
-            child.userData.originalMaterial = child.material
-            child.material = (child.material as THREE.Material).clone()
-          }
-          const material = child.material as THREE.MeshPhysicalMaterial | THREE.MeshStandardMaterial
-          targets.push({
-            mesh: child,
-            material,
-            initialColor: material.color.clone(),
-            meshName: child.name,
-          })
-          console.log(`    -> Added ${child.name} to fallback targets`)
-        }
-      })
-      console.log(`[FurnitureColorApplier] Fallback added ${targets.length} targets`)
-    }
-
-    // Store original color from first target and set it as current color
-    if (targets.length > 0) {
-      const originalColorHex = `#${targets[0].initialColor.getHexString()}`
-      console.log('[FurnitureColorApplier] Original color:', originalColorHex)
-      setOriginalColor(originalColorHex)
-      // Set original color as the current/active color on initial load
-      setColor(originalColorHex)
-    }
-
-    releasePaintTargets(paintTargetsRef.current)
-    paintTargetsRef.current = targets
-    firstPaintRef.current = true
-  }, [selectedFurnitureId, scene, setOriginalColor, setColor])
-
-  // The last selection's set, on the way out.
-  useEffect(() => {
-    const targets = paintTargetsRef
-    return () => releasePaintTargets(targets.current)
-  }, [])
-
-  // Apply color change
-  useEffect(() => {
-    if (!colorInitialized || !currentColor || paintTargetsRef.current.length === 0) {
-      console.log(
-        '[FurnitureColorApplier] Color change skipped:',
-        'initialized:',
-        colorInitialized,
-        'color:',
-        currentColor,
-        'targets:',
-        paintTargetsRef.current.length
-      )
+    // No manifest entry for this product → nothing to configure. Leave every
+    // mesh on its authored material rather than cloning for no reason.
+    if (!productKey || !hasPresentation(productKey)) {
+      setTargets([])
       return
     }
 
-    console.log(`[FurnitureColorApplier] Applying color ${currentColor} to ${paintTargetsRef.current.length} targets`)
-
-    paintTargetsRef.current.forEach(({ material, meshName }) => {
-      if (firstPaintRef.current) {
-        // Instant first coat
-        material.color.set(currentColor)
-        console.log(`  -> Set ${meshName} to ${currentColor}`)
+    // Back up every mesh's authored material before collectZoneTargets clones
+    // over it — restored by this effect's own cleanup, below.
+    const meshes: THREE.Mesh[] = []
+    furnitureObject.traverse((child) => {
+      const mesh = child as THREE.Mesh
+      if (mesh.isMesh && mesh.material && !mesh.userData.originalMaterial) {
+        mesh.userData.originalMaterial = mesh.material
+        meshes.push(mesh)
       }
     })
+    meshesRef.current = meshes
 
-    if (firstPaintRef.current) {
-      firstPaintRef.current = false
-    } else {
-      paintAnimatingRef.current = true
-      setColorTransitioning(true)
-    }
+    const collected = collectZoneTargets(furnitureObject, { zone: 'cover', physical: preset !== 'low' })
+
+    // unconfiguredPaint, not defaultPaint: the piece shows exactly what its
+    // GLB was exported with until the shopper picks a swatch — same as
+    // /simple. @see ZonePaint.authored
+    initProduct(productKey, unconfiguredPaint(), '', 1)
+    const paint = usePresentation.getState().paint
+    applyFirstCoat(collected, paint)
+    applyFirstSwatch(collected, paint, settings.anisotropyLevel)
     invalidate()
-  }, [currentColor, colorInitialized, invalidate, setColorTransitioning])
 
-  // Smooth color transition
-  useFrame((_, delta) => {
-    if (!paintAnimatingRef.current || !currentColor || paintTargetsRef.current.length === 0) return
+    setTargets(collected)
 
-    const d = 1 - Math.exp(-10 * delta) // ~400ms blend
-    const scratch = paintScratchRef.current
-    let moving = false
-
-    paintTargetsRef.current.forEach(({ material }) => {
-      scratch.set(currentColor)
-      material.color.lerp(scratch, d)
-
-      if (
-        Math.abs(material.color.r - scratch.r) > 0.004 ||
-        Math.abs(material.color.g - scratch.g) > 0.004 ||
-        Math.abs(material.color.b - scratch.b) > 0.004
-      ) {
-        moving = true
-      } else {
-        material.color.copy(scratch)
-      }
-    })
-
-    if (moving) {
+    return () => {
+      disposeTargets(collected)
+      restoreMeshes(meshesRef.current)
+      meshesRef.current = []
+      resetPaint()
       invalidate()
-    } else {
-      paintAnimatingRef.current = false
-      setColorTransitioning(false)
     }
-  })
+  }, [selectedFurnitureId, productKey, scene, preset, settings.anisotropyLevel, initProduct, resetPaint, invalidate])
+
+  useZonePaint(targets)
+  useSwatchTextures(targets)
 
   return null
 }

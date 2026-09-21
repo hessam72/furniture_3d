@@ -1,15 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { motion, PanInfo } from 'framer-motion'
 import { X, ChevronDown, ShoppingBag, Sparkles } from 'lucide-react'
-import { hasPresentation } from '@/lib/product/presentation'
-import { useFurnitureConfig } from '@/stores/furnitureConfigStore'
+import { hasPresentation, resolvePresentation, swatchPaint, type ZoneSwatch } from '@/lib/product/presentation'
+import { usePresentation } from '@/stores/presentationStore'
 import { formatPrice } from '@/lib/store/catalog'
 import type { ProductData } from './ProductInteraction'
 import { SpecDetails, SpecDimensions, SpecFabric } from './productSpecTabs'
+import type { Locale } from '@/i18n/routing'
 
 interface ProductDrawerProps {
   product: ProductData | null
@@ -18,6 +19,9 @@ interface ProductDrawerProps {
   productKey?: string | null
   onClose: () => void
   onViewAR?: () => void
+  /** True while the configured AR file is being resolved (HEAD preflight in
+   *  flight) — @see components/store/hooks/useStoreAR. */
+  arBuilding?: boolean
   onAddToCart?: () => void
 }
 
@@ -30,6 +34,7 @@ export default function ProductDrawer({
   productKey,
   onClose,
   onViewAR,
+  arBuilding,
   onAddToCart
 }: ProductDrawerProps) {
   const locale = useLocale()
@@ -43,7 +48,18 @@ export default function ProductDrawer({
   ]
   const [activeTab, setActiveTab] = useState<Tab>('details')
   const [expanded, setExpanded] = useState(false)
-  const { setColor, currentColor } = useFurnitureConfig()
+  const setPaint = usePresentation((s) => s.setPaint)
+  const activeSwatchId = usePresentation((s) => s.paint.cover?.swatchId)
+
+  // Real fabric/colour swatches from the piece's own manifest — the same
+  // palette /simple offers, applied by FurnitureColorApplier via
+  // usePresentation. No manifest entry for this product → nothing to pick:
+  // FurnitureColorApplier leaves it on its authored material either way, so
+  // there is no working handler left to wire a flat colour dot to.
+  const coverPalette: ZoneSwatch[] | null = useMemo(() => {
+    if (!hasPresentation(productKey)) return null
+    return resolvePresentation(productKey!, locale as Locale)?.config.palettes.cover ?? null
+  }, [productKey, locale])
 
   if (!product) return null
 
@@ -53,7 +69,7 @@ export default function ProductDrawer({
     if (info.offset.y > 90 || info.velocity.y > 600) onClose()
   }
 
-  const activeColorName = product.colors?.find((c) => c.hex === currentColor)?.name
+  const activeColorName = coverPalette?.find((s) => s.id === activeSwatchId)?.name
 
   // Pieces without their own manifest fall back to the reference presentation,
   // so the drawer always offers a way into the dedicated product page.
@@ -121,22 +137,27 @@ export default function ProductDrawer({
           </div>
         </div>
 
-        {/* Colors — one line, bare circles */}
-        {!!product.colors?.length && (
+        {/* Cover swatches — real fabric/normal-map swap for a textured
+            swatch, a plain tint otherwise; same chip either way. */}
+        {!!coverPalette?.length && (
           <div className="scrollbar-hide mt-3 flex items-center gap-3 overflow-x-auto py-1">
-            {product.colors.map((color) => {
-              const active = currentColor === color.hex
+            {coverPalette.map((swatch) => {
+              const active = activeSwatchId === swatch.id
               return (
                 <button
-                  key={color.hex}
-                  onClick={() => setColor(color.hex)}
-                  title={color.name}
-                  aria-label={color.name}
+                  key={swatch.id}
+                  onClick={() => setPaint(swatchPaint(swatch), 'cover')}
+                  title={swatch.name}
+                  aria-label={swatch.name}
                   aria-pressed={active}
-                  className="relative h-7 w-7 shrink-0 rounded-full ring-1 ring-inset ring-white/20
-                             transition-transform duration-300 ease-[var(--ease-cinematic)]
+                  className="relative h-7 w-7 shrink-0 rounded-full bg-cover bg-center ring-1 ring-inset
+                             ring-white/20 transition-transform duration-300 ease-[var(--ease-cinematic)]
                              hover:scale-110 active:scale-95"
-                  style={{ backgroundColor: color.hex }}
+                  style={
+                    swatch.thumbnail
+                      ? { backgroundImage: `url(${swatch.thumbnail})` }
+                      : { backgroundColor: swatch.hex }
+                  }
                 >
                   {active && (
                     <motion.span
@@ -207,9 +228,10 @@ export default function ProductDrawer({
             {onViewAR && (
               <button
                 onClick={onViewAR}
+                disabled={arBuilding}
                 className="mb-1 w-full rounded-xl border border-[var(--border-default)] py-2.5
                            text-[13px] text-[var(--gold-primary)] transition-colors
-                           hover:bg-[var(--gold-primary)]/10"
+                           hover:bg-[var(--gold-primary)]/10 disabled:opacity-60"
               >
                 {tc('viewInAR')}
               </button>

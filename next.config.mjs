@@ -28,7 +28,7 @@ const nextConfig = {
   transpilePackages: ['three', '@react-three/fiber', '@react-three/drei', '@react-three/postprocessing'],
   compiler: {
     // Strip console.* from production bundles (debug logging stays in dev)
-    // removeConsole: { exclude: ['error', 'warn'] },
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
   },
   async headers() {
     return [
