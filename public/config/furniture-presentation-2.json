@@ -1,0 +1,656 @@
+{
+  "nilper": {
+    "room": {
+      "mode": "model",
+      "image": "/models/presentation/nilper/backdrop.jpeg",
+      "path": "/ktx-optimized/final-scene.glb",
+      "imageDistance": 2,
+      "imageOffsetY": 0,
+      "pieceOffsetY": 0,
+      "pieceLift": 0.08,
+      "offset": [
+        -0.12,
+        -1.4,
+        3.3
+      ],
+      "floorY": 0,
+      "lightingMode": "store",
+      "hdr": "/hdr/main_hdr.exr"
+    },
+    "layers": {
+      "frame": {
+        "path": "/ktx-optimized/Nilper-Final-Struc.glb",
+        "arPath": "",
+        "label": "اسکلت چوبی",
+        "desc": "چوب راش خشک‌شده با اتصالات فاق و زبانه",
+        "en": {
+          "label": "Wooden Frame",
+          "desc": "Kiln-dried beech with mortise-and-tenon joints"
+        }
+      },
+      "cover": {
+        "label": "رویه",
+        "desc": "پارچه یا چرم نهایی روی بدنه",
+        "default": "leather",
+        "variants": [
+         
+          {
+            "id": "leather",
+            "name": "مبل برند نیلپر",
+            "path": "/ktx-optimized/Nilper_Final-optimized.glb",
+            "arPath": "",
+            "thumbnail": "/images/covers/leather.png",
+            "priceDelta": 4500000,
+            "material": {
+              "roughness": 0.8,
+              "metalness": 0,
+              "clearcoat": 0
+            },
+            "en": {
+              "name": "Natural Leather"
+            }
+          }
+        ],
+        "en": {
+          "label": "Upholstery",
+          "desc": "The final fabric or leather over the frame"
+        }
+      },
+      "stage": {
+        "path": "/models/presentation/nilper/stage.glb",
+        "liftPiece": true
+      }
+    },
+    "palettes": {
+      "wood": [
+        {
+          "id": "oak",
+          "name": "بلوط طبیعی",
+          "hex": "#c8a06a",
+          "roughness": 0.55,
+          "metalness": 0.55,
+          "clearcoat": 0,
+          
+          "en": {
+            "name": "Natural Oak"
+          }
+        },
+        {
+          "id": "ash",
+          "name": "بلوط سفید",
+          "hex": "#d9c7ad",
+          "roughness": 0.65,
+          "en": {
+            "name": "Ash"
+          }
+        },
+        {
+          "id": "walnut",
+          "name": "گردویی",
+          "hex": "#5c4033",
+          "roughness": 0.45,
+          "en": {
+            "name": "Walnut"
+          }
+        },
+        {
+          "id": "ebony",
+          "name": "آبنوس",
+          "hex": "#2b2320",
+          "roughness": 0.35,
+          "en": {
+            "name": "Ebony"
+          }
+        }
+      ],
+      "cover": [
+        {
+          "id": "weave-ecru",
+          "name": " کرم",
+          "hex": "#cbbfae",
+          "roughness": 0.92,
+          "normalScale": 0.7,
+          "maps": {
+            "map": "/textures/covers/weave-ecru.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+         
+          "thumbnail": "/images/fabrics/weave-ecru.png",
+          "en": {
+            "name": "Ecru Weave"
+          }
+        },
+        {
+          "id": "weave-test",
+          "name": "مخمل ",
+          "hex": "#cbbfae",
+          "roughness": 0.82,
+          "maps": {
+            "map": "/textures/covers/green_fabric_03_diffuse (2)_UASTC.ktx2",
+            "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
+          },
+         
+          "thumbnail": "/images/fabrics/weave-test.png",
+          "en": {
+            "name": "Emerald Velvet"
+          }
+        },
+
+        {
+          "id": "tweed-charcoal",
+          "name": " ذغالی",
+          "hex": "#3c3f44",
+          "roughness": 0.95,
+          "maps": {
+            "map": "/textures/covers/tweed-charcoal.v1.ktx2",
+            "normalMap": "/textures/covers/twill-normal.v1.ktx2"
+          },
+         
+          "thumbnail": "/images/fabrics/tweed-charcoal.png",
+          "en": {
+            "name": "Charcoal Tweed"
+          }
+        },
+        {
+          "id": "herringbone-slate",
+          "name": "جناغی دودی",
+          "hex": "#6b727a",
+          "roughness": 0.9,
+          "maps": {
+            "map": "/textures/covers/herringbone-slate.v1.ktx2",
+            "normalMap": "/textures/covers/herringbone-normal.v1.ktx2"
+          },
+         
+          "thumbnail": "/images/fabrics/herringbone-slate.png",
+          "en": {
+            "name": "Slate Herringbone"
+          }
+        },
+        {
+          "id": "weave-blue",
+          "name": "آبی ",
+          "hex": "#cbbfae",
+          "roughness": 0.82,
+          "maps": {
+            "map": "/textures/covers/blue_fabric_12_diffuse copy_UASTC.ktx2",
+            "normalMap": "/textures/covers/blue_fabric_12_normal copy_UASTC.ktx2"
+          },
+         
+          "thumbnail": "/images/fabrics/weave-blue.png",
+          "en": {
+            "name": "Petrol Blue"
+          }
+        },
+      
+      
+       
+        {
+          "id": "twill-navy",
+          "name": " سرمه‌ای",
+          "hex": "#2b3a52",
+          "roughness": 0.88,
+          "maps": {
+            "map": "/textures/covers/twill-navy.v1.ktx2",
+            "normalMap": "/textures/covers/twill-normal.v1.ktx2"
+          },
+         
+          "thumbnail": "/images/fabrics/twill-navy.png",
+          "en": {
+            "name": "Navy Twill"
+          }
+        },
+      
+        {
+          "id": "white",
+          "name": "کرم",
+          "hex": "#ffffff",
+          "en": {
+            "name": "Cream"
+          }
+        },
+        {
+          "id": "charcoal",
+          "name": "خاکستری ذغالی",
+          "hex": "#36454f",
+          "en": {
+            "name": "Charcoal Grey"
+          }
+        },
+        {
+          "id": "sand",
+          "name": "شنی",
+          "hex": "#c2b099",
+          "en": {
+            "name": "Sand"
+          }
+        },
+        {
+          "id": "petrol",
+          "name": "آبی نفتی",
+          "hex": "#1b2f5c",
+          "en": {
+            "name": "Petrol Blue"
+          }
+        },
+        {
+          "id": "olive",
+          "name": "زیتونی",
+          "hex": "#5a5f43",
+          "en": {
+            "name": "Olive"
+          }
+        },
+        {
+          "id": "wine",
+          "name": "زرشکی",
+          "hex": "#5e2129",
+          "en": {
+            "name": "Burgundy"
+          }
+        }
+      ],
+      "cushion": [
+        {
+          "id": "cushion-wool",
+          "name": "پشمی",
+          "hex": "#b9ae9c",
+          "roughness": 0.95,
+          "maps": {
+            "map": "/textures/covers/wool-oat.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/wool-oat.png",
+          "en": {
+            "name": "Wool"
+          }
+        },
+        {
+          "id": "weave-test",
+          "name": "مخمل ",
+          "hex": "#cbbfae",
+          "roughness": 0.82,
+          "maps": {
+            "map": "/textures/covers/green_fabric_03_diffuse (2)_UASTC.ktx2",
+            "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
+          },
+          "thumbnail": "/images/fabrics/weave-test.png",
+          "en": {
+            "name": "Emerald Velvet"
+          }
+        },
+         {
+          "id": "tweed-charcoal",
+          "name": " ذغالی",
+          "hex": "#3c3f44",
+          "roughness": 0.95,
+          "maps": {
+            "map": "/textures/covers/tweed-charcoal.v1.ktx2",
+            "normalMap": "/textures/covers/twill-normal.v1.ktx2"
+          },
+         
+          "thumbnail": "/images/fabrics/tweed-charcoal.png",
+          "en": {
+            "name": "Charcoal Tweed"
+          }
+        },
+        {
+          "id": "herringbone-slate",
+          "name": " دودی",
+          "hex": "#6b727a",
+          "roughness": 0.9,
+          "maps": {
+            "map": "/textures/covers/herringbone-slate.v1.ktx2",
+            "normalMap": "/textures/covers/herringbone-normal.v1.ktx2"
+          },
+         
+          "thumbnail": "/images/fabrics/herringbone-slate.png",
+          "en": {
+            "name": "Slate Herringbone"
+          }
+        },
+       
+        {
+          "id": "twill-navy",
+          "name": " سرمه‌ای",
+          "hex": "#2b3a52",
+          "roughness": 0.88,
+          "maps": {
+            "map": "/textures/covers/twill-navy.v1.ktx2",
+            "normalMap": "/textures/covers/twill-normal.v1.ktx2"
+          },
+         
+          "thumbnail": "/images/fabrics/twill-navy.png",
+          "en": {
+            "name": "Navy Twill"
+          }
+        },
+       
+        {
+          "id": "weave-orange",
+          "name": "پرتقالی",
+          "hex": "#cbbfae",
+          "roughness": 0.82,
+          "maps": {
+            "map": "/textures/covers/orange_fabric_03_diffuse copy_UASTC.ktx2",
+            "normalMap": "/textures/covers/orange_fabric_03_normal copy_UASTC.ktx2"
+          },
+          "thumbnail": "/images/fabrics/weave-orange.png",
+          "en": {
+            "name": "Orange"
+          }
+        },
+          
+        {
+          "id": "cushion-ivory",
+          "name": "استخوانی",
+          "hex": "#e8e0d2",
+          "en": {
+            "name": "Bone"
+          }
+        },
+        {
+          "id": "cushion-black",
+          "name": "مشکی",
+          "hex": "#1a1a1a",
+          "en": {
+            "name": "Black"
+          }
+        }
+      ],
+      "shawl": [
+        {
+          "id": "shawl-boucle3223",
+          "name": "بوکله",
+          "hex": "#a9a49c",
+          "roughness": 0.9,
+          "maps": {
+            "map": "/textures/covers/boucle-stone.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/boucle-stone.png",
+          "en": {
+            "name": "Bouclé"
+          }
+        },
+        {
+          "id": "weave-test",
+          "name": "مخمل زمردی",
+          "hex": "#cbbfae",
+          "roughness": 0.82,
+          "maps": {
+            "map": "/textures/covers/green_fabric_03_diffuse (2)_UASTC.ktx2",
+            "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
+          },
+          "thumbnail": "/images/fabrics/weave-test.png",
+          "en": {
+            "name": "Emerald Velvet"
+          }
+        },
+        {
+          "id": "weave-blue",
+          "name": "آبی نفتی",
+          "hex": "#cbbfae",
+          "roughness": 0.82,
+          "maps": {
+            "map": "/textures/covers/blue_fabric_12_diffuse copy_UASTC.ktx2",
+            "normalMap": "/textures/covers/blue_fabric_12_normal copy_UASTC.ktx2"
+          },
+          "thumbnail": "/images/fabrics/weave-blue.png",
+          "en": {
+            "name": "Petrol Blue"
+          }
+        },
+        {
+          "id": "weave-orange",
+          "name": "پرتقالی",
+          "hex": "#cbbfae",
+          "roughness": 0.82,
+          "maps": {
+            "map": "/textures/covers/orange_fabric_03_diffuse copy_UASTC.ktx2",
+            "normalMap": "/textures/covers/orange_fabric_03_normal copy_UASTC.ktx2"
+          },
+          "thumbnail": "/images/fabrics/weave-orange.png",
+          "en": {
+            "name": "Orange"
+          }
+        },
+        {
+          "id": "shawl-wool",
+          "name": "پشمی",
+          "hex": "#b9ae9c",
+          "roughness": 0.95,
+          "maps": {
+            "map": "/textures/covers/wool-oat.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/wool-oat.png",
+          "en": {
+            "name": "Wool"
+          }
+        },
+        {
+          "id": "shawl-velvet-emerald",
+          "name": "مخمل زمردی",
+          "hex": "#1f5f4a",
+          "roughness": 0.42,
+          "maps": {
+            "map": "/textures/covers/velvet-emerald.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/velvet-emerald.png",
+          "en": {
+            "name": "Emerald Velvet"
+          }
+        },
+        {
+          "id": "shawl-herringbone-slate",
+          "name": "جناغی دودی",
+          "hex": "#6b727a",
+          "roughness": 0.9,
+          "maps": {
+            "map": "/textures/covers/herringbone-slate.v1.ktx2",
+            "normalMap": "/textures/covers/herringbone-normal.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/herringbone-slate.png",
+          "en": {
+            "name": "Slate Herringbone"
+          }
+        },
+        {
+          "id": "shawl-tweed-charcoal",
+          "name": "توید ذغالی",
+          "hex": "#3c3f44",
+          "roughness": 0.95,
+          "maps": {
+            "map": "/textures/covers/tweed-charcoal.v1.ktx2",
+            "normalMap": "/textures/covers/twill-normal.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/tweed-charcoal.png",
+          "en": {
+            "name": "Charcoal Tweed"
+          }
+        },
+        {
+          "id": "shawl-jacquard-ivory",
+          "name": "ژاکارد عاجی",
+          "hex": "#d8cdb8",
+          "roughness": 0.85,
+          "maps": {
+            "map": "/textures/covers/jacquard-ivory.v1.ktx2",
+            "normalMap": "/textures/covers/twill-normal.v1.ktx2"
+          },
+          "thumbnail": "/images/fabrics/jacquard-ivory.png",
+          "en": {
+            "name": "Ivory Jacquard"
+          }
+        },
+        {
+          "id": "shawl-grey",
+          "name": "دودی",
+          "hex": "#8b8b8b",
+          "en": {
+            "name": "Smoke Grey"
+          }
+        },
+        {
+          "id": "shawl-wine",
+          "name": "زرشکی",
+          "hex": "#5e2129",
+          "en": {
+            "name": "Burgundy"
+          }
+        }
+      ]
+    },
+    "camera": {
+      "azimuthDeg": 0,
+      "elevationDeg": 5,
+      "fov": 50,
+      "near": 0.1,
+      "far": 130,
+      "padding": 1.55,
+      "minZoom": 0.1,
+      "maxZoom": 2,
+      "startZoom": 0.8,
+      "tiltLimitDeg": 0,
+      "aimHeight": 0.8,
+      "screenLift": -0.05
+    },
+    "lighting": {
+      "key": 120,
+      "fill": 70,
+      "rim": 60,
+      "bounce": 6,
+      "ambient": 1.1,
+      "hemi": 0.8
+    
+    },
+  "sun": {
+    "enabled": true,
+    "position": [
+      -0.5,
+      2.5,
+      0.75
+    ],
+    "target": [
+      0.007048580466527676,
+      1.496530166182611,
+      0.7229428589840117
+    ],
+    "intensity": 4,
+    "color": "#ffe3c2",
+    "soft": {
+      "size": 20,
+      "samples": 16,
+      "focus": 0
+    },
+    "shadow": {
+      "left": -16.231447273503278,
+      "right": 15.078113755735181,
+      "top": 12.16203567285875,
+      "bottom": -14.62405315681729,
+      "near": 0.1,
+      "far": 7.831464431115272,
+      "bias": -0.0001,
+      "normalBias": 0.03
+    }
+  },
+    "quality": {
+      "preset": "high",
+      "mobile": "high"
+    },
+    "simple": {
+      "arModel": "",
+      "hdr": "/hdr/studio-512.hdr",
+      "envIntensity": 1,
+      "background": "#ffffff",
+      "fov": 35,
+      "padding": 1.1,
+      "minZoom": 0.1,
+      "maxZoom": 2.6,
+      "backdrop": {
+        "top": "#fbfaf7",
+        "bottom": "#e3ddd2",
+        "vignette": 0.18
+      },
+      "lighting": {
+        "ambient": 0.35,
+        "key": 1.1,
+        "fill": 0.2,
+        "rim": 0.2,
+        "bounce": 0,
+        "hemi": 0.4
+      },
+      "quality": {
+        "preset": "high",
+        "mobile": "high"
+      }
+    },
+    "explode": {
+      "gap": 0.45,
+      "durationMs": 700
+    },
+    "wipe": {
+      "durationMs": 900
+    },
+    "parts": [
+      {
+        "id": "couch",
+        "label": "بدنه مبل",
+        "zone": "cover",
+        "objects": [
+          "rene_sofa-007",
+          "rene_sofa-004",
+          "rene_sofa-014",
+          "rene_sofa-008",
+          "rene_sofa-006",
+          "fur-1",
+          "rene_sofa-008001"
+        ],
+        "materials": [
+          "Fabric_1",
+          "vray_rene_sofa_010",
+          "Nilper Final glb BLND-optimized.glb"
+        ],
+        "en": {
+          "label": "Sofa Body"
+        }
+      },
+      {
+        "id": "cushion",
+        "label": "کوسن",
+        "zone": "cushion",
+        "objects": [
+          "Node_81",
+          "Cushion-3",
+          "rene_sofa-009",
+          "rene_sofa-010"
+        ],
+        "materials": [
+          "fabric_03"
+        ],
+        "en": {
+          "label": "Cushion"
+        }
+      },
+      
+      {
+        "id": "wood",
+        "label": "پایه چوبی",
+        "zone": "wood",
+        "objects": [
+          "leg",
+          "frame",
+          "wood",
+          "Struc-1"
+        ],
+        "materials": [
+          "vray_rene_sofa_012",
+          "vray_rene_sofa_013"
+        ],
+        "en": {
+          "label": "Wooden Legs"
+        }
+      }
+    ]
+  }
+}

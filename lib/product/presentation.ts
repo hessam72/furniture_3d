@@ -1,4 +1,5 @@
 import presentationConfig from '@/public/config/furniture-presentation.json'
+import presentationConfig2 from '@/public/config/furniture-presentation-2.json'
 import productsConfig from '@/public/config/products.json'
 import type { ProductData } from '@/components/store/ProductInteraction'
 import type { PartialSun } from '@/components/store/hooks/useStoreConfig'
@@ -933,6 +934,28 @@ export interface ResolvedPresentation {
  */
 export function resolvePresentation(key: string, locale: Locale = 'fa'): ResolvedPresentation | null {
   const config = CONFIGS[key]
+  const product = PRODUCTS[key]
+  if (!config || !product) return null
+  return {
+    key,
+    product: localizeProduct(product, locale),
+    config: localizePresentationConfig(config, locale),
+  }
+}
+
+/** Same as above, for /simple-new — reads furniture-presentation-2.json instead. */
+const CONFIGS2 = presentationConfig2 as unknown as Record<string, PresentationConfig>
+
+export function presentationKeys2(): string[] {
+  return Object.keys(CONFIGS2).filter((key) => key in PRODUCTS)
+}
+
+export function hasPresentation2(key: string | null | undefined): boolean {
+  return !!key && key in CONFIGS2 && key in PRODUCTS
+}
+
+export function resolvePresentation2(key: string, locale: Locale = 'fa'): ResolvedPresentation | null {
+  const config = CONFIGS2[key]
   const product = PRODUCTS[key]
   if (!config || !product) return null
   return {
