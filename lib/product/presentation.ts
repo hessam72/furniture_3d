@@ -1,4 +1,5 @@
 import presentationConfig from '@/public/config/furniture-presentation.json'
+import presentationConfig2 from '@/public/config/furniture-presentation-2.json'
 import productsConfig from '@/public/config/products.json'
 import type { ProductData } from '@/components/store/ProductInteraction'
 import type { PartialSun } from '@/components/store/hooks/useStoreConfig'
@@ -919,10 +920,22 @@ export function hasPresentation(key: string | null | undefined): boolean {
   return !!key && key in CONFIGS && key in PRODUCTS
 }
 
+/**
+ * Which presentation manifest a resolved product came from.
+ *
+ * `furniture-presentation.json` and `-2.json` are keyed independently and can
+ * (deliberately, for /simple-new) name the same product key with a different
+ * 3D config — so anything that has to re-resolve a product later, off the
+ * wire rather than from this object, needs to know which file to go back to.
+ * @see arModelUrl, buildConfiguredGlb
+ */
+export type PresentationSource = 'v1' | 'v2'
+
 export interface ResolvedPresentation {
   key: string
   product: ProductData
   config: PresentationConfig
+  source: PresentationSource
 }
 
 /**
@@ -939,7 +952,41 @@ export function resolvePresentation(key: string, locale: Locale = 'fa'): Resolve
     key,
     product: localizeProduct(product, locale),
     config: localizePresentationConfig(config, locale),
+    source: 'v1',
   }
+}
+
+/** Same as above, for /simple-new — reads furniture-presentation-2.json instead. */
+const CONFIGS2 = presentationConfig2 as unknown as Record<string, PresentationConfig>
+
+export function presentationKeys2(): string[] {
+  return Object.keys(CONFIGS2).filter((key) => key in PRODUCTS)
+}
+
+export function hasPresentation2(key: string | null | undefined): boolean {
+  return !!key && key in CONFIGS2 && key in PRODUCTS
+}
+
+export function resolvePresentation2(key: string, locale: Locale = 'fa'): ResolvedPresentation | null {
+  const config = CONFIGS2[key]
+  const product = PRODUCTS[key]
+  if (!config || !product) return null
+  return {
+    key,
+    product: localizeProduct(product, locale),
+    config: localizePresentationConfig(config, locale),
+    source: 'v2',
+  }
+}
+
+/** `resolvePresentation` / `resolvePresentation2`, picked by source — what the
+ *  AR routes use to re-resolve a product from the `src` query param. */
+export function resolvePresentationBySource(
+  source: PresentationSource,
+  key: string,
+  locale: Locale = 'fa'
+): ResolvedPresentation | null {
+  return source === 'v2' ? resolvePresentation2(key, locale) : resolvePresentation(key, locale)
 }
 
 export function findCoverVariant(config: PresentationConfig, id: string | null): CoverVariant | null {

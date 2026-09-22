@@ -19,7 +19,7 @@
     },
     "layers": {
       "frame": {
-        "path": "/ktx-optimized/Nilper-Final-Struc.glb",
+        "path": "/models/presentation/nilper/frame.glb",
         "arPath": "",
         "label": "اسکلت چوبی",
         "desc": "چوب راش خشک‌شده با اتصالات فاق و زبانه",
@@ -37,7 +37,7 @@
           {
             "id": "leather",
             "name": "مبل برند نیلپر",
-            "path": "/ktx-optimized/Nilper_Final-optimized.glb",
+            "path": "/ktx-optimized/simple-sofa-optimized.glb",
             "arPath": "",
             "thumbnail": "/images/covers/leather.png",
             "priceDelta": 4500000,
@@ -603,6 +603,7 @@
           "rene_sofa-014",
           "rene_sofa-008",
           "rene_sofa-006",
+          "modern-sofa-02",
           "fur-1",
           "rene_sofa-008001"
         ],
@@ -623,6 +624,10 @@
           "Node_81",
           "Cushion-3",
           "rene_sofa-009",
+          "Bon_Bon_Modular_Sofa_045",
+          "Bon_Bon_Modular_Sofa_040",
+          "Bon_Bon_Modular_Sofa_041",
+          "Bon_Bon_Modular_Sofa_043",
           "rene_sofa-010"
         ],
         "materials": [

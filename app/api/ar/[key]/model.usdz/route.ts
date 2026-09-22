@@ -1,5 +1,5 @@
 import { buildConfiguredGlb, createLru } from '@/lib/ar/configuredModel'
-import { resolvePresentation } from '@/lib/product/presentation'
+import { resolvePresentationBySource, type PresentationSource } from '@/lib/product/presentation'
 import { glbToUsdz } from '@/lib/ar/usdz'
 
 /**
@@ -92,7 +92,8 @@ export async function GET(request: Request, { params }: { params: { key: string 
      * the fix.
      */
     console.error('[ar] usdz conversion failed', built.modelPath, error)
-    const authored = resolvePresentation(params.key)?.product?.usdzPath
+    const source: PresentationSource = url.searchParams.get('src') === 'v2' ? 'v2' : 'v1'
+    const authored = resolvePresentationBySource(source, params.key)?.product?.usdzPath
     if (authored) return Response.redirect(new URL(authored, url.origin), 302)
     return new Response('could not build usdz', { status: 500 })
   }

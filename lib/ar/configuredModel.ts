@@ -12,16 +12,22 @@
 
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { arModelPath, findSwatch, isTextureSwatch, resolvePresentation } from '@/lib/product/presentation'
+import {
+  arModelPath,
+  findSwatch,
+  isTextureSwatch,
+  resolvePresentationBySource,
+  type PresentationSource,
+} from '@/lib/product/presentation'
 import { decodePaint, decodeSwatches, isPresentationZone } from '@/lib/ar/arSource'
 import {
   AR_HAZARDS,
   arHazards,
+  editsFromZones,
   materialIndicesByName,
   patchGlbMaterials,
   readGlbJson,
-  zoneEditsFromJson,
-  zonesByMaterial,
+  splitZonesByMaterial,
   type InjectableSlot,
   type TextureInjection,
 } from '@/lib/ar/glbPatch'
@@ -90,7 +96,12 @@ export async function buildConfiguredGlb(key: string, params: URLSearchParams): 
 
   if (!isPresentationZone(zone) || !paint) return { ok: false, status: 400, message: 'bad zone or paint' }
 
-  const presentation = resolvePresentation(key)
+  // Which manifest `key` resolves against. Absent (every URL /simple ever
+  // issued) means 'v1' — furniture-presentation.json, exactly as before /simple-new
+  // existed. /simple-new stamps 'v2' so the same key can name a different 3D
+  // config there without the two pages colliding. @see arModelUrl
+  const manifestSource: PresentationSource = params.get('src') === 'v2' ? 'v2' : 'v1'
+  const presentation = resolvePresentationBySource(manifestSource, key)
   if (!presentation) return { ok: false, status: 404, message: 'unknown product' }
 
   const modelPath = arModelPath(presentation.config, layer)
@@ -140,7 +151,12 @@ export async function buildConfiguredGlb(key: string, params: URLSearchParams): 
   }
 
   const hazards = reportHazards(modelPath, json)
-  const byZone = zonesByMaterial(json, zone, presentation.config.parts)
+  /**
+   * Splits `json` where one material is worn by two zones, so the cushions can
+   * be dressed without the couch — @see splitZonesByMaterial. Every index below,
+   * and every index in the edits, belongs to the document this returns.
+   */
+  const byZone = splitZonesByMaterial(json, zone, presentation.config.parts)
 
   /** One read per file, so a cloth two zones share — or the normal map the
    *  whole palette shares — is fetched once and appended once. */
@@ -188,16 +204,17 @@ export async function buildConfiguredGlb(key: string, params: URLSearchParams): 
     const narrowed = swatch.materials?.length
       ? new Set([...inZone].filter((index) => materialIndicesByName(json, swatch.materials).has(index)))
       : inZone
-    if (!narrowed.size) continue
+    if (!narrowed.size) {
+      // Silence here is what hid the split bug: a zone whose cloth reached no
+      // material simply did not travel, and the page looked right.
+      console.warn(`[ar] ${modelPath} — no ${swatchZone} material for swatch "${swatchId}", cloth not applied`)
+      continue
+    }
     injections.push({ materials: narrowed, maps })
   }
 
   try {
-    const patched = patchGlbMaterials(
-      bytes,
-      zoneEditsFromJson(json, zone, paint, presentation.config.parts),
-      injections
-    )
+    const patched = patchGlbMaterials(bytes, editsFromZones(byZone, paint), injections, json)
     return { ok: true, bytes: patched, hazards, modelPath, cacheKey: `${key}?${params.toString()}`, patched: true }
   } catch (error) {
     console.error('[ar] patch failed, serving as authored', modelPath, error)

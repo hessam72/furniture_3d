@@ -376,8 +376,8 @@ function Viewer({
     // used to send only the active zone's, which is why colour reached the room
     // and cloth did not. Zones wearing a plain colour contribute nothing.
     const swatches = swatchIdsFromPaint(paint)
-    const url = arModelUrl(productKey, layer, zone, paint, swatches)
-    const usdz = arUsdzUrl(productKey, layer, zone, paint, swatches)
+    const url = arModelUrl(productKey, layer, zone, paint, swatches, presentation.source)
+    const usdz = arUsdzUrl(productKey, layer, zone, paint, swatches, presentation.source)
     const debug = new URLSearchParams(window.location.search).has('debug')
 
     setArBuilding(true)

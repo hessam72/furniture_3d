@@ -146,9 +146,9 @@
       "subCategory": "sectional",
       "sceneObject": "dining-chair",
       "focus": {
-        "azimuthDeg": 0,
+         "azimuthDeg": -85,
         "elevationDeg": 15,
-        "distance": 6
+        "distance": 4
       },
       "en": {
         "name": "Classic Sectional Sofa"
@@ -156,11 +156,16 @@
     },
     {
       "id": "accent-comfy",
-      "name": "صندلی راحتی آکسانت",
+      "name": "مبل ال مدرن",
       "price": 9800000,
       "mainCategory": "chair",
       "subCategory": "accent",
       "sceneObject": "coffee-table",
+      "focus": {
+        "azimuthDeg": -85,
+        "elevationDeg": 15,
+        "distance": 4
+      },
       "en": {
         "name": "Accent Lounge Chair"
       }
