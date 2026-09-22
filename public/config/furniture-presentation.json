@@ -111,8 +111,8 @@
           "roughness": 0.92,
           "normalScale": 0.7,
           "maps": {
-            "map": "/ktx-optimized/texture-1.ktx2",
-            "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
+            "map": "/textures/covers/weave-ecru.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
          
           "thumbnail": "/images/fabrics/weave-ecru.png",
@@ -120,10 +120,9 @@
             "name": "Ecru Weave"
           }
         },
-        
-       {
+        {
           "id": "weave-test",
-          "name": "مخمل زمردی",
+          "name": "مخمل ",
           "hex": "#cbbfae",
           "roughness": 0.82,
           "maps": {
@@ -136,37 +135,7 @@
             "name": "Emerald Velvet"
           }
         },
-        {
-          "id": "weave-blue",
-          "name": "آبی نفتی",
-          "hex": "#cbbfae",
-          "roughness": 0.82,
-          "maps": {
-            "map": "/ktx-optimized/texture-1.ktx2",
-            "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
-          },
-         
-          "thumbnail": "/images/fabrics/weave-blue.png",
-          "en": {
-            "name": "Petrol Blue"
-          }
-        },
-        {
-          "id": "weaveksjfhskj-wswtest",
-          "name": "راه راه",
-          "hex": "#cbbfae",
-          "roughness": 0.82,
-          "maps": {
-            "map": "/ktx-optimized/texture-4.ktx2",
-            "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
-          },
-         
-          "thumbnail": "/images/fabrics/weave-ecru.png",
-          "en": {
-            "name": "Emerald Velvet"
-          }
-        },
-      
+
         {
           "id": "tweed-charcoal",
           "name": " ذغالی",
@@ -197,6 +166,23 @@
             "name": "Slate Herringbone"
           }
         },
+        {
+          "id": "weave-blue",
+          "name": "آبی ",
+          "hex": "#cbbfae",
+          "roughness": 0.82,
+          "maps": {
+            "map": "/textures/covers/blue_fabric_12_diffuse copy_UASTC.ktx2",
+            "normalMap": "/textures/covers/blue_fabric_12_normal copy_UASTC.ktx2"
+          },
+         
+          "thumbnail": "/images/fabrics/weave-blue.png",
+          "en": {
+            "name": "Petrol Blue"
+          }
+        },
+      
+      
        
         {
           "id": "twill-navy",
@@ -213,22 +199,6 @@
             "name": "Navy Twill"
           }
         },
-         {
-          "id": "weave-ecru3232",
-          "name": " سبز روشن",
-          "hex": "#cbbfae",
-          "roughness": 0.92,
-          "normalScale": 0.7,
-          "maps": {
-            "map": "/ktx-optimized/texture-2.ktx2",
-            "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
-          },
-         
-          "thumbnail": "/images/fabrics/weave-ecru.png",
-          "en": {
-            "name": "Ecru Weave"
-          }
-        }, 
       
         {
           "id": "white",
@@ -282,12 +252,12 @@
       "cushion": [
         {
           "id": "cushion-wool",
-          "name": "کرم",
+          "name": "پشمی",
           "hex": "#b9ae9c",
           "roughness": 0.95,
           "maps": {
-           "map": "/ktx-optimized/texture-1.ktx2",
-            "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
+            "map": "/textures/covers/wool-oat.v1.ktx2",
+            "normalMap": "/textures/covers/fabric-weave-normal.v1.ktx2"
           },
           "thumbnail": "/images/fabrics/wool-oat.png",
           "en": {
@@ -296,7 +266,7 @@
         },
         {
           "id": "weave-test",
-          "name": "مخمل زمردی",
+          "name": "مخمل ",
           "hex": "#cbbfae",
           "roughness": 0.82,
           "maps": {
@@ -306,22 +276,6 @@
           "thumbnail": "/images/fabrics/weave-test.png",
           "en": {
             "name": "Emerald Velvet"
-          }
-        },
-        {
-          "id": "weave-ecruecd32",
-          "name": " لیمویی",
-          "hex": "#cbbfae",
-          "roughness": 0.92,
-          "normalScale": 0.7,
-          "maps": {
-            "map": "/ktx-optimized/texture-3.ktx2",
-            "normalMap": "/textures/covers/green_fabric_03_normal (2)_UASTC.ktx2"
-          },
-         
-          "thumbnail": "/images/fabrics/weave-orange.png",
-          "en": {
-            "name": "Ecru Weave"
           }
         },
          {
