@@ -42,6 +42,18 @@ export function useCanvasLifecycle(options: {
   /** Runs last inside `onCreated`, for whatever else the host needs `gl` for. */
   onCreated?: (state: RootState) => void
   /**
+   * The context is actually back — called from the same macrotask as the
+   * release, after it.
+   *
+   * React's unmount is not this moment: the teardown below is a macrotask later
+   * by construction (@see the note above), so a host that unmounts the Canvas
+   * in order to hand the GPU to something else — model-viewer's own renderer,
+   * on the AR path — would otherwise build the second renderer while the first
+   * one's context, program cache and drawing buffer are all still resident. On
+   * iOS that overlap is the whole margin.
+   */
+  onReleased?: () => void
+  /**
    * Whether the host's `<Canvas>` is the one currently mounted.
    *
    * Default `true` fits the common shape — a page-level component whose own
@@ -64,9 +76,13 @@ export function useCanvasLifecycle(options: {
    */
   active?: boolean
 }) {
-  const { label, onContextLost, onCreated, active = true } = options
+  const { label, onContextLost, onCreated, onReleased, active = true } = options
   const stateRef = useRef<RootState | null>(null)
   const detachRef = useRef<(() => void) | null>(null)
+  /** Read from a ref, so a host that hands a fresh closure every render does
+   *  not re-run the cleanup effect below — which would release the context. */
+  const releasedRef = useRef(onReleased)
+  releasedRef.current = onReleased
   /** True from the first line of teardown, so the loss we cause ourselves is
    *  not mistaken for the device running out of room. Cleared at the top of
    *  `handleCreated` — otherwise a second real loss, on the canvas that
@@ -126,7 +142,10 @@ export function useCanvasLifecycle(options: {
 
       tearingDown.current = true
       const debug = isDebug()
-      window.setTimeout(() => releaseRenderer(state, { label, detachListeners: detach ?? undefined, debug }), 0)
+      window.setTimeout(() => {
+        releaseRenderer(state, { label, detachListeners: detach ?? undefined, debug })
+        releasedRef.current?.()
+      }, 0)
     }
     // `active` has to be a dependency, not just a value read above: it is
     // what makes this cleanup run on the *Canvas's* unmount rather than only

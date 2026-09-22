@@ -558,6 +558,9 @@ interface Props {
   label?: string
   /** The GPU dropped the buffer. The host decides what to show. */
   onContextLost?: () => void
+  /** This canvas has given its context back, for a host that is waiting to
+   *  hand the GPU to something else. @see useCanvasLifecycle */
+  onReleased?: () => void
   /** The VRAM watchdog wants a rung dropped, live — no context lost, no
    *  remount. Omitted → the watchdog still measures (under `?debug` it still
    *  logs) but has nothing to call. @see hooks/useVramWatchdog */
@@ -608,6 +611,7 @@ export default function SimpleViewer({
   paintable = true,
   label = 'viewer',
   onContextLost,
+  onReleased,
   onDemote,
 }: Props) {
   const { settings, device, gpu, preset } = useQuality()
@@ -740,7 +744,7 @@ export default function SimpleViewer({
   // Nothing here allocates enough to lose a context on its own — but this
   // viewer is also what /showroom and /view mount, and a page that cannot
   // report a loss leaves the viewer staring at a frozen frame.
-  const handleCreated = useCanvasLifecycle({ label, onContextLost })
+  const handleCreated = useCanvasLifecycle({ label, onContextLost, onReleased })
 
   return (
     <Canvas
