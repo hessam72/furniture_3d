@@ -100,8 +100,8 @@ export async function buildConfiguredGlb(key: string, params: URLSearchParams): 
   // issued) means 'v1' — furniture-presentation.json, exactly as before /simple-new
   // existed. /simple-new stamps 'v2' so the same key can name a different 3D
   // config there without the two pages colliding. @see arModelUrl
-  const source: PresentationSource = params.get('src') === 'v2' ? 'v2' : 'v1'
-  const presentation = resolvePresentationBySource(source, key)
+  const manifestSource: PresentationSource = params.get('src') === 'v2' ? 'v2' : 'v1'
+  const presentation = resolvePresentationBySource(manifestSource, key)
   if (!presentation) return { ok: false, status: 404, message: 'unknown product' }
 
   const modelPath = arModelPath(presentation.config, layer)
