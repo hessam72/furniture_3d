@@ -4,7 +4,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { getARModeName, isIOS } from '@/lib/device-utils'
 import { AR_USDZ_MAX_TEXTURE_SIZE } from '@/lib/ar/budget'
-import "@google/model-viewer/dist/model-viewer.min.js"
+// Registers the element *and* points its DRACO/Basis decoders at this origin
+// instead of gstatic, which is the difference between AR loading and AR hanging
+// on a wasm fetch. @see lib/ar/modelViewer
+import "@/lib/ar/modelViewer"
 
 interface ARProductViewerProps {
   glbPath: string
@@ -113,6 +116,26 @@ export default function ARProductViewer({
       mv.removeEventListener('ar-status', syncARSupport)
     }
   }, [productName, quickLookBlocked])
+
+  /**
+   * Hand the model back on the way out.
+   *
+   * Removing the element schedules model-viewer's own `scene.dispose()`, and
+   * that is all it schedules: the `Renderer` singleton behind it — its WebGL
+   * context, its canvas and its backing store — is a page-lifetime object that
+   * nothing here can reach. Clearing `src` first is what makes the *model* go
+   * now rather than on model-viewer's timer, which matters because the host
+   * page is about to rebuild its own canvas and must not do it while a second
+   * renderer still holds a copy of the same piece. Deliberately mount-only:
+   * this is the unmount, not a re-render.
+   */
+  useEffect(() => {
+    const mv = modelViewerRef.current
+    return () => {
+      mv?.removeAttribute('src')
+      mv?.removeAttribute('ios-src')
+    }
+  }, [])
 
   return (
     // Above the presentation page's top bar (z-100) and bottom sheet (z-99):

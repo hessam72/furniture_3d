@@ -1,10 +1,10 @@
 "use client";
 
-// Registers the <model-viewer> custom element. Without this side-effect
-// import the tag renders as an inert unknown element.
-// The .min.js bundle is deliberate: model-viewer's ESM entry peers
-// three@^0.183 while this project pins three@0.170 — see ARCarViewer.tsx.
-import "@google/model-viewer/dist/model-viewer.min.js";
+// Registers the <model-viewer> custom element, with this deploy's decoder
+// paths. Without this side-effect import the tag renders as an inert unknown
+// element; without the wrapper it fetches its DRACO and Basis decoders from
+// gstatic. @see lib/ar/modelViewer
+import "@/lib/ar/modelViewer";
 
 import { useEffect, useRef, useState } from "react";
 import { isARCapable, getARModeName } from "@/lib/device-utils";

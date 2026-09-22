@@ -46,6 +46,15 @@ const ARProductViewer = dynamic(() => import('@/components/store/ARProductViewer
  *  `useAssetProbe` a fresh array on every render. */
 const EMPTY_PROBE: string[] = []
 
+/** How long the page will wait for the canvas to report its context back
+ *  before opening AR anyway. @see ArPhase — the release normally lands in the
+ *  first macrotask, so this is the floor for the paths that never report. */
+const AR_HANDOFF_FALLBACK_MS = 400
+
+/** And the mirror on the way out: model-viewer disposes its scene 10ms after
+ *  its element leaves the DOM, on a timer of its own. Two frames of margin. */
+const AR_TEARDOWN_MS = 200
+
 /**
  * A stripped viewer for the same piece the presentation page dresses.
  *
@@ -289,7 +298,33 @@ function Viewer({
   }, [state, device, config, modelPath])
 
   // ── AR ────────────────────────────────────────────────────────────────
-  const [showAR, setShowAR] = useState(false)
+  /**
+   * Where the AR overlay is in the handoff, and the reason it is four states
+   * rather than a boolean.
+   *
+   * This page and model-viewer are two three.js renderers, each with its own
+   * WebGL context, its own program cache and its own copy of the piece. A
+   * boolean unmounts one and mounts the other *in the same commit*, and the
+   * first one's context does not go with the commit: R3F's teardown is a
+   * macrotask later by construction (@see useCanvasLifecycle). So for a frame
+   * or two the phone holds both — and on iOS that is the frame where WebKit
+   * takes the older context away ("loseContext: context already lost" in the
+   * console, a heartbeat before the tab is reloaded out from under the
+   * customer). The closing half is the same race mirrored.
+   *
+   * `releasing` and `restoring` are those two gaps, made explicit: nothing
+   * draws in either, and the page moves on only once the renderer that is
+   * leaving has actually let go.
+   */
+  type ArPhase = 'off' | 'releasing' | 'on' | 'restoring'
+  const [arPhase, setArPhase] = useState<ArPhase>('off')
+  /** Read inside the release callback, which arrives from a canvas that has
+   *  already unmounted and must not act on a stale phase. */
+  const phaseRef = useRef<ArPhase>('off')
+  phaseRef.current = arPhase
+  /** The dock, the header controls and the splash all only care that AR has
+   *  the screen — not which half of the handoff it is in. */
+  const showAR = arPhase !== 'off'
   const [arSupported, setArSupported] = useState(false)
   const [arBuilding, setArBuilding] = useState(false)
   /** Set when AR fell back to the product's published file, so the sheet can say
@@ -378,19 +413,11 @@ function Viewer({
         console.warn('[AR] piece is dense for Quick Look — author an arPath for it')
       }
 
-      // Hand back what the sheet warmed but is not showing. The canvas is about
-      // to unmount and model-viewer is about to build a second scene; on touch
-      // hardware those two do not both fit alongside three parsed GLBs — on a
-      // tablet as much as on a phone.
-      if (device !== 'desktop') {
-        config.layers.cover.variants
-          .filter((v) => v.path !== modelPath)
-          .forEach((v) => useGLTF.clear(v.path))
-      }
-
       setArUrl(url)
       setArUsdz(usdz)
-      setShowAR(true)
+      // Not `on`: the canvas leaves first and model-viewer is mounted once it
+      // has actually gone. @see ArPhase
+      setArPhase('releasing')
     } catch (err) {
       // The published GLB stands in, and the sheet says the colour will not be
       // the picked one. With no published GLB either there is nothing to show,
@@ -399,24 +426,78 @@ function Viewer({
       setArStale(true)
       setArUrl(null)
       setArUsdz(null)
-      setShowAR(!!product.glbPath)
+      setArPhase(product.glbPath ? 'releasing' : 'off')
     } finally {
       setArBuilding(false)
     }
-  }, [config, coverId, device, modelPath, product.glbPath, productKey, showingFrame, zone])
+  }, [config, coverId, product.glbPath, productKey, showingFrame, zone])
+
+  /**
+   * The canvas has gone: let go of what it was holding, then open AR.
+   *
+   * On touch hardware the eviction is the point, not housekeeping. model-viewer
+   * is about to download, decode and upload the *same piece again* — a second
+   * copy of the geometry, a second set of transcoded textures — and drei's
+   * cache is still holding the first one, keyed on a URL no canvas is mounted
+   * against any more. Every layer goes, the one that was on screen included;
+   * returning from AR re-parses it, from the browser's cache, which is the
+   * cheaper half of this trade by a wide margin.
+   *
+   * The timer is a floor, not the mechanism: `handleReleased` normally beats
+   * it. It exists for the paths where no release ever arrives — a canvas that
+   * never mounted, a StrictMode double-mount — so a phone cannot be left
+   * staring at a backdrop with the overlay it asked for never opening.
+   */
+  useEffect(() => {
+    if (arPhase !== 'releasing') return
+    if (device !== 'desktop') {
+      layerAssets.forEach((path) => {
+        try {
+          useGLTF.clear(path)
+        } catch {
+          /* a layer nobody opened */
+        }
+      })
+      void import('@/lib/three/swatchTextures').then(({ evictSwatchTextures }) => evictSwatchTextures(0))
+    }
+    const timer = window.setTimeout(() => setArPhase('on'), AR_HANDOFF_FALLBACK_MS)
+    return () => window.clearTimeout(timer)
+  }, [arPhase, device, layerAssets])
+
+  const handleReleased = useCallback(() => {
+    if (phaseRef.current === 'releasing') setArPhase('on')
+  }, [])
 
   /**
    * Leaving AR remounts the canvas: it was unmounted to give the overlay the
    * GPU, and a Canvas whose context went with it has to be rebuilt, not
    * re-rendered. The store is untouched, so the piece returns dressed exactly
    * as it left.
+   *
+   * Not in the same commit, for the reason the phases exist. Removing the
+   * `<model-viewer>` element schedules its scene's disposal on a 10ms timer of
+   * model-viewer's own, and a canvas rebuilt inside that window is the opening
+   * race run backwards.
    */
   const closeAR = useCallback(() => {
-    setShowAR(false)
+    setArPhase('restoring')
     setArStale(false)
-    // A remount, not a failure: nothing was lost, the canvas was given up.
-    recovery.remount()
-  }, [recovery])
+    // The piece has to be measured again before it can be framed, so the page
+    // owes the customer its splash rather than a bare gradient.
+    setReady(false)
+  }, [])
+
+  useEffect(() => {
+    if (arPhase !== 'restoring') return
+    const timer = window.setTimeout(() => {
+      setArPhase('off')
+      // A remount, not a failure: nothing was lost, the canvas was given up.
+      recovery.remount()
+    }, AR_TEARDOWN_MS)
+    return () => window.clearTimeout(timer)
+    // `recovery.remount` rather than `recovery`: the object is fresh every
+    // render, and a dependency on it would restart this timer forever.
+  }, [arPhase, recovery.remount])
 
   const handleReady = useCallback(() => setReady(true), [])
   const handleError = useCallback((_category: string, err: Error) => setError(err.message), [])
@@ -447,6 +528,7 @@ function Viewer({
           onReady={handleReady}
           onError={handleError}
           onContextLost={recovery.handleContextLost}
+          onReleased={handleReleased}
           onDemote={recovery.demote}
         />
       )}
@@ -551,7 +633,9 @@ function Viewer({
         </div>
       )}
 
-      {showAR && (
+      {/* `on`, not `showAR`: during `releasing` the canvas is on its way out
+          and nothing may build a second renderer until it has gone. */}
+      {arPhase === 'on' && (
         <ARProductViewer
           glbPath={arUrl ?? product.glbPath ?? ''}
           /**
