@@ -13,7 +13,7 @@ const MB = 1048576
 /** Comfortable, and the point past which the debug readout is worth reading. */
 export const AR_GLB_WARN_BYTES = 15 * MB
 /** Past this the configured file is not offered at all; the static one stands in. */
-export const AR_GLB_MAX_BYTES = 30 * MB
+export const AR_GLB_MAX_BYTES = 35 * MB
 
 /**
  * Textures model-viewer is allowed to bake into the USDZ it generates for Quick
