@@ -600,6 +600,27 @@ canvas {
   border-color: var(--color-gold-line);
 }
 
+/* /store HUD on touch hardware: no backdrop blur.
+   Every blurred surface over the walkthrough canvas is re-blurred by the
+   compositor on each frame the scene draws — on iOS that is GPU time taken
+   straight from WebGL, for the drawer's 40px sheet, each 30px category chip
+   and the top-bar buttons. Over this dark room a denser tint reads the same.
+   `!important` because CategoryBar/StoreSidebar set the blur inline.
+   Desktop keeps the glass untouched. */
+@media (pointer: coarse) {
+  .store-hud .glass,
+  .store-hud [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .store-hud .glass {
+    background: linear-gradient(158deg, rgb(30 30 38 / 86%), rgb(14 14 19 / 80%));
+  }
+  .store-hud .store-drawer {
+    background-color: rgb(20 20 25 / 97%);
+  }
+}
+
 /* Thin specular highlight along the top edge — the detail that sells the
    iOS glass look. Applied to an element that already has a border-radius. */
 @utility specular {

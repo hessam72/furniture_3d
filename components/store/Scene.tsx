@@ -1,6 +1,6 @@
 'use client'
 import dynamic from 'next/dynamic'
-import { Canvas, useLoader, useFrame } from '@react-three/fiber'
+import { Canvas, useLoader, useFrame, useThree } from '@react-three/fiber'
 import type { RootState } from '@react-three/fiber'
 import { Environment } from '@react-three/drei'
 import * as THREE from 'three'
@@ -52,6 +52,8 @@ import { SceneTransition } from './SceneTransition'
 import { CameraTransition } from './CameraTransition'
 import { ParticleReveal } from './ParticleReveal'
 import { ActivityGovernor, markStoreActivity } from './activityGovernor'
+import { StaticShadows } from './staticShadows'
+import { StoreWarmup } from './StoreWarmup'
 import { PerfLadder } from '@/components/three/PerfLadder'
 import { COMPOSER_PIXEL_WEIGHT, clampDprToBudget } from '@/lib/three/dprBudget'
 import { useQuality } from '@/contexts/QualityContext'
@@ -95,7 +97,8 @@ function PhysicsManager({
   selectedProduct,
   playerStartPosRef,
   movementThreshold,
-  onCloseProduct
+  onCloseProduct,
+  initialLook
 }: {
   onJoystickInputReady: (ref: React.RefObject<{ x: number; y: number }>) => void
   gyroEnabled: boolean
@@ -115,12 +118,25 @@ function PhysicsManager({
   playerStartPosRef: React.MutableRefObject<{ x: number; z: number } | null>
   movementThreshold: number
   onCloseProduct: () => void
+  /** Look direction to resume on (AR return); consumed once on mount */
+  initialLook: React.MutableRefObject<THREE.Quaternion | null>
 }) {
   const physics = usePhysics()
   // Both per-frame camera writers stand down while a flight owns the camera
   const { joystickInput } = usePlayerController(physics, playerStart, cameraHeight, !!focusTarget)
   const [resyncKey, setResyncKey] = useState(0)
   usePOVCamera({ gyroEnabled, frozen: !!focusTarget, resyncKey })
+
+  // Back from AR without the intro: face where the visitor was facing, and
+  // let the look easing adopt it rather than snapping back to yaw 0
+  const camera = useThree((s) => s.camera)
+  useEffect(() => {
+    const look = initialLook.current
+    if (!look) return
+    initialLook.current = null
+    camera.quaternion.copy(look)
+    setResyncKey((k) => k + 1)
+  }, [camera, initialLook])
 
   useEffect(() => {
     onJoystickInputReady(joystickInput)
@@ -198,7 +214,11 @@ function PhysicsManager({
   )
 }
 
-type LoadingPhase = 'loading' | 'transitioning' | 'ready'
+/**
+ * `warming` sits between the models arriving and the intro: StoreWarmup
+ * batches, compiles and uploads there, behind the loading indicator.
+ */
+type LoadingPhase = 'loading' | 'warming' | 'transitioning' | 'ready'
 
 /**
  * One flight, two entry points. A menu pick carries the catalogue entry (its
@@ -264,6 +284,13 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
     onContextLost: recovery.handleContextLost,
     onCreated: useCallback((state: RootState) => {
       r3fRef.current = state
+      // Re-entry (AR closed): warm up looking at what the visitor left, not
+      // from the spawn point — PhysicsManager takes over from here at `ready`
+      if (enteredRef.current && savedPosRef.current) {
+        state.camera.position.copy(savedPosRef.current)
+        if (savedLookRef.current) state.camera.quaternion.copy(savedLookRef.current)
+        savedPosRef.current = null
+      }
     }, []),
   })
   const [gyroEnabled, setGyroEnabled] = useState(false)
@@ -273,6 +300,7 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
   // Browsing layer: catalogue tree, sidebar, and the camera flight
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [products, setProducts] = useState<Record<string, ProductData>>({})
+  const [productsReady, setProductsReady] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [focusTarget, setFocusTarget] = useState<string | null>(null)
   const [pendingFocus, setPendingFocus] = useState<PendingFocus | null>(null)
@@ -318,11 +346,22 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
     return () => window.removeEventListener('keydown', wake)
   }, [wake])
 
+  // Once the visitor has walked in, a remount (AR closed, context-loss retry)
+  // warms up and drops them back where they were — not into a second intro
+  const enteredRef = useRef(false)
+  const savedLookRef = useRef<THREE.Quaternion | null>(null)
+  const savedPosRef = useRef<THREE.Vector3 | null>(null)
+
   const handleModelsLoaded = useCallback(() => {
-    setLoadingPhase('transitioning')
+    setLoadingPhase('warming')
+  }, [])
+
+  const handleWarmupDone = useCallback(() => {
+    setLoadingPhase(enteredRef.current ? 'ready' : 'transitioning')
   }, [])
 
   const handleTransitionComplete = useCallback(() => {
+    enteredRef.current = true
     setLoadingPhase('ready')
   }, [])
 
@@ -360,6 +399,7 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
         )
       })
       .catch((err) => console.error('Failed to load catalog:', err))
+      .finally(() => setProductsReady(true))
   }, [locale])
 
   /** Take off — shared by menu picks and direct taps */
@@ -505,14 +545,23 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
         >
           {/* Sustained-FPS ladder + adaptive DPR during movement/look input
               (shared with the /car scene) */}
-          <PerfLadder onScale={setPerfScale} adaptive={settings.adaptiveDpr} />
+          {/* AdaptiveDpr stays desktop-only. On touch it halved the DPR
+              (pixelated) for the whole of every walk and look-drag, and
+              every start and stop resized the composer chain — a GPU
+              reallocation felt as a hitch. The sustained-FPS ladder remains
+              the fallback there. */}
+          <PerfLadder onScale={setPerfScale} adaptive={settings.adaptiveDpr && device === 'desktop'} />
 
           {/* Demand-loop governor: frames flow while there is input or a
               transition; the loop parks (0 GPU) when the player stands still */}
           <ActivityGovernor
             forceActive={!IDLE_DEMAND || loadingPhase !== 'ready' || gyroEnabled || !!focusTarget}
             onIdleChange={setIdle}
+            capHighRefresh={device !== 'desktop'}
           />
+
+          {/* Shadow maps drawn once and on change, not every frame */}
+          <StaticShadows />
 
           {/* HDRI lighting — cubemap resolution follows the quality tier */}
           <Suspense fallback={null}>
@@ -544,7 +593,8 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
               />
               {/* A 2048² map is ~32MB of FBO on a device that has nothing like
                   that to spare. */}
-              <SunLight sun={config.sun} maxResolution={SHADOW_BUDGET[device].resolution} />
+              {/* Frozen by StaticShadows, so priced as memory, not per-frame fill */}
+              <SunLight sun={config.sun} maxResolution={SHADOW_BUDGET[device].staticResolution} />
             </>
           )}
 
@@ -560,6 +610,10 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
               <ModelLoader files={config.files} onModelsLoaded={handleModelsLoaded} onProgress={setLoadedCount} />
             </PartErrorBoundary>
           </Suspense>
+
+          {loadingPhase === 'warming' && (
+            <StoreWarmup products={products} productsReady={productsReady} onDone={handleWarmupDone} />
+          )}
 
           {/* Scene transition effects */}
           <SceneTransition
@@ -598,6 +652,7 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
               playerStartPosRef={playerStartPosRef}
               movementThreshold={MOVEMENT_THRESHOLD}
               onCloseProduct={closeProduct}
+              initialLook={savedLookRef}
             />
           )}
 
@@ -666,6 +721,8 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
             productKey={focusedKey}
             onClose={closeProduct}
             onViewAR={() => {
+              savedLookRef.current = r3fRef.current?.camera.quaternion.clone() ?? null
+              savedPosRef.current = r3fRef.current?.camera.position.clone() ?? null
               setArProduct(selectedProduct)
               setShowAR(true)
               setSelectedProduct(null)

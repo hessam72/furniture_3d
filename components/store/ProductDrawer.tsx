@@ -70,7 +70,7 @@ export default function ProductDrawer({
       animate={{ y: 0 }}
       exit={{ y: '110%' }}
       transition={SPRING}
-      className="font-persian fixed bottom-0 left-0 right-0 z-[99] mx-auto flex max-w-[560px]
+      className="store-drawer font-persian fixed bottom-0 left-0 right-0 z-[99] mx-auto flex max-w-[560px]
                  flex-col overflow-hidden rounded-t-[28px] border-t border-white/[0.06]
                  bg-[var(--surface-2)]/85 backdrop-blur-2xl"
       style={{ boxShadow: '0 -18px 50px -20px rgb(0 0 0 / 80%)' }}

@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useState, useEffect, useCallback } from 'react'
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three-stdlib'
 import { useLoader } from '@react-three/fiber'
@@ -7,7 +7,13 @@ import { RigidBody } from '@react-three/rapier'
 import { useQuality } from '@/contexts/QualityContext'
 import { applyAnisotropy } from '@/lib/three/prepareCarMaterial'
 import { extendGltfLoader } from '@/lib/three/gltfLoaders'
+import { disposeStaticBatches } from '@/lib/store/staticBatch'
+import { isDebug } from '@/components/three/rendererStatsStore'
 import type { ModelFile } from './hooks/useStoreConfig'
+import { requestShadowUpdate } from './staticShadows'
+
+/** The collision proxy's layer — tested by neither the camera nor a raycaster. */
+export const COLLIDER_LAYER = 31
 
 // DRACO, KTX2 and meshopt all live in lib/three/gltfLoaders — the
 // one-shared-decoder rule this file introduced, now applied app-wide and
@@ -66,7 +72,11 @@ type ModelProps = {
 
 function Model({ url, isWireframe, onLoaded }: ModelProps) {
   // Texture sharpening follows the shared quality tier (4/4/8/16)
-  const { settings } = useQuality()
+  const { settings, device } = useQuality()
+  // Read at clone time, not a dependency: a device-class flip must not
+  // re-clone the room (it would come back unbatched, batches leaked)
+  const touchRef = useRef(device !== 'desktop')
+  touchRef.current = device !== 'desktop'
 
   // Draco/meshopt for geometry, KTX2 for textures — the store's room GLB is
   // whatever scripts/optimize-glb.sh last wrote to /ktx-optimized.
@@ -81,28 +91,27 @@ function Model({ url, isWireframe, onLoaded }: ModelProps) {
   const clonedScene = useMemo(() => {
     const clone = gltf.scene.clone(true)
 
-    // Tag wireframe for physics system
+    // Tag wireframe for physics system; visual roots for StoreWarmup's batching
     if (isWireframe) {
       clone.userData.isWireframeCollision = true
+    } else {
+      clone.userData.isStoreVisualRoot = true
     }
+    let transmissive = 0
+    const touch = touchRef.current
 
     clone.traverse((obj) => {
       if (obj instanceof THREE.Mesh) {
         if (isWireframe) {
-          // Wireframe model: keep visible for Rapier but fully transparent
-          obj.visible = true
+          // Collision proxy: Rapier builds the collider from it, nothing
+          // else should ever see it. It used to be drawn every frame at
+          // opacity 0 — full geometry, blended, for no pixels — and was the
+          // first thing a tap's raycast hit. A layer the camera and raycaster
+          // never test takes it out of both, while it stays `visible` for
+          // Rapier's `traverseVisible` collider walk.
+          obj.layers.set(COLLIDER_LAYER)
           obj.castShadow = false
           obj.receiveShadow = false
-          obj.renderOrder = -1
-          // Make material fully transparent
-          if (obj.material) {
-            const materials = Array.isArray(obj.material) ? obj.material : [obj.material]
-            materials.forEach((mat) => {
-              mat.opacity = 0
-              mat.transparent = true
-              mat.depthWrite = false
-            })
-          }
         } else {
           // Visual models: visible with shadows
           obj.castShadow = true
@@ -124,6 +133,18 @@ function Model({ url, isWireframe, onLoaded }: ModelProps) {
               // are reliable regardless of GLB winding (affects depth pass only;
               // mat.side / the ceiling DoubleSide rule below are untouched).
               mat.shadowSide = THREE.DoubleSide
+              // Transmission (glTF KHR_materials_transmission — Blender glass)
+              // makes three re-render every opaque object into a mipmapped
+              // transmission target, every frame, for the one pane drawn with
+              // it. On touch a thin pane reads the same as plain alpha over
+              // what is behind it, at none of the cost.
+              if (touch && mat instanceof THREE.MeshPhysicalMaterial && mat.transmission > 0) {
+                mat.opacity = Math.min(mat.opacity, 1 - 0.7 * mat.transmission)
+                mat.transmission = 0
+                mat.transparent = true
+                mat.depthWrite = false
+                transmissive++
+              }
               mat.needsUpdate = true
             })
           }
@@ -167,6 +188,10 @@ function Model({ url, isWireframe, onLoaded }: ModelProps) {
       }
     })
 
+    if (transmissive && isDebug()) {
+      console.info(`[ModelLoader] ${url}: ${transmissive} transmissive material(s) → alpha on touch`)
+    }
+
     // Auto-center on Y=0 (only for visual models)
     if (!isWireframe) {
       const box = new THREE.Box3().setFromObject(clone)
@@ -175,7 +200,15 @@ function Model({ url, isWireframe, onLoaded }: ModelProps) {
     }
 
     return clone
-  }, [gltf.scene, isWireframe])
+  }, [gltf.scene, isWireframe, url])
+
+  // A new clone in the scene is new geometry for the (frozen) shadow maps;
+  // its merged batches (StoreWarmup) go with it
+  useEffect(() => {
+    if (isWireframe) return
+    requestShadowUpdate()
+    return () => disposeStaticBatches(clonedScene)
+  }, [clonedScene, isWireframe])
 
   // Texture anisotropy follows the quality tier without re-cloning the model
   useEffect(() => {

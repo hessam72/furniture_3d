@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useThree } from '@react-three/fiber'
+import { useRapier } from '@react-three/rapier'
 import { useLocale } from 'next-intl'
 import { Raycaster, Vector2, Object3D, Vector3 } from 'three'
 import type { Locale } from '@/i18n/routing'
@@ -56,6 +57,10 @@ export interface ProductData {
   >
 }
 
+/** How far behind the first solid hit a product's surface may be and still
+ *  count as the thing tapped — covers the piece's own collision box. */
+const OCCLUSION_TOLERANCE = 0.75
+
 interface ProductInteractionProps {
   onProductClick: (
     product: ProductData | null,
@@ -71,6 +76,24 @@ export default function ProductInteraction({ onProductClick }: ProductInteractio
   const raycaster = useRef(new Raycaster())
   const pointer = useRef(new Vector2())
   const [products, setProducts] = useState<Record<string, ProductData>>({})
+  const { world, rapier } = useRapier()
+
+  // Latest callback without re-attaching the canvas listeners on every
+  // parent render (Scene passes an inline arrow)
+  const onProductClickRef = useRef(onProductClick)
+  onProductClickRef.current = onProductClick
+
+  /** Scene objects named exactly as a product id — the tap's candidates.
+   *  Walked per tap (names only, well under a millisecond) so a remounted
+   *  room is never stale. */
+  const productRoots = useCallback(() => {
+    const ids = new Set(Object.values(products).map((p) => p.id.toLowerCase()))
+    const roots: Object3D[] = []
+    scene.traverse((o) => {
+      if (o.name && ids.has(o.name.toLowerCase())) roots.push(o)
+    })
+    return roots
+  }, [products, scene])
 
   // Load products config
   useEffect(() => {
@@ -112,65 +135,60 @@ export default function ProductInteraction({ onProductClick }: ProductInteractio
       pointer.current.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
       pointer.current.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
 
-      // Configure raycaster for better hit detection at distance
-      raycaster.current.params.Mesh = { threshold: 0.1 }
-      raycaster.current.params.Line = { threshold: 0.1 }
-      raycaster.current.params.Points = { threshold: 0.1 }
-
-      // Update raycaster
       raycaster.current.setFromCamera(pointer.current, camera)
 
-      // Find intersections
-      const intersects = raycaster.current.intersectObjects(scene.children, true)
+      // Only the pieces in products.json are candidates. This used to cast
+      // against the entire room (and its collision proxy) on every tap — tens
+      // of milliseconds on a phone — and the room's batched meshes no longer
+      // keep a CPU copy to test against anyway. @see batchStaticMeshes
+      const roots = productRoots()
+      if (roots.length === 0) return
+      const hit = raycaster.current.intersectObjects(roots, true)[0]
+      if (!hit) return
 
-      if (intersects.length > 0) {
-        // Get clicked object
-        let targetObject: Object3D | null = intersects[0].object
+      // Something solid in front of it? The room collider answers that
+      // instantly (Rapier keeps its own BVH). The tolerance lets a piece's
+      // own collision box — which the ray meets just before the mesh — pass.
+      const { origin, direction } = raycaster.current.ray
+      const wall = world.castRay(
+        new rapier.Ray(origin, direction),
+        hit.distance,
+        true,
+        rapier.QueryFilterFlags.EXCLUDE_DYNAMIC
+      )
+      if (wall && wall.timeOfImpact < hit.distance - OCCLUSION_TOLERANCE) return
 
-        // Search up the hierarchy for a product name
-        let foundProduct: ProductData | null = null
-        let matchedKey = ''
-        while (targetObject && !foundProduct) {
-          const objectName = targetObject.name.toLowerCase()
-          console.log('[ProductInteraction] Checking object:', objectName)
-
-          // Check if this object matches any product - exact ID match only
-          for (const [productKey, productData] of Object.entries(products)) {
-            if (objectName === productData.id.toLowerCase()) {
-              foundProduct = productData
-              matchedKey = productKey
-              console.log('[ProductInteraction] Matched product key:', productKey, 'Product ID:', productData.id)
-              break
-            }
+      // Search up the hierarchy for a product name — exact ID match only
+      let foundProduct: ProductData | null = null
+      let matchedKey = ''
+      for (let o: Object3D | null = hit.object; o && !foundProduct; o = o.parent) {
+        const objectName = o.name.toLowerCase()
+        for (const [productKey, productData] of Object.entries(products)) {
+          if (objectName === productData.id.toLowerCase()) {
+            foundProduct = productData
+            matchedKey = productKey
+            break
           }
-
-          targetObject = targetObject.parent
-        }
-
-        if (foundProduct) {
-          // Get world position of the clicked object
-          const worldPosition = new Vector3()
-          intersects[0].object.getWorldPosition(worldPosition)
-          const position: [number, number, number] = [
-            worldPosition.x,
-            worldPosition.y,
-            worldPosition.z
-          ]
-
-          // Find the root object of the furniture (top-level parent before scene)
-          let rootObject = intersects[0].object
-          while (rootObject.parent && rootObject.parent.type !== 'Scene') {
-            rootObject = rootObject.parent
-          }
-
-          // The products.json *key*, not the id. The camera flight resolves the
-          // room object from this, and passing the id made a tap resolve a
-          // different object than the same product picked from the menu —
-          // different bounding box, different landing spot.
-          console.log('[ProductInteraction] Calling onProductClick with key:', matchedKey)
-          onProductClick(foundProduct, position, rootObject, matchedKey)
         }
       }
+      if (!foundProduct) return
+
+      // Get world position of the clicked object
+      const worldPosition = new Vector3()
+      hit.object.getWorldPosition(worldPosition)
+      const position: [number, number, number] = [worldPosition.x, worldPosition.y, worldPosition.z]
+
+      // Find the root object of the furniture (top-level parent before scene)
+      let rootObject = hit.object
+      while (rootObject.parent && rootObject.parent.type !== 'Scene') {
+        rootObject = rootObject.parent
+      }
+
+      // The products.json *key*, not the id. The camera flight resolves the
+      // room object from this, and passing the id made a tap resolve a
+      // different object than the same product picked from the menu —
+      // different bounding box, different landing spot.
+      onProductClickRef.current(foundProduct, position, rootObject, matchedKey)
     }
 
     const canvas = gl.domElement
@@ -181,7 +199,7 @@ export default function ProductInteraction({ onProductClick }: ProductInteractio
       canvas.removeEventListener('pointerdown', handlePointerDown)
       canvas.removeEventListener('pointerup', handlePointerUp)
     }
-  }, [camera, scene, gl, products, onProductClick])
+  }, [camera, gl, products, world, rapier, productRoots])
 
   return null
 }

@@ -1,6 +1,5 @@
 'use client'
-import { useFrame } from '@react-three/fiber'
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 
 interface SceneTransitionProps {
   isTransitioning: boolean
@@ -8,50 +7,23 @@ interface SceneTransitionProps {
   duration?: number
 }
 
-export function SceneTransition({
-  isTransitioning,
-  onComplete,
-  duration = 4000
-}: SceneTransitionProps) {
-  const [progress, setProgress] = useState(0)
-
+/**
+ * Ends the intro after `duration`.
+ *
+ * It used to also mount a `<fogExp2>` — for exactly one frame: it rendered only
+ * while `progress === 0`, and a 16ms `setInterval` moved progress off zero at
+ * once. The fade it was meant to animate never showed, but fog is part of every
+ * material's program key, so adding it and taking it away recompiled the whole
+ * room twice, right as the camera fly-in started. The interval also drove a
+ * React state update 60 times a second for the full four seconds. The intro's
+ * visuals are CameraTransition and ParticleReveal; this is only its clock.
+ */
+export function SceneTransition({ isTransitioning, onComplete, duration = 4000 }: SceneTransitionProps) {
   useEffect(() => {
-    if (!isTransitioning) {
-      setProgress(0)
-      return
-    }
-
-    const startTime = Date.now()
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - startTime
-      const newProgress = Math.min(elapsed / duration, 1)
-      setProgress(newProgress)
-
-      if (newProgress >= 1) {
-        clearInterval(interval)
-        onComplete()
-      }
-    }, 16)
-
-    return () => clearInterval(interval)
+    if (!isTransitioning) return
+    const id = window.setTimeout(onComplete, duration)
+    return () => window.clearTimeout(id)
   }, [isTransitioning, duration, onComplete])
-
-  useFrame(({ scene }) => {
-    if (!isTransitioning || progress >= 1) return
-
-    // Smooth easing (easeOutCubic)
-    const eased = 1 - Math.pow(1 - progress, 3)
-
-    // Animate fog density: 1 → 0
-    if (scene.fog && 'density' in scene.fog) {
-      scene.fog.density = 0.3 * (1 - eased)
-    }
-  })
-
-  // Create fog on mount
-  if (isTransitioning && progress === 0) {
-    return <fogExp2 attach="fog" args={['#000000', 0.3]} />
-  }
 
   return null
 }

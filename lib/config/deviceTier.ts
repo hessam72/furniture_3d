@@ -100,10 +100,43 @@ export function tiersUpTo(ceiling: QualityPreset): QualityPreset[] {
  * *plus* a PCF loop of that many taps. The manifests ask for 16, which is a
  * desktop number — on a phone it is the single most expensive thing on screen.
  */
-export const SHADOW_BUDGET: Record<DeviceClass, { resolution: number; samples: number }> = {
-  phone: { resolution: 512, samples: 8 },
-  tablet: { resolution: 1024, samples: 12 },
-  desktop: { resolution: Infinity, samples: Infinity },
+export const SHADOW_BUDGET: Record<
+  DeviceClass,
+  {
+    resolution: number
+    samples: number
+    /**
+     * The cap for a map drawn **once** — /store's, frozen by StaticShadows. A
+     * map rendered every frame is priced in fill and bandwidth, which is what
+     * `resolution` holds down; a frozen one costs only its memory (1024² is
+     * ~8MB) and one draw at load, so a phone can afford a sharper window.
+     * The PCSS tap count, the per-frame part, is still `samples`.
+     */
+    staticResolution: number
+  }
+> = {
+  phone: { resolution: 512, samples: 8, staticResolution: 1024 },
+  tablet: { resolution: 1024, samples: 12, staticResolution: 2048 },
+  desktop: { resolution: Infinity, samples: Infinity, staticResolution: Infinity },
+}
+
+/**
+ * Real point lights /store may keep lit at once, and how many may cast.
+ *
+ * Every point light is evaluated in every lit fragment on screen — three's
+ * forward renderer does not cull by range — so the count is a per-pixel cost
+ * the pixel budget never sees. LampLights now spends these as *slots* on the
+ * lamps nearest the camera, which is where a lamp's short-range pool is
+ * actually visible, so a small number looks like all of them.
+ *
+ * No cube shadows on touch: six extra views of the room to (re)draw whenever
+ * a slot moves, and a 9-tap cube lookup per fragment, for a blob at the
+ * lamps' authored 50px map size.
+ */
+export const LAMP_BUDGET: Record<DeviceClass, { lights: number; casters: number }> = {
+  phone: { lights: 3, casters: 0 },
+  tablet: { lights: 4, casters: 0 },
+  desktop: { lights: Infinity, casters: Infinity },
 }
 
 /**

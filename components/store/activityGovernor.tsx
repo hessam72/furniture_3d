@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 
 /** How long after the last input/movement before the demand loop parks */
@@ -14,11 +14,43 @@ export function markStoreActivity() {
   activity.last = Date.now()
 }
 
+/**
+ * Whether the display refreshes well above 60Hz, measured once per tab from a
+ * handful of bare rAF intervals (median, so one janky tick can't decide it).
+ * Resolves `false` until measured — the cap below only ever engages late,
+ * never wrongly.
+ */
+let highRefresh = false
+let measured = false
+function measureRefresh() {
+  if (measured || typeof window === 'undefined') return
+  measured = true
+  const stamps: number[] = []
+  const tick = (t: number) => {
+    stamps.push(t)
+    if (stamps.length < 12) {
+      requestAnimationFrame(tick)
+      return
+    }
+    const gaps = stamps.slice(1).map((v, i) => v - stamps[i]).sort((a, b) => a - b)
+    highRefresh = gaps[Math.floor(gaps.length / 2)] < 10
+  }
+  requestAnimationFrame(tick)
+}
+
 interface ActivityGovernorProps {
   /** Never park (loading/transition phases, gyro look, kill-switch off) */
   forceActive: boolean
   /** Reported when the loop parks/wakes — Scene pauses physics on idle */
   onIdleChange: (idle: boolean) => void
+  /**
+   * Hold a 120Hz touch screen to 60fps. Android flagships run rAF at the
+   * panel's rate, so an active walkthrough drew twice as many frames as
+   * anyone can use and hit thermal throttling within a minute — the "smooth,
+   * then laggy" pattern. 60 and 90Hz panels are left alone: 90 has no clean
+   * divisor near 60, and neither is the throttling case.
+   */
+  capHighRefresh?: boolean
 }
 
 /**
@@ -28,9 +60,13 @@ interface ActivityGovernorProps {
  * once quiet, rendering stops entirely (0 GPU at rest). DOM handlers wake
  * the loop with markStoreActivity() + invalidate().
  */
-export function ActivityGovernor({ forceActive, onIdleChange }: ActivityGovernorProps) {
+export function ActivityGovernor({ forceActive, onIdleChange, capHighRefresh = false }: ActivityGovernorProps) {
   const invalidate = useThree((s) => s.invalidate)
   const idleRef = useRef(false)
+
+  useEffect(() => {
+    if (capHighRefresh) measureRefresh()
+  }, [capHighRefresh])
 
   useFrame(() => {
     const active = forceActive || Date.now() - activity.last < IDLE_COOLDOWN_MS
@@ -39,7 +75,9 @@ export function ActivityGovernor({ forceActive, onIdleChange }: ActivityGovernor
         idleRef.current = false
         onIdleChange(false)
       }
-      invalidate()
+      // Skip one vsync before asking for the next frame: every other tick
+      if (capHighRefresh && highRefresh) requestAnimationFrame(() => invalidate())
+      else invalidate()
     } else if (!idleRef.current) {
       idleRef.current = true
       onIdleChange(true)

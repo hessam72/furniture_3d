@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { useQuality } from '@/contexts/QualityContext'
 import type { PartialSun, SunConfig } from './hooks/useStoreConfig'
 import { SunDebug } from './SunDebug'
+import { requestShadowUpdate } from './staticShadows'
 
 // Code-side fallback so a store may specify only the fields it wants to
 // override. Bounds/bias mirror the proven /car values (CarLighting.tsx).
@@ -93,6 +94,9 @@ export function SunLight({ sun, maxResolution }: { sun?: PartialSun; maxResoluti
       shadow.map?.dispose()
       shadow.map = null
     }
+    // Maps are frozen on /store — a new size or bounds is drawn once, here.
+    // Harmless on /product, where nothing freezes them. @see StaticShadows
+    requestShadowUpdate()
     invalidate()
   }, [cfg, res, invalidate])
 

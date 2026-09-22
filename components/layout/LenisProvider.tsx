@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import Lenis from "lenis";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { routing } from "@/i18n/routing";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -25,12 +26,17 @@ export function useLenis() {
  * product presentation is `h-screen overflow-hidden` — there is no scroll for
  * smoothing to improve.
  */
-const NO_SCROLL_ROUTES = ["/product"];
+const NO_SCROLL_ROUTES = ["/product", "/store"];
+
+/** `/en/store` → `/store`. The pathname carries the locale prefix (fa is
+ *  unprefixed, en is not), so matching it raw let every English 3D page keep
+ *  the ticker the list above was written to remove. */
+const LOCALE_PREFIX = new RegExp(`^/(${routing.locales.join("|")})(?=/|$)`);
 
 export function LenisProvider({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
+  const pathname = (usePathname() ?? "").replace(LOCALE_PREFIX, "") || "/";
   const scrolls = !NO_SCROLL_ROUTES.some(
-    (route) => pathname === route || pathname?.startsWith(`${route}/`)
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
   // State, not a ref: a ref assigned inside the effect never re-renders, so
   // the context value stayed null forever and every useLenis() consumer got

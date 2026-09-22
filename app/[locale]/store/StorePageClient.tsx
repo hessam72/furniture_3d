@@ -22,7 +22,7 @@ export default function StorePageClient() {
     // The `walkthrough` ceiling is what stops that choice being a tier the
     // handset cannot hold. @see SURFACE_POLICY
     <QualityProvider surface="walkthrough" downgrades={recovery.downgrades}>
-      <div className="h-screen w-screen overflow-hidden">
+      <div className="store-hud h-screen w-screen overflow-hidden">
         <StoreScene recovery={recovery} />
       </div>
     </QualityProvider>
