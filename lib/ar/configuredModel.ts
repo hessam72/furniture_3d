@@ -12,7 +12,13 @@
 
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { arModelPath, findSwatch, isTextureSwatch, resolvePresentation } from '@/lib/product/presentation'
+import {
+  arModelPath,
+  findSwatch,
+  isTextureSwatch,
+  resolvePresentationBySource,
+  type PresentationSource,
+} from '@/lib/product/presentation'
 import { decodePaint, decodeSwatches, isPresentationZone } from '@/lib/ar/arSource'
 import {
   AR_HAZARDS,
@@ -90,7 +96,12 @@ export async function buildConfiguredGlb(key: string, params: URLSearchParams): 
 
   if (!isPresentationZone(zone) || !paint) return { ok: false, status: 400, message: 'bad zone or paint' }
 
-  const presentation = resolvePresentation(key)
+  // Which manifest `key` resolves against. Absent (every URL /simple ever
+  // issued) means 'v1' — furniture-presentation.json, exactly as before /simple-new
+  // existed. /simple-new stamps 'v2' so the same key can name a different 3D
+  // config there without the two pages colliding. @see arModelUrl
+  const source: PresentationSource = params.get('src') === 'v2' ? 'v2' : 'v1'
+  const presentation = resolvePresentationBySource(source, key)
   if (!presentation) return { ok: false, status: 404, message: 'unknown product' }
 
   const modelPath = arModelPath(presentation.config, layer)

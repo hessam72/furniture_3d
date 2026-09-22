@@ -12,7 +12,12 @@
  * No `three` import — this is read by app/api/ar/[key]/model.glb/route.ts.
  */
 
-import { PRESENTATION_ZONES, isPresentationZoneName, type PresentationZone } from '@/lib/product/presentation'
+import {
+  PRESENTATION_ZONES,
+  isPresentationZoneName,
+  type PresentationSource,
+  type PresentationZone,
+} from '@/lib/product/presentation'
 import type { ZonePaint, ZonePaintConfig } from '@/stores/presentationStore'
 
 /** A chosen fabric per zone, by swatch id. Zones wearing a plain colour, or
@@ -193,9 +198,10 @@ export function arUsdzUrl(
   layer: string,
   zone: PresentationZone,
   paint: ZonePaintConfig,
-  swatches?: SwatchSelection | null
+  swatches?: SwatchSelection | null,
+  source?: PresentationSource
 ): string {
-  return arModelUrl(key, layer, zone, paint, swatches).replace('/model.glb?', '/model.usdz?')
+  return arModelUrl(key, layer, zone, paint, swatches, source).replace('/model.glb?', '/model.usdz?')
 }
 
 /**
@@ -214,10 +220,14 @@ export function arModelUrl(
   layer: string,
   zone: PresentationZone,
   paint: ZonePaintConfig,
-  swatches?: SwatchSelection | null
+  swatches?: SwatchSelection | null,
+  source?: PresentationSource
 ): string {
   const query = new URLSearchParams({ layer, zone, paint: encodePaint(paint), v: AR_MODEL_REVISION })
   const tex = swatches ? encodeSwatches(swatches) : ''
   if (tex) query.set('tex', tex)
+  // Omitted for 'v1', the default the route already assumes — every URL ever
+  // issued before /simple-new existed still resolves to the same bytes.
+  if (source === 'v2') query.set('src', source)
   return `/api/ar/${encodeURIComponent(key)}/model.glb?${query.toString()}`
 }
