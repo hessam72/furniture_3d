@@ -231,13 +231,15 @@ export const SURFACE_POLICY: Record<RenderSurface, SurfacePolicy> = {
      * that re-renders the whole scene every drawn frame. None of that scales
      * with DPR, so the pixel budget never sees it — and a walkable room's cost
      * is a function of what the visitor walks into, which is not known up front.
-     * Until those have ceilings of their own, this one stays — now at
-     * `medium` on every device, desktop included, so a preference stored
-     * from another surface (`/product`, `/simple`) can't carry `high` or
-     * `ultra` in here and reintroduce that cost. The in-page picker can
-     * still dial down to `low`.
+     * Until those have ceilings of their own, this one stays.
+     *
+     * `ceiling` is what `QualitySelector` offers (@see tiersUpTo) — capping it
+     * to `medium` was tried and took High/Ultra out of the picker entirely,
+     * which is a different thing from defaulting to medium. `fallback` is the
+     * actual default: what a visitor with no stored preference opens on, on
+     * every device. Every rung stays choosable; medium is just where it starts.
      */
-    ceiling: { phone: 'medium', tablet: 'medium', desktop: 'medium' },
+    ceiling: { phone: 'high', tablet: 'high', desktop: 'ultra' },
     fallback: { phone: DEFAULT_QUALITY, tablet: DEFAULT_QUALITY, desktop: DEFAULT_QUALITY },
     honoursStored: true,
   },
