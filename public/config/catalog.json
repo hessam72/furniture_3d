@@ -120,9 +120,9 @@
       "subCategory": "sectional",
       "sceneObject": "coffee-table2",
       "focus": {
-        "azimuthDeg": -60,
+        "azimuthDeg": 60,
         "elevationDeg": 15,
-        "distance": 4.5
+        "distance": 4
       },
       "en": {
         "name": "Busnelli Grumetto Sectional Sofa"
@@ -130,15 +130,15 @@
     },
     {
       "id": "grumetto-l",
-      "name": "مبل ال بوسنلی گرومتو",
+      "name": "مبل سگمنتال بوسنلی گرومتو",
       "price": 82500000,
       "mainCategory": "sofa",
       "subCategory": "l-shape",
       "sceneObject": "coffee-ewew",
       "focus": {
-        "azimuthDeg": -110,
+         "azimuthDeg": 100,
         "elevationDeg": 15,
-        "distance": 4.5
+        "distance": 4
       },
       "en": {
         "name": "Busnelli Grumetto L-Shaped Sofa"
