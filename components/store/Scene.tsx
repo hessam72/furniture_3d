@@ -122,6 +122,22 @@ function PhysicsManager({
   initialLook: React.MutableRefObject<THREE.Quaternion | null>
 }) {
   const physics = usePhysics()
+  // <RigidBody position> is create-time only, deliberately: rapier's own
+  // "mutable options" list no-ops `position`/`rotation`/`quaternion`/`scale`,
+  // precisely so a later prop change can't reach in and move a live body. But
+  // it still reaches it *indirectly* — R3F applies the changed prop to the
+  // underlying Object3D like any other, and rapier's own sync effect (which
+  // reruns whenever any tracked prop's numbers change, `position` included)
+  // then reads that Object3D's transform back onto the physics body. And
+  // `playerStart` does change: it tracks wherever the player last stood, and
+  // falls back to the room's spawn point the instant a product's drawer
+  // closes (`playerStartPosRef.current` is nulled there) — so closing the
+  // drawer was quietly teleporting the live player back to spawn. Freezing
+  // the value handed to `<RigidBody>` to what it was at mount removes that
+  // path; `usePlayerController` below keeps the *live* value, for its own
+  // deliberate uses (the initial spawn-lock, and respawning near wherever
+  // the player was if they fall through the floor), which should track it.
+  const rigidBodyStart = useRef(playerStart)
   // Both per-frame camera writers stand down while a flight owns the camera
   const { joystickInput } = usePlayerController(physics, playerStart, cameraHeight, !!focusTarget)
   const [resyncKey, setResyncKey] = useState(0)
@@ -201,7 +217,7 @@ function PhysicsManager({
       <RigidBody
         ref={physics.rigidBodyRef}
         type="dynamic"
-        position={playerStart}
+        position={rigidBodyStart.current}
         enabledRotations={[false, true, false]}
         lockRotations
         linearDamping={2.5}
