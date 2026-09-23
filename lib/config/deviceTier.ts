@@ -231,10 +231,14 @@ export const SURFACE_POLICY: Record<RenderSurface, SurfacePolicy> = {
      * that re-renders the whole scene every drawn frame. None of that scales
      * with DPR, so the pixel budget never sees it — and a walkable room's cost
      * is a function of what the visitor walks into, which is not known up front.
-     * Until those have ceilings of their own, this one stays.
+     * Until those have ceilings of their own, this one stays — now at
+     * `medium` on every device, desktop included, so a preference stored
+     * from another surface (`/product`, `/simple`) can't carry `high` or
+     * `ultra` in here and reintroduce that cost. The in-page picker can
+     * still dial down to `low`.
      */
-    ceiling: { phone: 'high', tablet: 'high', desktop: 'ultra' },
-    fallback: { phone: 'medium', tablet: DEFAULT_QUALITY, desktop: DEFAULT_QUALITY },
+    ceiling: { phone: 'medium', tablet: 'medium', desktop: 'medium' },
+    fallback: { phone: DEFAULT_QUALITY, tablet: DEFAULT_QUALITY, desktop: DEFAULT_QUALITY },
     honoursStored: true,
   },
 }
