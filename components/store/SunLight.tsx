@@ -1,5 +1,5 @@
 'use client'
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useQuality } from '@/contexts/QualityContext'
@@ -74,7 +74,20 @@ export function SunLight({ sun, maxResolution }: { sun?: PartialSun; maxResoluti
     cfg.shadow.left, cfg.shadow.right, cfg.shadow.top, cfg.shadow.bottom, cfg.shadow.near, cfg.shadow.far,
   ])
 
-  useLayoutEffect(() => {
+  // A passive effect, not a layout one: this only touches the Three.js scene
+  // graph (camera bounds, a shadow FBO dispose), and R3F's own frame draw
+  // already runs on its own requestAnimationFrame via `invalidate()` below —
+  // nothing here needs to land before the *browser's* paint. `useLayoutEffect`
+  // did, and that's what made the quality picker feel broken: it runs
+  // synchronously inside the same commit as the click that changed `preset`,
+  // so the FBO dispose/rebuild work held up that commit's paint — the radio
+  // button's new highlight couldn't appear on screen until this finished. On
+  // a slow device (a simulator, an old phone) that's long enough that the
+  // next tap lands on what's still, visually, the previous selection: the
+  // picker looks like it's a tap behind, or like a tier never sticks. Moving
+  // this to `useEffect` lets the DOM commit (and the highlight) paint first;
+  // the 3D scene catches up a frame later either way.
+  useEffect(() => {
     const cam = shadowCamRef.current
     if (cam) {
       cam.left = cfg.shadow.left
