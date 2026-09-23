@@ -130,9 +130,9 @@
       "subCategory": "l-shape",
       "sceneObject": "nilper",
       "focus": {
-        "azimuthDeg": -45,
+        "azimuthDeg": -60,
         "elevationDeg": 15,
-        "distance": 4
+        "distance": 3
       },
       "en": {
         "name": "L-Shaped Sofa"

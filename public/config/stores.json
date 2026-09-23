@@ -33,16 +33,16 @@
       "sun": {
         "enabled": true,
         "position": [
-          0.5,
-          29.5,
-          -22
+          -1.5,
+          11,
+          -19
         ],
         "target": [
           0.5,
           0.5,
           -7.5
         ],
-        "intensity": 6,
+        "intensity": 4,
         "color": "#ffe3c2",
         "soft": {
           "size": 20,
@@ -50,10 +50,10 @@
           "focus": 0
         },
         "shadow": {
-          "left": 41,
-          "right": -41,
-          "top": -41,
-          "bottom": 41,
+          "left": 14,
+          "right": -14,
+          "top": -14,
+          "bottom": 14,
           "near": 0.5,
           "far": 45,
           "bias": -0.0001,
@@ -61,7 +61,7 @@
         }
       },
       "lamps": {
-        "enabled": true,
+        "enabled": false,
         "color": "#ffd6aa",
         "intensity": 2,
         "distance": 5,
@@ -76,11 +76,11 @@
         {
           "priority": 0,
           "quality": "low",
-          "url": "/store-models/wireframe.glb"
+          "url": "/on-git-files/simple-wireframe-store.glb"
         },
         {
           "priority": 1,
-          "quality": "high",
+          "quality": "medium",
           "url": "/ktx-optimized/Furniture-Exhibition-ktx.glb"
         }
       ]
