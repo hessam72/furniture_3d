@@ -223,23 +223,22 @@ export const SURFACE_POLICY: Record<RenderSurface, SurfacePolicy> = {
   },
   walkthrough: {
     /**
-     * Still capped, and deliberately the odd one out.
-     *
-     * /store is the one surface whose `ultra` costs something no per-device
-     * budget catches: `lampMaxLights: 24` real point lights with
+     * `ultra` is hidden from /store on every device, `high` is the ceiling
+     * everywhere. It's the one surface whose `ultra` costs something no
+     * per-device budget catches: `lampMaxLights: 24` real point lights with
      * `lampShadowCasters: 2` casting cube shadows, and a 1024² MeshReflector
      * that re-renders the whole scene every drawn frame. None of that scales
      * with DPR, so the pixel budget never sees it — and a walkable room's cost
-     * is a function of what the visitor walks into, which is not known up front.
-     * Until those have ceilings of their own, this one stays.
+     * is a function of what the visitor walks into, which is not known up
+     * front. Until those have ceilings of their own, `ultra` stays off.
      *
      * `ceiling` is what `QualitySelector` offers (@see tiersUpTo) — capping it
-     * to `medium` was tried and took High/Ultra out of the picker entirely,
-     * which is a different thing from defaulting to medium. `fallback` is the
+     * to `medium` was tried once and took High out of the picker too, which is
+     * a different thing from just defaulting to medium. `fallback` is the
      * actual default: what a visitor with no stored preference opens on, on
-     * every device. Every rung stays choosable; medium is just where it starts.
+     * every device. low/medium/high stay choosable; medium is just the start.
      */
-    ceiling: { phone: 'high', tablet: 'high', desktop: 'ultra' },
+    ceiling: { phone: 'high', tablet: 'high', desktop: 'high' },
     fallback: { phone: DEFAULT_QUALITY, tablet: DEFAULT_QUALITY, desktop: DEFAULT_QUALITY },
     honoursStored: true,
   },

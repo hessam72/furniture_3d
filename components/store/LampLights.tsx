@@ -4,6 +4,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useQuality } from '@/contexts/QualityContext'
 import { LAMP_BUDGET } from '@/lib/config/deviceTier'
+import { QUALITY_PRESETS } from '@/lib/config/quality'
 import type { LampConfig, StoreConfig } from './hooks/useStoreConfig'
 import { markStoreActivity } from './activityGovernor'
 import { requestShadowUpdate } from './staticShadows'
@@ -54,9 +55,12 @@ function applyEmissive(material: THREE.Material | THREE.Material[], color: strin
  * the model's Y auto-center), so this needs no knowledge of GLB internals.
  *
  * Tiering: emissive glow is always applied (cheap, all tiers incl. low). Real
- * point lights are gated by settings.lampLights and capped by lampMaxLights
- * and the device's LAMP_BUDGET; casters use a native cube-PCF shadow (drei's
- * PCSS only patches directional/spot getShadow — point lights are unaffected).
+ * point lights are capped by lampMaxLights and the device's LAMP_BUDGET —
+ * `settings.lampLights` no longer gates whether any mount, only whether the
+ * mounted ones light up (@see LampSlots' `activeTarget`; `low`'s
+ * `lampMaxLights: 0` already gets there on its own). Casters use a native
+ * cube-PCF shadow (drei's PCSS only patches directional/spot getShadow —
+ * point lights are unaffected).
  *
  * The lights are **slots**, not lamps. It used to light the first N lamps in
  * scene-traversal order — wherever those happened to be — and pay for every
@@ -66,6 +70,20 @@ function applyEmissive(material: THREE.Material | THREE.Material[], color: strin
  * keeps its emissive glow. The count never changes while walking, so no
  * material ever recompiles; a slot that changes lamp fades out, moves and
  * fades back in. With no more lamps than slots this is exactly the old scene.
+ *
+ * That same count also never changes on a *quality-tier* switch, and this is
+ * the part that used to make the picker feel broken. Three.js bakes the
+ * active point-light count into every lit material's shader (`#define
+ * NUM_POINT_LIGHTS`) — mounting or unmounting a `<pointLight>` forces a full
+ * program relink for every material it touches, and doing that for a dozen-
+ * plus lights at once (low → high used to swing 0 → 24 on desktop) is exactly
+ * the multi-second stall a tier switch produced. `LampSlots` now always
+ * mounts the highest count any reachable tier asks for (`capacity`, from the
+ * `high` preset — /store's `ultra` is hidden, so `high` is the ceiling) and
+ * a *lower* tier just fades its extra slots' `intensity` to 0. Intensity is a
+ * uniform, not a shader define, so a tier switch is now a value change, not a
+ * recompile. `castShadow` is frozen the same way, at the device's caster
+ * budget, for the same reason.
  */
 export function LampLights({
   active,
@@ -116,9 +134,10 @@ export function LampLights({
 
   const debug = lampDebugRequested() && cfg.enabled
 
-  // Emissive-only tiers (low) / feature off: nothing to render but the effect
-  // above has already set the glow.
-  if (!cfg.enabled || !settings.lampLights) {
+  // Feature off at the store level: nothing to render, the glow effect above
+  // already ran. A tier that merely wants zero *real* lights (low) still
+  // mounts LampSlots — @see the note on LampSlots for why that matters.
+  if (!cfg.enabled) {
     return debug ? <LampDebug cfg={cfg} count={anchors.length} onChange={setOverride} /> : null
   }
 
@@ -148,6 +167,15 @@ interface Slot {
 
 const _cam = new THREE.Vector3()
 
+/**
+ * The highest lamp counts any tier walkthrough can still reach (`ultra` is
+ * hidden from /store's picker, capped away by SURFACE_POLICY — @see
+ * lib/config/deviceTier). Mounting to these, not to the *current* tier's
+ * numbers, is what keeps a tier switch from touching NUM_POINT_LIGHTS.
+ */
+const MAX_REACHABLE_LIGHTS = QUALITY_PRESETS.high.lampMaxLights
+const MAX_REACHABLE_CASTERS = QUALITY_PRESETS.high.lampShadowCasters
+
 function LampSlots({
   anchors,
   cfg,
@@ -159,8 +187,18 @@ function LampSlots({
 }) {
   const { settings } = useQuality()
   const camera = useThree((s) => s.camera)
-  const count = Math.min(settings.lampMaxLights, budget.lights, anchors.length)
-  const casters = Math.min(settings.lampShadowCasters, budget.casters, count)
+  // Mounted count: fixed per device, independent of the current tier.
+  const capacity = Math.min(
+    budget.lights === Infinity ? MAX_REACHABLE_LIGHTS : budget.lights,
+    anchors.length
+  )
+  const casterCapacity = Math.min(
+    budget.casters === Infinity ? MAX_REACHABLE_CASTERS : budget.casters,
+    capacity
+  )
+  // How many of the mounted slots the *current* tier wants lit — this is what
+  // actually moves on a tier switch, and it only ever changes a uniform.
+  const activeTarget = Math.min(settings.lampMaxLights, capacity)
 
   const lightRefs = useRef<(THREE.PointLight | null)[]>([])
   const slots = useRef<Slot[]>([])
@@ -172,23 +210,26 @@ function LampSlots({
     if (!light || !p) return
     light.position.set(p.x, p.y + cfg.offsetY, p.z)
     // A frozen cube map drawn from where the lamp used to be is wrong now
-    if (i < casters) requestShadowUpdate()
+    if (i < casterCapacity) requestShadowUpdate()
   }
 
-  // (Re)seed on a new lamp set or slot count: nearest lamps, fully lit, no
-  // fade — this runs at load, behind the loading screen.
+  // (Re)seed on a new lamp set or capacity: nearest lamps, fully lit, no
+  // fade — this runs at load, behind the loading screen. `capacity` and
+  // `casterCapacity` don't move with the tier any more, so a quality switch
+  // never re-runs this — only a model (re)load or a room with fewer lamps
+  // than capacity does.
   useEffect(() => {
     camera.getWorldPosition(_cam)
     const nearest = anchors
       .map((p, lamp) => ({ lamp, d: p.distanceToSquared(_cam) }))
       .sort((a, b) => a.d - b.d)
-      .slice(0, count)
+      .slice(0, capacity)
     slots.current = nearest.map(({ lamp }) => ({ lamp, next: -1, level: 1 }))
     slots.current.forEach((slot, i) => place(i, slot.lamp))
     sinceAssign.current = 0
     requestShadowUpdate()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anchors, count, casters, camera, cfg.offsetY])
+  }, [anchors, capacity, casterCapacity, camera, cfg.offsetY])
 
   useFrame((_, delta) => {
     const list = slots.current
@@ -226,7 +267,9 @@ function LampSlots({
     let fading = false
     const step = delta / SLOT_FADE
     list.forEach((slot, i) => {
-      const target = slot.next >= 0 ? 0 : 1
+      // Off while reassigning (unchanged) *or* while the current tier simply
+      // doesn't want this many lights lit — both fade through the same path.
+      const target = slot.next >= 0 || i >= activeTarget ? 0 : 1
       if (slot.level !== target) {
         slot.level = target === 0 ? Math.max(0, slot.level - step) : Math.min(1, slot.level + step)
         fading = true
@@ -247,7 +290,7 @@ function LampSlots({
 
   return (
     <>
-      {Array.from({ length: count }, (_, i) => (
+      {Array.from({ length: capacity }, (_, i) => (
         <pointLight
           key={i}
           ref={(l) => {
@@ -257,7 +300,7 @@ function LampSlots({
           intensity={cfg.intensity}
           distance={cfg.distance}
           decay={cfg.decay}
-          castShadow={i < casters}
+          castShadow={i < casterCapacity}
           shadow-mapSize-width={cfg.shadowMapSize}
           shadow-mapSize-height={cfg.shadowMapSize}
           shadow-bias={cfg.bias}
