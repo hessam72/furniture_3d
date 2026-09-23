@@ -28,11 +28,8 @@ import React, {
 import { QualityPreset, QualitySettings, QUALITY_PRESETS } from '@/lib/config/quality';
 import {
   SURFACE_POLICY,
-  getStoredTier,
-  getStoredTierOnServer,
+  TIER_STORAGE,
   resolveTier,
-  subscribeStoredTier,
-  writeStoredTier,
   type DeviceClass,
   type RenderSurface,
 } from '@/lib/config/deviceTier';
@@ -99,9 +96,21 @@ export function QualityProvider({
    * `useSyncExternalStore` hydrates against `null` — matching the server — and
    * re-reads immediately afterwards. No effect, so still no stale first value
    * for the canvases, which are all `dynamic(ssr: false)` and mount later.
-   * @see subscribeStoredTier
+   *
+   * `TIER_STORAGE[surface]` — not a flat, app-wide store — is what keeps a
+   * pick on one page from quietly moving another's: `/store`'s `high` is a
+   * different setting from `/product/[id]/simple`'s `high`, stored under its
+   * own key. `surface` is a literal prop, constant for this provider's whole
+   * lifetime, so this still resolves to the same stable functions on every
+   * render — the requirement `useSyncExternalStore` has of them.
+   * @see TIER_STORAGE
    */
-  const chosen = useSyncExternalStore(subscribeStoredTier, getStoredTier, getStoredTierOnServer);
+  const tierStorage = TIER_STORAGE[surface];
+  const chosen = useSyncExternalStore(
+    tierStorage.subscribeStoredTier,
+    tierStorage.getStoredTier,
+    tierStorage.getStoredTierOnServer
+  );
 
   /**
    * The measured hardware — a 1x1 probe context, once per tab, cached in
@@ -133,8 +142,8 @@ export function QualityProvider({
   // write would look equivalent and would not be — @see deviceTier's header.
   // `writeStoredTier` notifies the store, which is what re-renders us.
   const setPreset = useCallback((next: QualityPreset) => {
-    writeStoredTier(next);
-  }, []);
+    tierStorage.writeStoredTier(next);
+  }, [tierStorage]);
 
   const setSsgiEnabled = useCallback((enabled: boolean) => {
     setSsgiEnabledState(enabled);

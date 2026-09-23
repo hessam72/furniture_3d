@@ -16,9 +16,10 @@ import { tiersUpTo } from '@/lib/config/deviceTier'
  * **It offers only the rungs this device can hold.** A phone showing three
  * chips instead of four is the budget, not a bug: the control used to offer
  * `ultra`, store `ultra`, and then display `medium`, because the tier it wrote
- * was capped somewhere the user could not see. Worse, the key is shared, so the
- * choice followed them to /store — a page that reads it, and used to skip its
- * own phone downgrade whenever it found one. @see SURFACE_POLICY
+ * was capped somewhere the user could not see. It also used to write into a
+ * key shared with every other surface, so a choice made here followed the
+ * visitor to /store too — each surface now has its own storage key.
+ * @see SURFACE_POLICY, TIER_STORAGE
  */
 export default function QualityChips() {
   const t = useTranslations('quality')

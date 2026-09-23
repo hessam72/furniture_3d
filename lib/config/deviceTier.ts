@@ -218,7 +218,7 @@ export const SURFACE_POLICY: Record<RenderSurface, SurfacePolicy> = {
     // rung then this certainly can. Capping it lower than the heavy page would
     // be incoherent. Here the tier moves DPR (budget-capped) and anisotropy.
     ceiling: { phone: 'ultra', tablet: 'ultra', desktop: 'ultra' },
-    fallback: { phone: 'medium', tablet: 'high', desktop: 'high' },
+    fallback: { phone: 'high', tablet: 'high', desktop: 'high' },
     honoursStored: true,
   },
   walkthrough: {
@@ -244,13 +244,73 @@ export const SURFACE_POLICY: Record<RenderSurface, SurfacePolicy> = {
   },
 }
 
-/** One key, shared by every surface that honours it. Kept under its original
- *  name: renaming it would silently reset everyone for no gain now that reads
- *  are capped. */
-const STORAGE_KEY = 'car-quality-preset'
+/**
+ * One storage key per surface, not one shared by all three.
+ *
+ * It used to be a single `car-quality-preset` key everywhere, on the
+ * reasoning that a person's taste is one thing regardless of page. It isn't,
+ * in practice: `/store`'s `ultra` is off entirely (@see the walkthrough
+ * ceiling above), so a visitor who picks `high` there — the *ceiling*, on
+ * that page — would otherwise also silently cap `/product/[id]/simple`'s
+ * default down from `high`, or hand it a tier they never chose for it. Each
+ * page's picker now only ever moves that page's own key. `presentation`
+ * keeps the original name, so an existing preference for `/product/[id]`
+ * survives this change; `/store` and the plain viewer get fresh keys and
+ * start from their own fallback once, which is the one-time cost of
+ * separating something that was never really one setting.
+ */
+const STORAGE_KEYS: Record<RenderSurface, string> = {
+  presentation: 'car-quality-preset',
+  viewer: 'car-quality-preset:viewer',
+  walkthrough: 'car-quality-preset:walkthrough',
+}
+
+interface SurfaceTierStore {
+  key: string
+  cached: QualityPreset | null | undefined
+  listeners: Set<() => void>
+}
+
+const TIER_STORES: Record<RenderSurface, SurfaceTierStore> = {
+  presentation: { key: STORAGE_KEYS.presentation, cached: undefined, listeners: new Set() },
+  viewer: { key: STORAGE_KEYS.viewer, cached: undefined, listeners: new Set() },
+  walkthrough: { key: STORAGE_KEYS.walkthrough, cached: undefined, listeners: new Set() },
+}
+
+function readStoredTierFrom(key: string): QualityPreset | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const stored = window.localStorage.getItem(key)
+    return stored && stored in QUALITY_PRESETS ? (stored as QualityPreset) : null
+  } catch {
+    // Private mode, or storage disabled. Not knowing is the same as no choice.
+    return null
+  }
+}
+
+// One `storage` listener for all three keys (a second tab writing any of
+// them), fanned out to whichever surface's store it belongs to — cheaper
+// than one `window` listener per surface, and each store still only notifies
+// its own subscribers.
+function handleStorageEvent(event: StorageEvent) {
+  for (const store of Object.values(TIER_STORES)) {
+    if (event.key !== store.key) continue
+    store.cached = undefined
+    store.listeners.forEach((listener) => listener())
+  }
+}
+let storageListenerAttached = false
+function ensureStorageListener() {
+  if (storageListenerAttached || typeof window === 'undefined') return
+  storageListenerAttached = true
+  window.addEventListener('storage', handleStorageEvent)
+}
 
 /**
- * The remembered choice, as an external store rather than a plain read.
+ * The remembered choice, as an external store rather than a plain read —
+ * per surface, but each surface's own accessors below are stable function
+ * references (built once, at module load), which is what lets them be handed
+ * straight to `useSyncExternalStore` without resubscribing on every render.
  *
  * It has to be a store because of hydration. `/product/[id]` is statically
  * prerendered, and the page chrome inside its provider — `QualitySelector`'s
@@ -267,60 +327,48 @@ const STORAGE_KEY = 'car-quality-preset'
  * all `dynamic(ssr: false)` and mount after that, so they still size their
  * buffers from the right tier on their first frame.
  */
-let cached: QualityPreset | null | undefined
-const tierListeners = new Set<() => void>()
-
-function notifyTier() {
-  cached = undefined
-  tierListeners.forEach((listener) => listener())
+export interface SurfaceTierStorage {
+  /** Cached, because `useSyncExternalStore` compares snapshots with
+   *  `Object.is` and calls this more than once per render. */
+  getStoredTier: () => QualityPreset | null
+  /** Always `null` — @see the note above on why this may not read storage. */
+  getStoredTierOnServer: () => QualityPreset | null
+  subscribeStoredTier: (listener: () => void) => () => void
+  writeStoredTier: (tier: QualityPreset) => void
 }
 
-export function subscribeStoredTier(listener: () => void): () => void {
-  tierListeners.add(listener)
-  // Another tab, sharing the same key. Cheap to honour, and confusing not to.
-  if (typeof window !== 'undefined') window.addEventListener('storage', notifyTier)
-  return () => {
-    tierListeners.delete(listener)
-    if (typeof window !== 'undefined' && tierListeners.size === 0) {
-      window.removeEventListener('storage', notifyTier)
-    }
+function makeSurfaceTierStorage(store: SurfaceTierStore): SurfaceTierStorage {
+  return {
+    getStoredTier: () => {
+      if (store.cached !== undefined) return store.cached
+      store.cached = readStoredTierFrom(store.key)
+      return store.cached
+    },
+    getStoredTierOnServer: () => null,
+    subscribeStoredTier: (listener) => {
+      store.listeners.add(listener)
+      ensureStorageListener()
+      return () => {
+        store.listeners.delete(listener)
+      }
+    },
+    writeStoredTier: (tier) => {
+      try {
+        window.localStorage.setItem(store.key, tier)
+      } catch {
+        /* the choice simply does not survive the session */
+      }
+      store.cached = tier
+      store.listeners.forEach((listener) => listener())
+    },
   }
 }
 
-/**
- * Cached, because `useSyncExternalStore` compares snapshots with `Object.is`
- * and calls this more than once per render.
- */
-export function getStoredTier(): QualityPreset | null {
-  if (cached !== undefined) return cached
-  cached = readStoredTier()
-  return cached
-}
-
-/** Always `null` — @see the note above on why this may not read storage. */
-export function getStoredTierOnServer(): QualityPreset | null {
-  return null
-}
-
-export function readStoredTier(): QualityPreset | null {
-  if (typeof window === 'undefined') return null
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    return stored && stored in QUALITY_PRESETS ? (stored as QualityPreset) : null
-  } catch {
-    // Private mode, or storage disabled. Not knowing is the same as no choice.
-    return null
-  }
-}
-
-export function writeStoredTier(tier: QualityPreset): void {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, tier)
-  } catch {
-    /* the choice simply does not survive the session */
-  }
-  cached = tier
-  tierListeners.forEach((listener) => listener())
+/** Built once per surface at module load — @see makeSurfaceTierStorage. */
+export const TIER_STORAGE: Record<RenderSurface, SurfaceTierStorage> = {
+  presentation: makeSurfaceTierStorage(TIER_STORES.presentation),
+  viewer: makeSurfaceTierStorage(TIER_STORES.viewer),
+  walkthrough: makeSurfaceTierStorage(TIER_STORES.walkthrough),
 }
 
 /**
