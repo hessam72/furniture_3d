@@ -29,103 +29,13 @@
       "en": {
         "label": "Sofas"
       }
-    },
-    {
-      "id": "chair",
-      "label": "صندلی",
-      "subCategories": [
-        {
-          "id": "dining",
-          "label": "صندلی غذاخوری",
-          "en": {
-            "label": "Dining Chair"
-          }
-        },
-        {
-          "id": "office",
-          "label": "صندلی اداری",
-          "en": {
-            "label": "Office Chair"
-          }
-        },
-        {
-          "id": "accent",
-          "label": "صندلی راحتی",
-          "en": {
-            "label": "Accent Chair"
-          }
-        }
-      ],
-      "en": {
-        "label": "Chairs"
-      }
-    },
-    {
-      "id": "table",
-      "label": "میز",
-      "subCategories": [
-        {
-          "id": "coffee",
-          "label": "میز جلومبلی",
-          "en": {
-            "label": "Coffee Table"
-          }
-        },
-        {
-          "id": "dining-table",
-          "label": "میز غذاخوری",
-          "en": {
-            "label": "Dining Table"
-          }
-        },
-        {
-          "id": "side",
-          "label": "میز عسلی",
-          "en": {
-            "label": "Side Table"
-          }
-        }
-      ],
-      "en": {
-        "label": "Tables"
-      }
-    },
-    {
-      "id": "storage",
-      "label": "کمد و بوفه",
-      "subCategories": [
-        {
-          "id": "buffet",
-          "label": "بوفه",
-          "en": {
-            "label": "Sideboard"
-          }
-        },
-        {
-          "id": "wardrobe",
-          "label": "کمد دیواری",
-          "en": {
-            "label": "Wardrobe"
-          }
-        },
-        {
-          "id": "bookshelf",
-          "label": "قفسه کتاب",
-          "en": {
-            "label": "Bookshelf"
-          }
-        }
-      ],
-      "en": {
-        "label": "Cabinets & Sideboards"
-      }
     }
   ],
   "items": [
     {
       "id": "l-velvettest",
-      "name": "مبل ال ",
-      "price": 62000000,
+      "name": "مبل ال بن‌بن",
+      "price": 58500000,
       "mainCategory": "sofa",
       "subCategory": "l-shape",
       "sceneObject": "nilper",
@@ -135,31 +45,63 @@
         "distance": 3
       },
       "en": {
-        "name": "L-Shaped Sofa"
+        "name": "Bon Bon L-Shaped Sofa"
+      }
+    },
+    {
+      "id": "bonbon-single",
+      "name": "مبل تک‌نفره بن‌بن",
+      "price": 21500000,
+      "mainCategory": "sofa",
+      "subCategory": "single",
+      "sceneObject": "nilper-2",
+      "focus": {
+        "azimuthDeg": -30,
+        "elevationDeg": 15,
+        "distance": 3
+      },
+      "en": {
+        "name": "Bon Bon Single Sofa"
       }
     },
     {
       "id": "seg-classic",
-      "name": "مبل سگمنتال کلاسیک",
-      "price": 71000000,
+      "name": "مبل سگمنتال بن‌بن",
+      "price": 48500000,
       "mainCategory": "sofa",
       "subCategory": "sectional",
       "sceneObject": "dining-chair",
       "focus": {
-         "azimuthDeg": -85,
+        "azimuthDeg": -85,
         "elevationDeg": 15,
         "distance": 4
       },
       "en": {
-        "name": "Classic Sectional Sofa"
+        "name": "Bon Bon Sectional Sofa"
+      }
+    },
+    {
+      "id": "vittoria-l",
+      "name": "مبل ال ویتوریا شارلی",
+      "price": 64000000,
+      "mainCategory": "sofa",
+      "subCategory": "l-shape",
+      "sceneObject": "dining-chair2",
+      "focus": {
+        "azimuthDeg": -110,
+        "elevationDeg": 15,
+        "distance": 4
+      },
+      "en": {
+        "name": "Vittoria Charlie L-Shaped Sofa"
       }
     },
     {
       "id": "accent-comfy",
-      "name": "مبل ال مدرن",
-      "price": 9800000,
-      "mainCategory": "chair",
-      "subCategory": "accent",
+      "name": "مبل تک‌نفره ویتوریا شارلی",
+      "price": 24500000,
+      "mainCategory": "sofa",
+      "subCategory": "single",
       "sceneObject": "coffee-table",
       "focus": {
         "azimuthDeg": -85,
@@ -167,23 +109,39 @@
         "distance": 4
       },
       "en": {
-        "name": "Accent Lounge Chair"
+        "name": "Vittoria Charlie Single Sofa"
       }
-    } ,
+    },
     {
-      "id": "accent-comfy",
-      "name": "مبل ال مدرن",
-      "price": 9800000,
-      "mainCategory": "chair",
-      "subCategory": "accent",
-      "sceneObject": "coffee-table",
+      "id": "grumetto-sectional",
+      "name": "مبل سگمنتال بوسنلی گرومتو",
+      "price": 73500000,
+      "mainCategory": "sofa",
+      "subCategory": "sectional",
+      "sceneObject": "coffee-table2",
       "focus": {
-        "azimuthDeg": -85,
+        "azimuthDeg": -60,
         "elevationDeg": 15,
-        "distance": 4
+        "distance": 4.5
       },
       "en": {
-        "name": "Accent Lounge Chair"
+        "name": "Busnelli Grumetto Sectional Sofa"
+      }
+    },
+    {
+      "id": "grumetto-l",
+      "name": "مبل ال بوسنلی گرومتو",
+      "price": 82500000,
+      "mainCategory": "sofa",
+      "subCategory": "l-shape",
+      "sceneObject": "coffee-ewew",
+      "focus": {
+        "azimuthDeg": -110,
+        "elevationDeg": 15,
+        "distance": 4.5
+      },
+      "en": {
+        "name": "Busnelli Grumetto L-Shaped Sofa"
       }
     }
   ]

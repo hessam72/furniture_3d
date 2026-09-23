@@ -2,47 +2,45 @@
   "nilper": {
     "id": "Bon_Bon_Modular_Sofa_042",
     "category": "مبل",
-    "type": "راحتی",
-    "name": "مبل مدرن سگمنتال",
+    "type": "ال",
+    "name": "مبل ال بن‌بن",
     "glbPath": "/models/Furniture/arm_chair__furniture.glb",
-    
     "usdzPath": "",
-
-    "dimensions": "240cm × 95cm × 80cm",
-    "material": "پارچه و چوب جامد",
-    "seatingCapacity": "۴-۵ نفر",
-    "weight": "85 kg",
-    "price": 48500000,
+    "dimensions": "280cm × 180cm × 85cm",
+    "material": "پارچه مخمل و چوب راش",
+    "seatingCapacity": "۵-۶ نفر",
+    "weight": "95 kg",
+    "price": 58500000,
     "colors": [
       {
-        "name": "خاکستری ذغالی",
-        "hex": "#36454F",
+        "name": "شنی",
+        "hex": "#D8C3A5",
         "en": {
-          "name": "Charcoal Grey"
+          "name": "Sand Beige"
         }
       },
       {
-        "name": "یاسی",
-        "hex": "#aaaaee",
+        "name": "عاجی گرم",
+        "hex": "#EFE6D8",
         "en": {
-          "name": "Lilac"
+          "name": "Warm Ivory"
         }
       },
       {
-        "name": "آبی نفتی",
-        "hex": "#1B2F5C",
+        "name": "شتری",
+        "hex": "#C19A6B",
         "en": {
-          "name": "Petrol Blue"
+          "name": "Camel"
         }
       }
     ],
     "fabricType": "پارچه مخملی ضد لک",
-    "detailedDescription": "مبل راحتی مدرن با طراحی سگمنتال و امکان تغییر آرایش. فریم چوب جامد با رویه پارچه مخملی درجه یک، فوم با تراکم بالا برای راحتی بیشتر. مناسب برای فضاهای خانوادگی و پذیرایی.",
+    "detailedDescription": "مبل ال بن‌بن با طراحی مدرن و امکان تغییر چیدمان. فریم چوب راش خشک‌شده با رویه مخمل درجه یک و فوم سرد پرتراکم. مناسب برای فضاهای خانوادگی بزرگ.",
     "fabricMaterials": [
       "پارچه مخملی درجه یک",
       "فوم سرد با تراکم ۳۵",
-      "چوب راش خشک شده",
-      "پایه‌های فلزی ضد زنگ"
+      "چوب راش خشک‌شده",
+      "پایه‌های فلزی مشکی مات"
     ],
     "billboardPosition": [
       2,
@@ -51,63 +49,62 @@
     ],
     "en": {
       "category": "Sofa",
-      "type": "Lounge",
-      "name": "Modern Sectional Sofa",
-      "material": "Fabric and solid wood",
-      "seatingCapacity": "4–5 people",
+      "type": "L-Shaped",
+      "name": "Bon Bon L-Shaped Sofa",
+      "material": "Velvet fabric and beech wood",
+      "seatingCapacity": "5–6 people",
       "fabricType": "Stain-resistant velvet",
-      "detailedDescription": "A modern sectional sofa with a reconfigurable layout. Solid-wood frame upholstered in premium velvet, with high-density foam for extra comfort. Ideal for family rooms and living spaces.",
+      "detailedDescription": "The Bon Bon L-shaped sofa, modern and reconfigurable. Kiln-dried beech frame upholstered in premium velvet over high-density cold foam. Built for large family living rooms.",
       "fabricMaterials": [
         "Premium velvet fabric",
         "High-density (35) cold foam",
         "Kiln-dried beech wood",
-        "Rust-resistant metal legs"
+        "Matte black metal legs"
       ]
     }
-  }, "nilper-2": {
+  },
+  "nilper-2": {
     "id": "Bon_Bon_Modular_Sofa_042_1",
     "category": "مبل",
-    "type": "راحتی",
-    "name": "مبل مدرن سگمنتال",
+    "type": "تک‌نفره",
+    "name": "مبل تک‌نفره بن‌بن",
     "glbPath": "/models/Furniture/arm_chair__furniture.glb",
-    
     "usdzPath": "",
-
-    "dimensions": "240cm × 95cm × 80cm",
-    "material": "پارچه و چوب جامد",
-    "seatingCapacity": "۴-۵ نفر",
-    "weight": "85 kg",
-    "price": 48500000,
+    "dimensions": "95cm × 90cm × 80cm",
+    "material": "پارچه بوکله و چوب راش",
+    "seatingCapacity": "۱-۲ نفر",
+    "weight": "34 kg",
+    "price": 21500000,
     "colors": [
       {
-        "name": "خاکستری ذغالی",
-        "hex": "#36454F",
+        "name": "خاکی گرم",
+        "hex": "#B8A088",
         "en": {
-          "name": "Charcoal Grey"
+          "name": "Warm Taupe"
         }
       },
       {
-        "name": "یاسی",
-        "hex": "#aaaaee",
+        "name": "صورتی خاکی",
+        "hex": "#D3A9A0",
         "en": {
-          "name": "Lilac"
+          "name": "Dusty Rose"
         }
       },
       {
-        "name": "آبی نفتی",
-        "hex": "#1B2F5C",
+        "name": "کرم",
+        "hex": "#F0E6D6",
         "en": {
-          "name": "Petrol Blue"
+          "name": "Cream"
         }
       }
     ],
-    "fabricType": "پارچه مخملی ضد لک",
-    "detailedDescription": "مبل راحتی مدرن با طراحی سگمنتال و امکان تغییر آرایش. فریم چوب جامد با رویه پارچه مخملی درجه یک، فوم با تراکم بالا برای راحتی بیشتر. مناسب برای فضاهای خانوادگی و پذیرایی.",
+    "fabricType": "پارچه بوکله نرم",
+    "detailedDescription": "نسخه تک‌نفره از مجموعه بن‌بن، با نشیمن‌گاه گرد و نرم. فریم چوب راش با رویه بوکله، مکمل ایده‌آل برای مبل ال بن‌بن یا یک صندلی مستقل.",
     "fabricMaterials": [
-      "پارچه مخملی درجه یک",
-      "فوم سرد با تراکم ۳۵",
-      "چوب راش خشک شده",
-      "پایه‌های فلزی ضد زنگ"
+      "پارچه بوکله",
+      "فوم سرد پرتراکم",
+      "چوب راش",
+      "پایه‌های چوبی روشن"
     ],
     "billboardPosition": [
       2,
@@ -116,62 +113,62 @@
     ],
     "en": {
       "category": "Sofa",
-      "type": "Lounge",
-      "name": "Modern Sectional Sofa",
-      "material": "Fabric and solid wood",
-      "seatingCapacity": "4–5 people",
-      "fabricType": "Stain-resistant velvet",
-      "detailedDescription": "A modern sectional sofa with a reconfigurable layout. Solid-wood frame upholstered in premium velvet, with high-density foam for extra comfort. Ideal for family rooms and living spaces.",
+      "type": "Single-Seat",
+      "name": "Bon Bon Single Sofa",
+      "material": "Bouclé fabric and beech wood",
+      "seatingCapacity": "1–2 people",
+      "fabricType": "Soft bouclé weave",
+      "detailedDescription": "The single-seat piece from the Bon Bon collection, rounded and soft. Beech frame in bouclé upholstery — an ideal companion to the Bon Bon L-shaped sofa, or a piece on its own.",
       "fabricMaterials": [
-        "Premium velvet fabric",
-        "High-density (35) cold foam",
-        "Kiln-dried beech wood",
-        "Rust-resistant metal legs"
+        "Bouclé fabric",
+        "High-density cold foam",
+        "Beech wood",
+        "Light wood legs"
       ]
     }
   },
   "dining-chair": {
     "id": "Bon_Bon_Modular_Sofa_032",
     "category": "مبل",
-    "type": "راحتی",
-    "name": "صندلی غذاخوری نوردیک",
+    "type": "سگمنتال",
+    "name": "مبل سگمنتال بن‌بن",
     "glbPath": "/models/Furniture/Sofa ar-optimized.glb",
     "usdzPath": "",
-    "dimensions": "52cm × 58cm × 82cm",
-    "material": "چوب بلوط و چرم",
-    "seatingCapacity": "۱ نفر",
-    "weight": "6.5 kg",
-    "price": 7200000,
+    "dimensions": "260cm × 160cm × 85cm",
+    "material": "پارچه مخمل و چوب راش",
+    "seatingCapacity": "۴-۵ نفر",
+    "weight": "88 kg",
+    "price": 48500000,
     "colors": [
       {
-        "name": "بلوط طبیعی",
+        "name": "شتری",
         "hex": "#C19A6B",
         "en": {
-          "name": "Natural Oak"
+          "name": "Camel"
         }
       },
       {
-        "name": "گردوی تیره",
-        "hex": "#5C4033",
+        "name": "خاکستری گرم",
+        "hex": "#C7BDAE",
         "en": {
-          "name": "Dark Walnut"
+          "name": "Warm Greige"
         }
       },
       {
-        "name": "قرمز",
-        "hex": "#781e00",
+        "name": "گلبهی ملایم",
+        "hex": "#D9A98C",
         "en": {
-          "name": "Red"
+          "name": "Terracotta Blush"
         }
       }
     ],
-    "fabricType": "چرم طبیعی دست‌دوز",
-    "detailedDescription": "صندلی غذاخوری به سبک اسکاندیناوی با طراحی ارگونومیک. ساختار چوبی مقاوم از بلوط طبیعی و نشیمن چرمی دست‌دوز. مناسب برای میز غذاخوری و فضاهای کاری.",
+    "fabricType": "پارچه مخملی ضد لک",
+    "detailedDescription": "مبل سگمنتال بن‌بن با کوسن‌های پشتی مجزا و امکان تغییر آرایش. فریم چوب راش خشک‌شده با رویه پارچه مخملی درجه یک، فوم با تراکم بالا برای راحتی بیشتر.",
     "fabricMaterials": [
-      "چرم طبیعی گاو",
-      "چوب بلوط اروپایی",
-      "رنگ پایه آب",
-      "پیچ و مهره استیل"
+      "پارچه مخملی درجه یک",
+      "فوم سرد با تراکم ۳۵",
+      "چوب راش خشک‌شده",
+      "پایه‌های فلزی ضد زنگ"
     ],
     "billboardPosition": [
       -4,
@@ -180,63 +177,62 @@
     ],
     "en": {
       "category": "Sofa",
-      "type": "Lounge",
-      "name": "Nordic Dining Chair",
-      "material": "Oak wood and leather",
-      "seatingCapacity": "1 person",
-      "fabricType": "Hand-stitched genuine leather",
-      "detailedDescription": "A Scandinavian-style dining chair with an ergonomic design. Sturdy natural-oak frame with a hand-stitched leather seat. Ideal for dining tables and work spaces.",
+      "type": "Sectional",
+      "name": "Bon Bon Sectional Sofa",
+      "material": "Velvet fabric and beech wood",
+      "seatingCapacity": "4–5 people",
+      "fabricType": "Stain-resistant velvet",
+      "detailedDescription": "The Bon Bon sectional sofa, with separate back cushions and a reconfigurable layout. Kiln-dried beech frame upholstered in premium velvet, with high-density foam for extra comfort.",
       "fabricMaterials": [
-        "Genuine cowhide leather",
-        "European oak wood",
-        "Water-based finish",
-        "Stainless steel fittings"
+        "Premium velvet fabric",
+        "High-density (35) cold foam",
+        "Kiln-dried beech wood",
+        "Rust-resistant metal legs"
       ]
     }
-  }, 
-  
+  },
   "dining-chair2": {
     "id": "Vittoria_Charlie_Sofa_2_1",
     "category": "مبل",
-    "type": "راحتی",
-    "name": "مبل ال مینیمال",
+    "type": "ال",
+    "name": "مبل ال ویتوریا شارلی",
     "glbPath": "/models/Furniture/Sofa ar-optimized.glb",
     "usdzPath": "",
-    "dimensions": "52cm × 58cm × 82cm",
-    "material": "چوب بلوط و چرم",
-    "seatingCapacity": "۱ نفر",
-    "weight": "6.5 kg",
-    "price": 7200000,
+    "dimensions": "270cm × 170cm × 82cm",
+    "material": "پارچه شنیل و فلز",
+    "seatingCapacity": "۴-۵ نفر",
+    "weight": "90 kg",
+    "price": 64000000,
     "colors": [
       {
-        "name": "بلوط طبیعی",
-        "hex": "#C19A6B",
+        "name": "قارچی",
+        "hex": "#A89A88",
         "en": {
-          "name": "Natural Oak"
+          "name": "Mushroom"
         }
       },
       {
-        "name": "گردوی تیره",
-        "hex": "#5C4033",
+        "name": "شنی",
+        "hex": "#D8C3A5",
         "en": {
-          "name": "Dark Walnut"
+          "name": "Sand Beige"
         }
       },
       {
-        "name": "قرمز",
-        "hex": "#781e00",
+        "name": "عاجی گرم",
+        "hex": "#EFE6D8",
         "en": {
-          "name": "Red"
+          "name": "Warm Ivory"
         }
       }
     ],
-    "fabricType": "چرم طبیعی دست‌دوز",
-    "detailedDescription": "صندلی غذاخوری به سبک اسکاندیناوی با طراحی ارگونومیک. ساختار چوبی مقاوم از بلوط طبیعی و نشیمن چرمی دست‌دوز. مناسب برای میز غذاخوری و فضاهای کاری.",
+    "fabricType": "پارچه شنیل مقاوم",
+    "detailedDescription": "مبل ال ویتوریا شارلی با خطوط مینیمال و پشتی کم‌ارتفاع. رویه شنیل مقاوم در برابر سایش روی پایه‌های فلزی باریک، مناسب برای دکوراسیون مدرن.",
     "fabricMaterials": [
-      "چرم طبیعی گاو",
-      "چوب بلوط اروپایی",
-      "رنگ پایه آب",
-      "پیچ و مهره استیل"
+      "پارچه شنیل",
+      "فوم سرد پرتراکم",
+      "اسکلت چوبی و فلزی",
+      "پایه‌های فلزی باریک"
     ],
     "billboardPosition": [
       -4,
@@ -245,61 +241,62 @@
     ],
     "en": {
       "category": "Sofa",
-      "type": "Lounge",
-      "name": "Nordic Dining Chair",
-      "material": "Oak wood and leather",
-      "seatingCapacity": "1 person",
-      "fabricType": "Hand-stitched genuine leather",
-      "detailedDescription": "A Scandinavian-style dining chair with an ergonomic design. Sturdy natural-oak frame with a hand-stitched leather seat. Ideal for dining tables and work spaces.",
+      "type": "L-Shaped",
+      "name": "Vittoria Charlie L-Shaped Sofa",
+      "material": "Chenille fabric and metal",
+      "seatingCapacity": "4–5 people",
+      "fabricType": "Abrasion-resistant chenille",
+      "detailedDescription": "The Vittoria Charlie L-shaped sofa, minimal lines and a low back. Abrasion-resistant chenille upholstery on slim metal legs — built for modern interiors.",
       "fabricMaterials": [
-        "Genuine cowhide leather",
-        "European oak wood",
-        "Water-based finish",
-        "Stainless steel fittings"
+        "Chenille fabric",
+        "High-density cold foam",
+        "Wood-and-metal frame",
+        "Slim metal legs"
       ]
     }
   },
   "coffee-table": {
     "id": "Vittoria_Charlie_Sofa_2_1_1",
     "category": "مبل",
-    "type": "راحتی",
-    "name": "صندلی راحتی آکسانت",
+    "type": "تک‌نفره",
+    "name": "مبل تک‌نفره ویتوریا شارلی",
     "glbPath": "/models/Furniture/3DModel-optimized.glb",
     "usdzPath": "",
-    "dimensions": "120cm × 60cm × 45cm",
-    "material": "شیشه نشکن و فلز",
-    "weight": "22 kg",
-    "price": 15900000,
+    "dimensions": "100cm × 95cm × 80cm",
+    "material": "پارچه شنیل و فلز",
+    "seatingCapacity": "۱-۲ نفر",
+    "weight": "36 kg",
+    "price": 24500000,
     "colors": [
       {
-        "name": "شیشه شفاف",
-        "hex": "#E8F4F8",
+        "name": "صورتی خاکی",
+        "hex": "#D3A9A0",
         "en": {
-          "name": "Clear Glass"
+          "name": "Dusty Rose"
         }
       },
       {
-        "name": "دودی",
-        "hex": "#595959",
+        "name": "کرم",
+        "hex": "#F0E6D6",
         "en": {
-          "name": "Smoke"
+          "name": "Cream"
         }
       },
       {
-        "name": "برنز",
-        "hex": "#CD7F32",
+        "name": "خاکی گرم",
+        "hex": "#B8A088",
         "en": {
-          "name": "Bronze"
+          "name": "Warm Taupe"
         }
       }
     ],
-    "fabricType": "شیشه سکوریت ۱۲ میل",
-    "detailedDescription": "میز جلو مبلی با صفحه شیشه سکوریت ضدضربه و پایه‌های فلزی. طراحی مینیمال و مدرن با قابلیت تمیز کردن آسان. ایده‌آل برای فضاهای کوچک و بزرگ.",
+    "fabricType": "پارچه شنیل نرم",
+    "detailedDescription": "نسخه تک‌نفره از مجموعه ویتوریا شارلی، با همان خطوط مینیمال و پروفیل پایین. مکمل مناسب برای مبل ال یا یک صندلی راحتی مستقل.",
     "fabricMaterials": [
-      "شیشه سکوریت ۱۲ میلیمتر",
-      "فلز استیل ضد زنگ",
-      "پوشش نانو ضد لک",
-      "پایه‌های تنظیم ارتفاع"
+      "پارچه شنیل",
+      "فوم سرد",
+      "اسکلت چوبی و فلزی",
+      "پایه‌های فلزی باریک"
     ],
     "billboardPosition": [
       5,
@@ -308,62 +305,62 @@
     ],
     "en": {
       "category": "Sofa",
-      "type": "Lounge",
-      "name": "Accent Lounge Chair",
-      "material": "Shatter-resistant glass and metal",
-      "fabricType": "12mm tempered glass",
-      "detailedDescription": "A coffee table with an impact-resistant tempered-glass top and metal legs. Minimal, modern design that wipes clean easily. Ideal for small and large spaces alike.",
+      "type": "Single-Seat",
+      "name": "Vittoria Charlie Single Sofa",
+      "material": "Chenille fabric and metal",
+      "seatingCapacity": "1–2 people",
+      "fabricType": "Soft chenille weave",
+      "detailedDescription": "The single-seat piece from the Vittoria Charlie line, sharing the same minimal lines and low profile. Pairs with the L-shaped sofa, or stands alone as a lounge chair.",
       "fabricMaterials": [
-        "12mm tempered glass",
-        "Rust-resistant steel",
-        "Nano stain-resistant coating",
-        "Height-adjustable feet"
+        "Chenille fabric",
+        "Cold foam",
+        "Wood-and-metal frame",
+        "Slim metal legs"
       ]
     }
-  } ,
-
-
+  },
   "coffee-table2": {
     "id": "Busnelli_Grumetto_Sofa_01_Composition_054",
     "category": "مبل",
-    "type": "راحتی",
-    "name": "صندلی راحتی آکسانت",
+    "type": "سگمنتال",
+    "name": "مبل سگمنتال بوسنلی گرومتو",
     "glbPath": "/models/Furniture/3DModel-optimized.glb",
     "usdzPath": "",
-    "dimensions": "120cm × 60cm × 45cm",
-    "material": "شیشه نشکن و فلز",
-    "weight": "22 kg",
-    "price": 15900000,
+    "dimensions": "290cm × 165cm × 78cm",
+    "material": "پارچه مخمل و فولاد",
+    "seatingCapacity": "۵ نفر",
+    "weight": "98 kg",
+    "price": 73500000,
     "colors": [
       {
-        "name": "شیشه شفاف",
-        "hex": "#E8F4F8",
+        "name": "شتری",
+        "hex": "#C19A6B",
         "en": {
-          "name": "Clear Glass"
+          "name": "Camel"
         }
       },
       {
-        "name": "دودی",
-        "hex": "#595959",
+        "name": "خاکستری گرم",
+        "hex": "#C7BDAE",
         "en": {
-          "name": "Smoke"
+          "name": "Warm Greige"
         }
       },
       {
-        "name": "برنز",
-        "hex": "#CD7F32",
+        "name": "شنی",
+        "hex": "#D8C3A5",
         "en": {
-          "name": "Bronze"
+          "name": "Sand Beige"
         }
       }
     ],
-    "fabricType": "شیشه سکوریت ۱۲ میل",
-    "detailedDescription": "میز جلو مبلی با صفحه شیشه سکوریت ضدضربه و پایه‌های فلزی. طراحی مینیمال و مدرن با قابلیت تمیز کردن آسان. ایده‌آل برای فضاهای کوچک و بزرگ.",
+    "fabricType": "پارچه مخملی لوکس",
+    "detailedDescription": "مبل سگمنتال بوسنلی گرومتو، طراحی ایتالیایی با پروفیل پایین و نشیمن عمیق. رویه مخمل لوکس روی اسکلت فولادی مقاوم.",
     "fabricMaterials": [
-      "شیشه سکوریت ۱۲ میلیمتر",
-      "فلز استیل ضد زنگ",
-      "پوشش نانو ضد لک",
-      "پایه‌های تنظیم ارتفاع"
+      "پارچه مخمل لوکس",
+      "فوم سرد پرتراکم",
+      "اسکلت فولادی",
+      "پایه‌های فلزی کروم مات"
     ],
     "billboardPosition": [
       5,
@@ -372,59 +369,62 @@
     ],
     "en": {
       "category": "Sofa",
-      "type": "Lounge",
-      "name": "Accent Lounge Chair",
-      "material": "Shatter-resistant glass and metal",
-      "fabricType": "12mm tempered glass",
-      "detailedDescription": "A coffee table with an impact-resistant tempered-glass top and metal legs. Minimal, modern design that wipes clean easily. Ideal for small and large spaces alike.",
+      "type": "Sectional",
+      "name": "Busnelli Grumetto Sectional Sofa",
+      "material": "Velvet fabric and steel",
+      "seatingCapacity": "5 people",
+      "fabricType": "Luxury velvet",
+      "detailedDescription": "The Busnelli Grumetto sectional — Italian design with a low profile and a deep seat. Luxury velvet upholstery over a reinforced steel frame.",
       "fabricMaterials": [
-        "12mm tempered glass",
-        "Rust-resistant steel",
-        "Nano stain-resistant coating",
-        "Height-adjustable feet"
+        "Luxury velvet fabric",
+        "High-density cold foam",
+        "Steel frame",
+        "Matte chrome legs"
       ]
     }
-  }, "coffee-ewew": {
+  },
+  "coffee-ewew": {
     "id": "Busnelli_Grumetto_Sofa_01_Composition_070",
     "category": "مبل",
-    "type": "راحتی",
-    "name": "صندلی راحتی آکسانت",
+    "type": "ال",
+    "name": "مبل ال بوسنلی گرومتو",
     "glbPath": "/models/Furniture/3DModel-optimized.glb",
     "usdzPath": "",
-    "dimensions": "120cm × 60cm × 45cm",
-    "material": "شیشه نشکن و فلز",
-    "weight": "22 kg",
-    "price": 15900000,
+    "dimensions": "310cm × 190cm × 78cm",
+    "material": "پارچه مخمل و فولاد",
+    "seatingCapacity": "۶ نفر",
+    "weight": "112 kg",
+    "price": 82500000,
     "colors": [
       {
-        "name": "شیشه شفاف",
-        "hex": "#E8F4F8",
+        "name": "عاجی گرم",
+        "hex": "#EFE6D8",
         "en": {
-          "name": "Clear Glass"
+          "name": "Warm Ivory"
         }
       },
       {
-        "name": "دودی",
-        "hex": "#595959",
+        "name": "گلبهی ملایم",
+        "hex": "#D9A98C",
         "en": {
-          "name": "Smoke"
+          "name": "Terracotta Blush"
         }
       },
       {
-        "name": "برنز",
-        "hex": "#CD7F32",
+        "name": "قارچی",
+        "hex": "#A89A88",
         "en": {
-          "name": "Bronze"
+          "name": "Mushroom"
         }
       }
     ],
-    "fabricType": "شیشه سکوریت ۱۲ میل",
-    "detailedDescription": "میز جلو مبلی با صفحه شیشه سکوریت ضدضربه و پایه‌های فلزی. طراحی مینیمال و مدرن با قابلیت تمیز کردن آسان. ایده‌آل برای فضاهای کوچک و بزرگ.",
+    "fabricType": "پارچه مخملی لوکس",
+    "detailedDescription": "مبل ال بوسنلی گرومتو، بزرگ‌ترین چیدمان مجموعه گرومتو با همان طراحی ایتالیایی کم‌ارتفاع. مناسب برای هال‌های بزرگ و پذیرایی رسمی.",
     "fabricMaterials": [
-      "شیشه سکوریت ۱۲ میلیمتر",
-      "فلز استیل ضد زنگ",
-      "پوشش نانو ضد لک",
-      "پایه‌های تنظیم ارتفاع"
+      "پارچه مخمل لوکس",
+      "فوم سرد پرتراکم",
+      "اسکلت فولادی",
+      "پایه‌های فلزی کروم مات"
     ],
     "billboardPosition": [
       5,
@@ -433,16 +433,17 @@
     ],
     "en": {
       "category": "Sofa",
-      "type": "Lounge",
-      "name": "Accent Lounge Chair",
-      "material": "Shatter-resistant glass and metal",
-      "fabricType": "12mm tempered glass",
-      "detailedDescription": "A coffee table with an impact-resistant tempered-glass top and metal legs. Minimal, modern design that wipes clean easily. Ideal for small and large spaces alike.",
+      "type": "L-Shaped",
+      "name": "Busnelli Grumetto L-Shaped Sofa",
+      "material": "Velvet fabric and steel",
+      "seatingCapacity": "6 people",
+      "fabricType": "Luxury velvet",
+      "detailedDescription": "The Busnelli Grumetto L-shaped sofa, the largest layout in the Grumetto line, sharing the same low-profile Italian design. Built for large living rooms and formal reception spaces.",
       "fabricMaterials": [
-        "12mm tempered glass",
-        "Rust-resistant steel",
-        "Nano stain-resistant coating",
-        "Height-adjustable feet"
+        "Luxury velvet fabric",
+        "High-density cold foam",
+        "Steel frame",
+        "Matte chrome legs"
       ]
     }
   }
