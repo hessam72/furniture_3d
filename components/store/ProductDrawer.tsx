@@ -57,7 +57,9 @@ export default function ProductDrawer({
 
   // Pieces without their own manifest fall back to the reference presentation,
   // so the drawer always offers a way into the dedicated product page.
-  const detailHref = hasPresentation(productKey) ? `/product/${productKey}` : '/product/test'
+  // randomly chose between simple and simple-new linl for
+  // const detailHref = '/product/nilper/simple'
+  const detailHref =  productKey == "nilper" ? '/product/nilper/simple-new' : `/product/nilper/simple`
 
   return (
     <motion.div
