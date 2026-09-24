@@ -1,3 +1,8 @@
+import { fetchProduct, fetchPresentations } from '@/lib/api'
+// Static fallback data, still read by /store's client-side 3D pipeline
+// (ProductInteraction, FurnitureColorApplier, ProductDrawer, useStoreAR,
+// configuredModel.ts) until that surface is cut over to the backend too —
+// @see arch-docs plan, phase "store/room/catalog", not yet done this round.
 import presentationConfig from '@/public/config/furniture-presentation.json'
 import productsConfig from '@/public/config/products.json'
 import type { ProductData } from '@/components/store/ProductInteraction'
@@ -910,11 +915,14 @@ export interface PresentationConfig {
 const CONFIGS = presentationConfig as unknown as Record<string, PresentationConfig>
 const PRODUCTS = productsConfig as unknown as Record<string, ProductData>
 
-/** Every product key that has a presentation entry — the SSG param source. */
+/** Every product key that has a presentation entry — the SSG param source.
+ *  Static-data version, still used by /store. @see presentationKeysForShowroom */
 export function presentationKeys(): string[] {
   return Object.keys(CONFIGS).filter((key) => key in PRODUCTS)
 }
 
+/** Static-data version, still used by /store's client 3D pipeline.
+ *  @see hasPresentationInShowroom for the backend-backed equivalent. */
 export function hasPresentation(key: string | null | undefined): boolean {
   return !!key && key in CONFIGS && key in PRODUCTS
 }
@@ -930,6 +938,8 @@ export interface ResolvedPresentation {
  * resolves every translatable field (product facts, layer labels, cover
  * variants, swatch names, part labels) to `locale` — `fa` by default, so the
  * many callers that never pass one keep the exact behaviour they always had.
+ *
+ * Static-data version, still used by /store. @see resolveShowroomPresentation
  */
 export function resolvePresentation(key: string, locale: Locale = 'fa'): ResolvedPresentation | null {
   const config = CONFIGS[key]
@@ -939,6 +949,41 @@ export function resolvePresentation(key: string, locale: Locale = 'fa'): Resolve
     key,
     product: localizeProduct(product, locale),
     config: localizePresentationConfig(config, locale),
+  }
+}
+
+/**
+ * Every product key with a presentation, for one showroom — backend-backed
+ * `generateStaticParams` source for `/showroom/[slug]/product/[key]`.
+ */
+export async function presentationKeysForShowroom(slug: string): Promise<string[]> {
+  const presentations = await fetchPresentations<PresentationConfig>(slug)
+  return Object.keys(presentations)
+}
+
+/** Whether `key` has a presentation in this showroom's backend data. */
+export async function hasPresentationInShowroom(slug: string, key: string | null | undefined): Promise<boolean> {
+  if (!key) return false
+  const result = await fetchProduct(slug, key)
+  return !!result?.presentation
+}
+
+/**
+ * `resolvePresentation`, backed by the backend instead of the static JSON —
+ * one product plus its presentation, scoped to a showroom, localized to
+ * `locale`. Used by `/showroom/[slug]/product/[key]` and its `/simple`.
+ */
+export async function resolveShowroomPresentation(
+  slug: string,
+  key: string,
+  locale: Locale = 'fa'
+): Promise<ResolvedPresentation | null> {
+  const result = await fetchProduct<ProductData, PresentationConfig>(slug, key)
+  if (!result?.presentation) return null
+  return {
+    key,
+    product: localizeProduct(result.product, locale),
+    config: localizePresentationConfig(result.presentation, locale),
   }
 }
 

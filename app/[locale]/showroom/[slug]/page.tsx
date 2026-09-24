@@ -3,12 +3,13 @@ import { notFound } from 'next/navigation'
 import { resolveShowroom, showroomSlugs } from '@/lib/showroom/config'
 import ShowroomPage from '@/components/showroom/ShowroomPage'
 
-export function generateStaticParams() {
-  return showroomSlugs().map((slug) => ({ slug }))
+export async function generateStaticParams() {
+  const slugs = await showroomSlugs()
+  return slugs.map((slug) => ({ slug }))
 }
 
-export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
-  const showroom = resolveShowroom(params.slug)
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const showroom = await resolveShowroom(params.slug)
   if (!showroom) return { title: 'شوروم یافت نشد' }
 
   const { brand, seo } = showroom.config
@@ -20,8 +21,8 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
   return { title, description, openGraph: { title, description, type: 'website' } }
 }
 
-export default function Showroom({ params }: { params: { slug: string } }) {
-  const showroom = resolveShowroom(params.slug)
+export default async function Showroom({ params }: { params: { slug: string } }) {
+  const showroom = await resolveShowroom(params.slug)
   if (!showroom) notFound()
   return <ShowroomPage showroom={showroom} />
 }

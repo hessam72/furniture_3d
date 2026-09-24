@@ -1,7 +1,6 @@
-import showroomsConfig from '@/public/config/showrooms-page.json'
+import { fetchShowroom, fetchShowroomList } from '@/lib/api'
 import {
-  hasPresentation,
-  resolvePresentation,
+  resolveShowroomPresentation,
   type CoverVariant,
   type PresentationZone,
   type ResolvedPresentation,
@@ -201,11 +200,10 @@ export interface ShowroomConfig {
   }
 }
 
-const SHOWROOMS = (showroomsConfig as unknown as { showrooms: ShowroomConfig[] }).showrooms
-
-/** Every slug with an entry — the SSG param source. */
-export function showroomSlugs(): string[] {
-  return SHOWROOMS.map((showroom) => showroom.slug)
+/** Every published slug — the SSG param source. */
+export async function showroomSlugs(): Promise<string[]> {
+  const list = await fetchShowroomList()
+  return list.map((showroom) => showroom.slug)
 }
 
 export interface ResolvedShowroom {
@@ -278,11 +276,11 @@ function withShowroomViewer(
   }
 }
 
-export function resolveShowroom(slug: string): ResolvedShowroom | null {
-  const config = SHOWROOMS.find((showroom) => showroom.slug === slug)
+export async function resolveShowroom(slug: string): Promise<ResolvedShowroom | null> {
+  const config = await fetchShowroom<ShowroomConfig>(slug)
   if (!config) return null
 
   const key = config.featured.presentationKey
-  const presentation = hasPresentation(key) ? resolvePresentation(key) : null
+  const presentation = key ? await resolveShowroomPresentation(slug, key) : null
   return { config, presentation: withShowroomViewer(presentation, config.featured.viewer) }
 }

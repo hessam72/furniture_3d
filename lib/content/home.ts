@@ -104,7 +104,7 @@ const fa: HomeCopy = {
   },
   navLinks: [
     { label: "خانه", href: "#top" },
-    { label: "نمایشگاه سه‌بعدی", href: "/store" },
+    { label: "نمایشگاه سه‌بعدی", href: "/showroom/shahr-omid/store" },
     { label: "درباره ما", href: "/about" },
     { label: "امکانات", href: "#features" },
     { label: "واقعیت افزوده", href: "#ar" },
@@ -140,7 +140,7 @@ const fa: HomeCopy = {
       alt: "نمای نمایشگاه سه‌بعدی",
       label: "تصویر نمایشگاه",
     },
-    cta: { label: "ورود به نمایشگاه سه‌بعدی", href: "/store" },
+    cta: { label: "ورود به نمایشگاه سه‌بعدی", href: "/showroom/shahr-omid/store" },
   },
   colorSwap: {
     id: "features",
@@ -257,7 +257,7 @@ const en: HomeCopy = {
   },
   navLinks: [
     { label: "Home", href: "#top" },
-    { label: "3D Showroom", href: "/store" },
+    { label: "3D Showroom", href: "/showroom/shahr-omid/store" },
     { label: "About Us", href: "/about" },
     { label: "Features", href: "#features" },
     { label: "AR", href: "#ar" },
@@ -294,7 +294,7 @@ const en: HomeCopy = {
       alt: "View of the 3D showroom",
       label: "Showroom image",
     },
-    cta: { label: "Enter the 3D showroom", href: "/store" },
+    cta: { label: "Enter the 3D showroom", href: "/showroom/shahr-omid/store" },
   },
   colorSwap: {
     id: "features",

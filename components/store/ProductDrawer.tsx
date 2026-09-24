@@ -73,7 +73,13 @@ export default function ProductDrawer({
 
   // Pieces without their own manifest fall back to the reference presentation,
   // so the drawer always offers a way into the dedicated product page.
-  const detailHref = hasPresentation(productKey) ? `/product/${productKey}` : '/product/nilper/simple'
+  //
+  // /store is not yet slug-scoped to a real showroom (@see the store route's
+  // page.tsx) — its static demo catalogue only resolves under the seeded
+  // `shahr-omid` showroom now that /product/[id] moved under /showroom/[slug].
+  const detailHref = hasPresentation(productKey)
+    ? `/showroom/shahr-omid/product/${productKey}`
+    : '/showroom/shahr-omid/product/nilper/simple'
 
   return (
     <motion.div

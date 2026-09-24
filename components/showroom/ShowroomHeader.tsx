@@ -41,7 +41,7 @@ export default function ShowroomHeader({ config }: { config: ShowroomConfig }) {
         </Link>
 
         <nav className="sr-nav" aria-label={brand.nameFa}>
-          {nav.links.map((link) => (
+          {(nav.links ?? []).map((link) => (
             <SmoothLink key={link.label} className="sr-nav-link" href={link.href}>
               {link.label}
             </SmoothLink>
@@ -79,7 +79,7 @@ export default function ShowroomHeader({ config }: { config: ShowroomConfig }) {
 
       <div className="sr-shell">
         <div className="sr-mobile" id="sr-mobile-menu" data-open={open}>
-          {nav.links.map((link) => (
+          {(nav.links ?? []).map((link) => (
             <SmoothLink key={link.label} href={link.href} onNavigate={() => setOpen(false)}>
               {link.label}
             </SmoothLink>
