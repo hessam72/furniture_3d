@@ -6,6 +6,7 @@ import { useLocale } from 'next-intl'
 import { Raycaster, Vector2, Object3D, Vector3 } from 'three'
 import type { Locale } from '@/i18n/routing'
 import { localizeProduct } from '@/lib/i18n/localize'
+import { fetchProducts } from '@/lib/api'
 
 export interface FurnitureColor {
   name: string
@@ -57,6 +58,7 @@ export interface ProductData {
 }
 
 interface ProductInteractionProps {
+  slug: string
   onProductClick: (
     product: ProductData | null,
     position?: [number, number, number],
@@ -65,22 +67,21 @@ interface ProductInteractionProps {
   ) => void
 }
 
-export default function ProductInteraction({ onProductClick }: ProductInteractionProps) {
+export default function ProductInteraction({ slug, onProductClick }: ProductInteractionProps) {
   const locale = useLocale() as Locale
   const { camera, scene, gl } = useThree()
   const raycaster = useRef(new Raycaster())
   const pointer = useRef(new Vector2())
   const [products, setProducts] = useState<Record<string, ProductData>>({})
 
-  // Load products config
+  // Load this showroom's products
   useEffect(() => {
-    fetch('/config/products.json')
-      .then(res => res.json())
-      .then((data: Record<string, ProductData>) =>
+    fetchProducts<ProductData>(slug)
+      .then((data) =>
         setProducts(Object.fromEntries(Object.entries(data).map(([key, p]) => [key, localizeProduct(p, locale)])))
       )
-      .catch(err => console.error('Failed to load products:', err))
-  }, [locale])
+      .catch((err) => console.error('Failed to load products:', err))
+  }, [slug, locale])
 
   useEffect(() => {
     const downPos: { x: number; y: number } | null = { x: 0, y: 0 }

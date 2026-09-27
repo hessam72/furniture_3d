@@ -38,6 +38,7 @@ import { useShop } from '@/stores/storeShopStore'
 import { useLocale } from 'next-intl'
 import type { Locale } from '@/i18n/routing'
 import { localizeCatalog, localizeProduct } from '@/lib/i18n/localize'
+import { fetchCatalog, fetchProducts } from '@/lib/api'
 // Lazily, like every other AR call site. A static import puts model-viewer —
 // which inlines its own copy of three — in this page's critical path, for an
 // overlay most visitors never open.
@@ -245,9 +246,9 @@ type PendingFocus = {
   object?: THREE.Object3D | null
 }
 
-export default function Scene({ recovery }: { recovery: ContextRecovery }) {
+export default function Scene({ slug, recovery }: { slug: string; recovery: ContextRecovery }) {
   const locale = useLocale() as Locale
-  const { config, loading, error } = useStoreConfig()
+  const { config, loading, error } = useStoreConfig(slug)
   const { settings, preset, device, gpu } = useQuality()
 
   /**
@@ -386,18 +387,15 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
   // products.json too, but that copy lives inside the Canvas and drives the
   // raycast; the HUD needs its own to resolve a catalogue pick.
   useEffect(() => {
-    Promise.all([
-      fetch('/config/catalog.json').then((r) => r.json()),
-      fetch('/config/products.json').then((r) => r.json())
-    ])
-      .then(([cat, prods]: [Catalog, Record<string, ProductData>]) => {
-        setCatalog(localizeCatalog(cat, locale))
+    Promise.all([fetchCatalog<Catalog>(slug), fetchProducts<ProductData>(slug)])
+      .then(([cat, prods]) => {
+        if (cat) setCatalog(localizeCatalog(cat, locale))
         setProducts(
           Object.fromEntries(Object.entries(prods).map(([key, p]) => [key, localizeProduct(p, locale)]))
         )
       })
       .catch((err) => console.error('Failed to load catalog:', err))
-  }, [locale])
+  }, [slug, locale])
 
   /** Take off — shared by menu picks and direct taps */
   const beginFocus = useCallback(
@@ -645,6 +643,7 @@ export default function Scene({ recovery }: { recovery: ContextRecovery }) {
           {/* Product click interaction */}
           {loadingPhase === 'ready' && (
             <ProductInteraction
+              slug={slug}
               onProductClick={(product, position, clickedObject, productKey) => {
                 if (!product) return
                 setSelectedObjectPosition(position || null)

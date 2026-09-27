@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { fetchRoom } from '@/lib/api'
 
 export type ModelFile = {
   priority: number
@@ -95,22 +95,23 @@ export type StoresData = {
   stores: StoreConfig[]
 }
 
-export function useStoreConfig() {
-  const searchParams = useSearchParams()
+/**
+ * The walkable room, from the backend's `/showrooms/:slug/room` — one room
+ * per showroom, already scoped server-side, so there is no `id` to pick
+ * between any more (the old static `stores.json` held every store's config
+ * in one file, selected by a `?id=` query param defaulting to `'mall'`).
+ */
+export function useStoreConfig(slug: string) {
   const [config, setConfig] = useState<StoreConfig | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const storeId = searchParams.get('id') || 'mall'
-
-    fetch('/config/stores.json')
-      .then((res) => res.json())
-      .then((data: StoresData) => {
-        const store = data.stores.find((s) => s.id === storeId)
-        if (!store) {
-          throw new Error(`Store "${storeId}" not found`)
-        }
+    setLoading(true)
+    setError(null)
+    fetchRoom<StoreConfig>(slug)
+      .then((store) => {
+        if (!store) throw new Error(`No room configured for showroom "${slug}"`)
         setConfig(store)
         setLoading(false)
       })
@@ -118,7 +119,7 @@ export function useStoreConfig() {
         setError(err.message)
         setLoading(false)
       })
-  }, [searchParams])
+  }, [slug])
 
   return { config, loading, error }
 }

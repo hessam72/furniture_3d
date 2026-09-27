@@ -30,17 +30,12 @@ export async function generateMetadata({
 /**
  * Thin server shell: settles the locale and 404s an unknown showroom slug
  * before the heavy walkthrough scene mounts (Client Component, `ssr: false`).
- *
- * The scene itself (`Scene.tsx` and everything it loads — `ProductInteraction`,
- * `useStoreConfig`, the category bar) still reads the app's static demo JSON
- * rather than this showroom's real catalogue/room — threading `slug` through
- * the 3D pipeline's own data loaders is follow-up work, not done this round.
- * This shell only guarantees the *route* is correctly per-showroom (a real
- * slug renders, an unknown one 404s).
+ * The scene's own data (room, catalogue, products) is fetched client-side,
+ * scoped to this `slug`. @see Scene.tsx, useStoreConfig, ProductInteraction
  */
 export default async function StorePage({ params }: { params: { locale: Locale; slug: string } }) {
   setRequestLocale(params.locale)
   const showroom = await fetchShowroom(params.slug)
   if (!showroom) notFound()
-  return <StorePageClient />
+  return <StorePageClient slug={params.slug} />
 }

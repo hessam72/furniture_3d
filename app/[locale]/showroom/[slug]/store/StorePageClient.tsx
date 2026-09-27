@@ -10,7 +10,7 @@ const StoreScene = dynamic(() => import('@/components/store/Scene'), {
   ssr: false,
 })
 
-export default function StorePageClient() {
+export default function StorePageClient({ slug }: { slug: string }) {
   /**
    * Held above the provider so the rungs a lost context costs reach the tier
    * that is resolved from them. This page had no `webglcontextlost` listener at
@@ -44,7 +44,7 @@ export default function StorePageClient() {
     // handset cannot hold. @see SURFACE_POLICY
     <QualityProvider surface="walkthrough" downgrades={recovery.downgrades}>
       <div className="h-screen w-screen overflow-hidden">
-        <StoreScene recovery={recovery} />
+        <StoreScene slug={slug} recovery={recovery} />
       </div>
     </QualityProvider>
   )
