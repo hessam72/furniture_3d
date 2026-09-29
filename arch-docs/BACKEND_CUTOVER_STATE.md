@@ -38,6 +38,20 @@ instead of the static JSON under `public/config/`.
 - **`ShowroomHeader`** — `nav.links` is now optional-chained. The showroom
   panel dropped menu management in an earlier round, so real showroom data
   carries no `nav.links` array where the old static fixture always did.
+- **Room placements** — `/room`'s `placements` stand each product on its
+  numbered slot (`components/store/RoomPlacements.tsx`): anchor looked up in
+  the mounted room clone (exact, then case-insensitive; visual files before
+  the collider), piece footprint-centred on it with the anchor's yaw, GLBs
+  preloaded alongside the room, one error boundary per piece, a cuboid
+  collider per piece (own collision group, ignored by the focus flight's
+  obstruction cast). `?view-stage=1` labels every slot (`SlotLabels.tsx`).
+  Room files use the `isCollider` flag, not priority 0, and only one rung of
+  the `low`/`high` LOD ladder is mounted (`roomFilesFor`: `low` on phones and
+  the low tier). `/uploads/*` URLs go through `mediaUrl()`
+  (`NEXT_PUBLIC_MEDIA_URL`, default the API origin).
+- **Store entry** — `/showroom/[slug]/store` 404s when the showroom has no
+  room, and the showroom page drops CTAs into it; a legacy `/store` href is
+  re-pointed to `/showroom/<slug>/store`.
 
 Verified against the backend's `shahr-omid` seed (`atlas-sofa`,
 `vira-armchair`, `noor-coffee-table`): real DB content renders on
@@ -77,9 +91,16 @@ AR through it today. Confirmed by reading
 
 **Also out of scope, by design, not oversight**: `/manage`, `/view/[id]`,
 `app/api/uploads/*` (local dev upload tooling, no DB), the homepage/`/about`/
-`/ar` demo page, `RoomPlacement` (backend ships `placements: []` on
-purpose — deferred on the backend side too), and the `POST /inquiries` lead
-form (a natural fast-follow, not attempted this round).
+`/ar` demo page, and the `POST /inquiries` lead form (a natural fast-follow,
+not attempted this round).
+
+**Media URLs outside `/room`** — showroom page images, product and
+presentation paths are still used as sent (relative `/uploads/...`); only
+the room path goes through `mediaUrl()` so far. Backend note: `/uploads/*`
+answers CORS for the single `CORS_ORIGIN` and sends
+`Cross-Origin-Resource-Policy: same-origin`, so either the store's origin is
+that `CORS_ORIGIN` or a proxy serves `/uploads` on the store's own origin
+(`NEXT_PUBLIC_MEDIA_URL=`).
 
 ## Verifying locally
 

@@ -132,6 +132,15 @@ export default function ProductInteraction({ slug, onProductClick }: ProductInte
         let foundProduct: ProductData | null = null
         let matchedKey = ''
         while (targetObject && !foundProduct) {
+          // A piece placed on a slot says which product it is outright.
+          // @see RoomPlacements
+          const placedKey: unknown = targetObject.userData.productKey
+          if (typeof placedKey === 'string' && products[placedKey]) {
+            foundProduct = products[placedKey]
+            matchedKey = placedKey
+            break
+          }
+
           const objectName = targetObject.name.toLowerCase()
           console.log('[ProductInteraction] Checking object:', objectName)
 

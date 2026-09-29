@@ -7,6 +7,7 @@ import { RigidBody } from '@react-three/rapier'
 import { useQuality } from '@/contexts/QualityContext'
 import { applyAnisotropy } from '@/lib/three/prepareCarMaterial'
 import { extendGltfLoader } from '@/lib/three/gltfLoaders'
+import type { RoomRoot } from '@/lib/store/roomAnchors'
 import type { ModelFile } from './hooks/useStoreConfig'
 
 // DRACO, KTX2 and meshopt all live in lib/three/gltfLoaders — the
@@ -24,9 +25,12 @@ type ModelLoaderProps = {
    *  hook; disposing while the cache still owns the scene races whatever else
    *  expects to reuse it. @see lib/three/disposeObject3D */
   onSceneLoaded?: (url: string, scene: THREE.Object3D) => void
+  /** Reports each file's mounted clone — the tree the slot anchors are read
+   *  from. @see RoomPlacements */
+  onRoomRoot?: (root: RoomRoot) => void
 }
 
-export function ModelLoader({ files, onModelsLoaded, onProgress, onSceneLoaded }: ModelLoaderProps) {
+export function ModelLoader({ files, onModelsLoaded, onProgress, onSceneLoaded, onRoomRoot }: ModelLoaderProps) {
   const [loadedCount, setLoadedCount] = useState(0)
 
   // Sort by priority (0 = wireframe first)
@@ -50,13 +54,15 @@ export function ModelLoader({ files, onModelsLoaded, onProgress, onSceneLoaded }
 
   return (
     <>
-      {sortedFiles.map((file, idx) => (
+      {sortedFiles.map((file) => (
         <Model
           key={file.url}
           url={file.url}
-          isWireframe={file.priority === 0}
+          priority={file.priority}
+          isWireframe={file.isCollider}
           onLoaded={handleModelLoaded}
           onSceneLoaded={onSceneLoaded}
+          onRoomRoot={onRoomRoot}
         />
       ))}
     </>
@@ -67,12 +73,14 @@ export function ModelLoader({ files, onModelsLoaded, onProgress, onSceneLoaded }
 
 type ModelProps = {
   url: string
+  priority: number
   isWireframe: boolean
   onLoaded?: () => void
   onSceneLoaded?: (url: string, scene: THREE.Object3D) => void
+  onRoomRoot?: (root: RoomRoot) => void
 }
 
-function Model({ url, isWireframe, onLoaded, onSceneLoaded }: ModelProps) {
+function Model({ url, priority, isWireframe, onLoaded, onSceneLoaded, onRoomRoot }: ModelProps) {
   // Texture sharpening follows the shared quality tier (4/4/8/16)
   const { settings } = useQuality()
 
@@ -187,6 +195,12 @@ function Model({ url, isWireframe, onLoaded, onSceneLoaded }: ModelProps) {
 
     return clone
   }, [gltf.scene, isWireframe])
+
+  // After commit, so the clone is mounted — and re-based — before anyone
+  // reads an anchor's world position out of it
+  useEffect(() => {
+    onRoomRoot?.({ url, object: clonedScene, isCollider: isWireframe, priority })
+  }, [onRoomRoot, url, clonedScene, isWireframe, priority])
 
   // Texture anisotropy follows the quality tier without re-cloning the model
   useEffect(() => {

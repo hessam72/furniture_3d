@@ -1,4 +1,4 @@
-import { fetchShowroom, fetchShowroomList } from '@/lib/api'
+import { fetchRoom, fetchShowroom, fetchShowroomList } from '@/lib/api'
 import {
   resolveShowroomPresentation,
   type CoverVariant,
@@ -276,11 +276,54 @@ function withShowroomViewer(
   }
 }
 
+/**
+ * The page's doors into the walkable room.
+ *
+ * Authored copy still says `/store`, the single-brand route this app used to
+ * have; the room now lives at `/showroom/<slug>/store`, so a bare `/store`
+ * is re-pointed there. A showroom with no room has no door — the CTA is
+ * dropped rather than left leading to a 404. Every other link is untouched.
+ */
+function withStoreEntry(config: ShowroomConfig, hasRoom: boolean): ShowroomConfig {
+  const own = `/showroom/${config.slug}/store`
+
+  const door = <T extends ShowroomLink>(link: T | undefined): T | undefined => {
+    if (!link) return link
+    const path = link.href.split(/[?#]/)[0]
+    const legacy = path === '/store' || path === '/store/'
+    if (!legacy && path !== own) return link
+    if (!hasRoom) return undefined
+    return legacy ? { ...link, href: own + link.href.slice(path.length) } : link
+  }
+  const doors = <T extends ShowroomLink>(links: T[] | undefined): T[] | undefined =>
+    links?.flatMap((link) => door(link) ?? [])
+
+  return {
+    ...config,
+    nav: { ...config.nav, cta: door(config.nav.cta) },
+    hero: { ...config.hero, ctas: doors(config.hero.ctas) },
+    featured: { ...config.featured, cta: door(config.featured.cta) },
+    virtual: { ...config.virtual, cta: door(config.virtual.cta) },
+    ...(config.closing && { closing: { ...config.closing, cta: door(config.closing.cta) } }),
+  }
+}
+
 export async function resolveShowroom(slug: string): Promise<ResolvedShowroom | null> {
-  const config = await fetchShowroom<ShowroomConfig>(slug)
+  const [config, hasRoom] = await Promise.all([
+    fetchShowroom<ShowroomConfig>(slug),
+    // Only a 404 means "no room". A failing /room must not take the brand's
+    // homepage down with it — the door stays, and /store answers for itself.
+    fetchRoom(slug).then(
+      (room) => room !== null,
+      () => true
+    ),
+  ])
   if (!config) return null
 
   const key = config.featured.presentationKey
   const presentation = key ? await resolveShowroomPresentation(slug, key) : null
-  return { config, presentation: withShowroomViewer(presentation, config.featured.viewer) }
+  return {
+    config: withStoreEntry(config, hasRoom),
+    presentation: withShowroomViewer(presentation, config.featured.viewer),
+  }
 }

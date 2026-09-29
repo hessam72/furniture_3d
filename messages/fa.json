@@ -76,7 +76,9 @@
     "fabricSpec": "جنس پارچه",
     "showDetails": "نمایش جزییات",
     "hideDetails": "بستن جزییات",
-    "viewWithDetails": "مشاهده با جزییات"
+    "viewWithDetails": "مشاهده با جزییات",
+    "slot": "جایگاه {number}",
+    "slotEmpty": "خالی"
   },
   "product": {
     "customize": "شخصی‌سازی",

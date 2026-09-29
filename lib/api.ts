@@ -17,6 +17,20 @@ const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3010').re
 /** The origin alone, for building asset URLs (`${apiOrigin}/uploads/...`). */
 export const apiOrigin = API_BASE
 
+/** Where `/uploads/*` is served. Defaults to the API's own origin; set
+ *  `NEXT_PUBLIC_MEDIA_URL=''` when a reverse proxy serves `/uploads` on this
+ *  site's origin, which also sidesteps the backend's single-origin CORS. */
+const MEDIA_BASE = (process.env.NEXT_PUBLIC_MEDIA_URL ?? API_BASE).replace(/\/$/, '')
+
+/**
+ * A payload's asset path, made loadable from this app. The backend sends media
+ * relative (`/uploads/<storageKey>`); anything else — an absolute URL, or one
+ * of this app's own `public/` paths — is returned untouched.
+ */
+export function mediaUrl(path: string): string {
+  return path.startsWith('/uploads/') ? `${MEDIA_BASE}${path}` : path
+}
+
 async function getJson<T>(path: string): Promise<T | null> {
   const res = await fetch(`${API_BASE}/api/v1/public${path}`, {
     next: { revalidate: 60 },
@@ -64,7 +78,8 @@ export function fetchProduct<TProduct = unknown, TPresentation = unknown>(
   return getJson(`/showrooms/${encodeURIComponent(slug)}/products/${encodeURIComponent(key)}`)
 }
 
-/** The walkable room — `stores.json`'s per-store shape, plus `placements: []`. */
+/** The walkable room — `stores.json`'s per-store shape, plus its numbered
+ *  `slots` and the `placements` standing on them. Asset URLs are relative. */
 export function fetchRoom<T = unknown>(slug: string): Promise<T | null> {
   return getJson<T>(`/showrooms/${encodeURIComponent(slug)}/room`)
 }

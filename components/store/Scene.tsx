@@ -2,14 +2,19 @@
 import dynamic from 'next/dynamic'
 import { Canvas, useLoader, useFrame } from '@react-three/fiber'
 import type { RootState } from '@react-three/fiber'
-import { Environment } from '@react-three/drei'
+import { Environment, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three-stdlib'
 import { Suspense, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { AnimatePresence } from 'framer-motion'
 import { Physics } from '@react-three/rapier'
-import { useStoreConfig } from './hooks/useStoreConfig'
+import { roomFilesFor, useStoreConfig } from './hooks/useStoreConfig'
 import { ModelLoader } from './ModelLoader'
+import { RoomPlacements } from './RoomPlacements'
+import { SlotLabels } from './SlotLabels'
+import type { RoomRoot } from '@/lib/store/roomAnchors'
+import { preloadGltf } from '@/lib/three/gltfLoaders'
 import { usePhysics } from './PhysicsSystem'
 import { usePlayerController } from './PlayerController'
 import { RigidBody, CapsuleCollider } from '@react-three/rapier'
@@ -251,6 +256,14 @@ export default function Scene({ slug, recovery }: { slug: string; recovery: Cont
   const { config, loading, error } = useStoreConfig(slug)
   const { settings, preset, device, gpu } = useQuality()
 
+  /** One rung of the room's LOD ladder, chosen once per visit: a tier change
+   *  mid-visit would unmount the whole room to swap it. @see roomFilesFor */
+  const [preferLowRoom] = useState(() => device === 'phone' || preset === 'low')
+  const roomFiles = useMemo(
+    () => (config ? roomFilesFor(config.files, preferLowRoom) : []),
+    [config, preferLowRoom]
+  )
+
   /**
    * Hand the room back when the visitor leaves /store.
    *
@@ -260,7 +273,33 @@ export default function Scene({ slug, recovery }: { slug: string; recovery: Cont
    * context-loss retry both keep `Scene` mounted, so neither is caught by this.
    * @see useGltfCacheEviction
    */
-  useGltfCacheEviction(useMemo(() => config?.files.map((f) => f.url) ?? [], [config]))
+  useGltfCacheEviction(
+    useMemo(
+      () => [...roomFiles.map((f) => f.url), ...(config?.placements.map((p) => p.glbPath) ?? [])],
+      [roomFiles, config]
+    )
+  )
+
+  /** `?view-stage=1` — number every slot, the way the panel's placements
+   *  board does, so a showroom can see which spot is which. Only `1` is on. */
+  const viewSlots = useSearchParams()?.get('view-stage') === '1'
+
+  // The placed pieces download alongside the room rather than after it —
+  // why the payload inlines their `glbPath`. They are only *placed* once the
+  // room is up, since that is where their slots are read from.
+  useEffect(() => {
+    if (!config?.placements.length) return
+    return preloadGltf(
+      config.placements.map((p) => p.glbPath),
+      useGLTF.preload
+    )
+  }, [config])
+
+  /** The mounted room files — where RoomPlacements reads each slot's anchor */
+  const [roomRoots, setRoomRoots] = useState<RoomRoot[]>([])
+  const handleRoomRoot = useCallback((root: RoomRoot) => {
+    setRoomRoots((prev) => [...prev.filter((r) => r.url !== root.url), root])
+  }, [])
 
   const [joystickInputRef, setJoystickInputRef] = useState<React.RefObject<{ x: number; y: number }> | null>(null)
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('loading')
@@ -364,24 +403,25 @@ export default function Scene({ slug, recovery }: { slug: string; recovery: Cont
     // cache is about to be cleared for every file below, which is what turns
     // a successfully-loaded sibling's geometries/materials/textures from
     // "cached, reused next mount" into genuinely orphaned GPU resources.
-    config?.files.forEach((f) => {
+    roomFiles.forEach((f) => {
       const scene = loadedScenesRef.current.get(f.url)
       if (scene) disposeObject3D(scene)
     })
     loadedScenesRef.current.clear()
     // Purge the cached rejections, then remount the loader block
-    config?.files.forEach((f) => useLoader.clear(GLTFLoader, f.url))
+    roomFiles.forEach((f) => useLoader.clear(GLTFLoader, f.url))
     setLoadedCount(0)
+    setRoomRoots([])
     setGalleryError(null)
     setModelsKey((k) => k + 1)
     wake()
-  }, [config, wake])
+  }, [roomFiles, wake])
 
   useEffect(() => {
     if (config) {
-      setTotalCount(config.files.length)
+      setTotalCount(roomFiles.length)
     }
-  }, [config])
+  }, [config, roomFiles])
 
   // The catalogue tree and the room's products. ProductInteraction fetches
   // products.json too, but that copy lives inside the Canvas and drives the
@@ -396,6 +436,14 @@ export default function Scene({ slug, recovery }: { slug: string; recovery: Cont
       })
       .catch((err) => console.error('Failed to load catalog:', err))
   }, [slug, locale])
+
+  /** Slug → raycast name, for naming each placed piece the way a click and
+   *  the colour applier look it up. */
+  const raycastNames = useMemo(
+    () => Object.fromEntries(Object.entries(products).map(([key, p]) => [key, p.id])),
+    [products]
+  )
+  const occupiedSlots = useMemo(() => new Set(config?.placements.map((p) => p.slot)), [config])
 
   /** Take off — shared by menu picks and direct taps */
   const beginFocus = useCallback(
@@ -423,15 +471,20 @@ export default function Scene({ slug, recovery }: { slug: string; recovery: Cont
         return
       }
       const base = products[item.sceneObject]
+      // A room laid out by placements stands only what was placed. Anything
+      // else has no spot here — its billboardPosition was measured in some
+      // other room — so it opens where the visitor stands instead.
+      const placements = config?.placements ?? []
+      const standsHere = placements.length === 0 || placements.some((p) => p.product === item.sceneObject)
       beginFocus({
         sceneObject: item.sceneObject,
         id: base.id,
-        fallbackPoint: base.billboardPosition,
+        fallbackPoint: standsHere ? base.billboardPosition : undefined,
         focus: item.focus,
         item
       })
     },
-    [products, beginFocus]
+    [products, beginFocus, config]
   )
 
   /** Open the drawer and show the name chip. Shared by the landed and the
@@ -592,13 +645,28 @@ export default function Scene({ slug, recovery }: { slug: string; recovery: Cont
           <Suspense fallback={null} key={modelsKey}>
             <PartErrorBoundary category="gallery" onError={handleGalleryError}>
               <ModelLoader
-                files={config.files}
+                files={roomFiles}
                 onModelsLoaded={handleModelsLoaded}
                 onProgress={setLoadedCount}
                 onSceneLoaded={handleSceneLoaded}
+                onRoomRoot={handleRoomRoot}
               />
             </PartErrorBoundary>
           </Suspense>
+
+          {/* The showroom's products on their numbered slots — once the room
+              is up, since the slots are read out of it */}
+          {loadingPhase !== 'loading' && config.placements.length > 0 && (
+            <RoomPlacements
+              key={`placements:${modelsKey}`}
+              placements={config.placements}
+              roots={roomRoots}
+              raycastNames={raycastNames}
+            />
+          )}
+          {viewSlots && loadingPhase !== 'loading' && (
+            <SlotLabels slots={config.slots} roots={roomRoots} occupied={occupiedSlots} />
+          )}
 
           {/* Scene transition effects */}
           <SceneTransition

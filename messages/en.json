@@ -76,7 +76,9 @@
     "fabricSpec": "Fabric",
     "showDetails": "Show details",
     "hideDetails": "Hide details",
-    "viewWithDetails": "View with details"
+    "viewWithDetails": "View with details",
+    "slot": "Slot {number}",
+    "slotEmpty": "Empty"
   },
   "product": {
     "customize": "Customize",

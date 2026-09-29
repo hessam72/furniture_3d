@@ -7,6 +7,7 @@ import type { RapierRigidBody } from '@react-three/rapier'
 import { markStoreActivity } from './activityGovernor'
 import { findSceneObject, describeSceneNames } from '@/lib/store/sceneObject'
 import type { FocusOverride } from '@/lib/store/catalog'
+import { ROOM_ONLY_QUERY } from './RoomPlacements'
 
 // Frame-loop scratch — never allocate inside useFrame (same rule as
 // Joystick.tsx / POVCamera.tsx)
@@ -366,6 +367,8 @@ export function ProductFocusCamera({
     //
     // Cast *from the player*, not from the product: the origin is known-free
     // space, which sidesteps hitting the product's own surface from within.
+    // Against the room only — a placed piece in the way is flown over, the
+    // way a room product always was. @see RoomPlacements
     const travel = _travel.subVectors(pose.position, camera.position)
     const travelLen = travel.length()
     let clamped = travelLen
@@ -377,7 +380,7 @@ export function ProductFocusCamera({
         travelLen,
         true,
         undefined,
-        undefined,
+        ROOM_ONLY_QUERY,
         undefined,
         playerBody?.current ?? undefined
       )

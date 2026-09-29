@@ -1,11 +1,31 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { fetchRoom } from '@/lib/api'
+import { fetchRoom, mediaUrl } from '@/lib/api'
 
 export type ModelFile = {
   priority: number
   quality: 'low' | 'high'
   url: string
+  /** The invisible collision mesh. Flagged, not implied by priority 0: a room
+   *  file's priority is only its load order. */
+  isCollider: boolean
+}
+
+/** A numbered place in the room, empty or not. Its position is never in the
+ *  payload — `anchor` names a node in the room GLB, read when the room loads. */
+export type RoomSlot = {
+  number: number
+  anchor: string
+  label?: string
+}
+
+/** A product standing on a slot. `product` is the products payload's key
+ *  (slug); `glbPath` is its finished piece, inlined so it loads with the room. */
+export type RoomPlacement = {
+  slot: number
+  anchor: string
+  product: string
+  glbPath: string
 }
 
 type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] }
@@ -89,10 +109,49 @@ export type StoreConfig = {
   lamps?: DeepPartial<LampConfig>
   /** Optional camera config; missing → defaults. */
   camera?: CameraConfig
+  /** Every slot the room defines, empty or not — the label overlay's source. */
+  slots: RoomSlot[]
+  /** What this showroom stood on them — only loadable pieces, in slot order. */
+  placements: RoomPlacement[]
 }
 
 export type StoresData = {
   stores: StoreConfig[]
+}
+
+type RoomPayload = Omit<StoreConfig, 'files' | 'slots' | 'placements'> & {
+  files: (Omit<ModelFile, 'isCollider'> & { isCollider?: boolean })[]
+  slots?: RoomSlot[]
+  placements?: RoomPlacement[]
+}
+
+/**
+ * The files to mount: the collider plus one rung of the LOD ladder.
+ *
+ * `low` and `high` are the same room at two costs, not two parts of it
+ * (the backend's `RoomFileQuality`). Mounting both drew every surface twice,
+ * coplanar — double the download, draw calls and VRAM for one visible room.
+ * The preferred rung falls back to the other when the room has no file on it.
+ */
+export function roomFilesFor(files: ModelFile[], preferLow: boolean): ModelFile[] {
+  const want = preferLow ? 'low' : 'high'
+  const rung = files.some((f) => !f.isCollider && f.quality === want) ? want : preferLow ? 'high' : 'low'
+  return files.filter((f) => f.isCollider || f.quality === rung)
+}
+
+/** The payload with every asset URL loadable from here. A file without the
+ *  collider flag (a pre-flag payload) falls back to the old priority-0 rule. */
+function normalizeRoom(room: RoomPayload): StoreConfig {
+  return {
+    ...room,
+    files: room.files.map((file) => ({
+      ...file,
+      url: mediaUrl(file.url),
+      isCollider: file.isCollider ?? file.priority === 0,
+    })),
+    slots: room.slots ?? [],
+    placements: (room.placements ?? []).map((p) => ({ ...p, glbPath: mediaUrl(p.glbPath) })),
+  }
 }
 
 /**
@@ -109,10 +168,10 @@ export function useStoreConfig(slug: string) {
   useEffect(() => {
     setLoading(true)
     setError(null)
-    fetchRoom<StoreConfig>(slug)
+    fetchRoom<RoomPayload>(slug)
       .then((store) => {
         if (!store) throw new Error(`No room configured for showroom "${slug}"`)
-        setConfig(store)
+        setConfig(normalizeRoom(store))
         setLoading(false)
       })
       .catch((err) => {
