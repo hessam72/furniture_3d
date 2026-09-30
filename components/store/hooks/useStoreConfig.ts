@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { fetchRoom, mediaUrl } from '@/lib/api'
+import { fetchRoom } from '@/lib/api'
 
 export type ModelFile = {
   priority: number
@@ -139,18 +139,18 @@ export function roomFilesFor(files: ModelFile[], preferLow: boolean): ModelFile[
   return files.filter((f) => f.isCollider || f.quality === rung)
 }
 
-/** The payload with every asset URL loadable from here. A file without the
- *  collider flag (a pre-flag payload) falls back to the old priority-0 rule. */
+/** The payload with its optional parts defaulted. A file without the collider
+ *  flag (a pre-flag payload) falls back to the old priority-0 rule. Asset URLs
+ *  are already loadable from here — `lib/api` resolves them on arrival. */
 function normalizeRoom(room: RoomPayload): StoreConfig {
   return {
     ...room,
     files: room.files.map((file) => ({
       ...file,
-      url: mediaUrl(file.url),
       isCollider: file.isCollider ?? file.priority === 0,
     })),
     slots: room.slots ?? [],
-    placements: (room.placements ?? []).map((p) => ({ ...p, glbPath: mediaUrl(p.glbPath) })),
+    placements: room.placements ?? [],
   }
 }
 
