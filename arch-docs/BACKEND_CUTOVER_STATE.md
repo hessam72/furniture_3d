@@ -57,13 +57,16 @@ instead of the static JSON under `public/config/`.
   `/showroom/[slug]/products/[key]` (photo, specs, and the homepage's
   `ShowroomStage` turntable, lazy-mounted, GLB shown as authored). Exists for
   every published product and links on to `/product/[key]` when there is a
-  presentation. Photo: `ProductData.thumbnail` once the API sends it, else the
-  homepage collection card linking to the product. Entry points: the header's
+  presentation. Photo: `ProductData.thumbnail` (uploaded in the showroom panel),
+  else the homepage collection card linking to the product. Entry points: the header's
   search icon and «همه محصولات» on the collection rail. Code:
   `lib/showroom/{paths,products,productQuery}.ts`, `components/showroom/products/`.
 - **Media URLs** — `lib/api.ts` runs every payload through `mediaUrl()`, so
   `/uploads/*` loads from `NEXT_PUBLIC_MEDIA_URL` (default: the API origin,
-  which serves it with CORS `*`) everywhere, not only in `/room`.
+  which serves it with CORS `*`) everywhere, not only in `/room`. No consumer
+  calls it again, and no `public/uploads` symlink is needed.
+- **Store product list** — the category drill-down's rows show
+  `ProductData.thumbnail` too (`CategoryBar`).
 - **Legacy links** — authored `/store`, `/product/<key>` and
   `/product/<key>/simple` hrefs anywhere on the page (nav, CTAs, collection
   cards, footer) are re-pointed under `/showroom/<slug>/`
@@ -111,10 +114,13 @@ AR through it today. Confirmed by reading
 not attempted this round).
 
 **Fields the product pages read but the API does not send yet** —
-`ProductData.thumbnail` (the `Product.thumbnail` column; the showroom panel has
-no upload for it either), `shortDescription`, and `specs` (`product_specs`
-rows). All optional; until they arrive a photo comes from the product's
-homepage collection card, if it has one.
+`shortDescription` and `specs` (`product_specs` rows). Both optional.
+(`thumbnail` is sent since backend `1e832d6`, and the showroom panel uploads it.)
+
+**The store's drill-down lists catalogue entries only**, and no backend panel
+writes those (the importer and the demo seed do) — so a product created in the
+showroom panel is on `/products` but not in the store's menu. Backend
+`HANDOFF.md` §9.
 
 **Textured swatches** — the API's swatch/cover `texture` object (`cover`,
 `map`, `normalMap`, `repeat`, …) is not mapped onto the viewer's
