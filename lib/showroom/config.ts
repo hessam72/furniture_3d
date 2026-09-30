@@ -1,4 +1,5 @@
 import { fetchRoom, fetchShowroom, fetchShowroomList } from '@/lib/api'
+import { presentationPath, productPath, showroomPath, storePath } from '@/lib/showroom/paths'
 import {
   resolveShowroomPresentation,
   type CoverVariant,
@@ -7,6 +8,7 @@ import {
   type ZoneSwatch,
 } from '@/lib/product/presentation'
 import type { QualityPreset } from '@/lib/config/quality'
+import type { Locale } from '@/i18n/routing'
 import type { PlinthSpec } from '@/components/product/ViewerPlinth'
 
 /**
@@ -95,7 +97,8 @@ export interface ShowroomConfig {
   }
   seo?: { title?: string; description?: string }
   nav: {
-    links: ShowroomLink[]
+    /** Absent in backend data — the showroom panel has no menu editor. */
+    links?: ShowroomLink[]
     search?: boolean
     cta?: ShowroomLink
   }
@@ -200,6 +203,12 @@ export interface ShowroomConfig {
   }
 }
 
+/** The brand as a page title names it: `nameFa` in Persian, the latin `name`
+ *  otherwise. */
+export function brandName(brand: ShowroomConfig['brand'], locale: Locale): string {
+  return locale === 'fa' ? brand.nameFa : brand.name
+}
+
 /** Every published slug — the SSG param source. */
 export async function showroomSlugs(): Promise<string[]> {
   const list = await fetchShowroomList()
@@ -277,38 +286,73 @@ function withShowroomViewer(
 }
 
 /**
- * The page's doors into the walkable room.
+ * An authored href, pointed at the route that serves it now — or `null` for a
+ * door into a room this showroom does not have.
  *
- * Authored copy still says `/store`, the single-brand route this app used to
- * have; the room now lives at `/showroom/<slug>/store`, so a bare `/store`
- * is re-pointed there. A showroom with no room has no door — the CTA is
- * dropped rather than left leading to a 404. Every other link is untouched.
+ * Copy is still authored against the single-brand app this used to be —
+ * `/store`, `/product/<key>`, `/product/<key>/simple` — and those top-level
+ * routes are gone: the room, the product pages and the layered presentation
+ * all live under `/showroom/<slug>/` now. A legacy product link lands on the
+ * product's own page, which exists for every published product and links on
+ * to the full 3D view where there is one. Every other href is untouched.
  */
-function withStoreEntry(config: ShowroomConfig, hasRoom: boolean): ShowroomConfig {
-  const own = `/showroom/${config.slug}/store`
+function currentHref(href: string, slug: string, hasRoom: boolean): string | null {
+  const path = href.split(/[?#]/)[0]
+  const rest = href.slice(path.length)
 
-  const door = <T extends ShowroomLink>(link: T | undefined): T | undefined => {
+  if (path === '/store' || path === '/store/') return hasRoom ? storePath(slug) + rest : null
+  if (path === storePath(slug)) return hasRoom ? href : null
+
+  const legacy = /^\/product\/([^/]+)(\/simple)?\/?$/.exec(path)
+  if (!legacy) return href
+  const [, key, simple] = legacy
+  return (simple ? `${presentationPath(slug, key)}/simple` : productPath(slug, key)) + rest
+}
+
+/**
+ * Every link on the page run through `currentHref`. A showroom with no room
+ * has no door — a CTA into it is dropped rather than left leading to a 404.
+ */
+function withCurrentLinks(config: ShowroomConfig, hasRoom: boolean): ShowroomConfig {
+  const relink = <T extends ShowroomLink>(link: T | undefined): T | undefined => {
     if (!link) return link
-    const path = link.href.split(/[?#]/)[0]
-    const legacy = path === '/store' || path === '/store/'
-    if (!legacy && path !== own) return link
-    if (!hasRoom) return undefined
-    return legacy ? { ...link, href: own + link.href.slice(path.length) } : link
+    const href = currentHref(link.href, config.slug, hasRoom)
+    if (href === null) return undefined
+    return href === link.href ? link : { ...link, href }
   }
-  const doors = <T extends ShowroomLink>(links: T[] | undefined): T[] | undefined =>
-    links?.flatMap((link) => door(link) ?? [])
+  const relinkAll = <T extends ShowroomLink>(links: T[] | undefined): T[] | undefined =>
+    links?.flatMap((link) => relink(link) ?? [])
 
   return {
     ...config,
-    nav: { ...config.nav, cta: door(config.nav.cta) },
-    hero: { ...config.hero, ctas: doors(config.hero.ctas) },
-    featured: { ...config.featured, cta: door(config.featured.cta) },
-    virtual: { ...config.virtual, cta: door(config.virtual.cta) },
-    ...(config.closing && { closing: { ...config.closing, cta: door(config.closing.cta) } }),
+    nav: { ...config.nav, links: relinkAll(config.nav.links), cta: relink(config.nav.cta) },
+    hero: { ...config.hero, ctas: relinkAll(config.hero.ctas) },
+    featured: { ...config.featured, cta: relink(config.featured.cta) },
+    virtual: { ...config.virtual, cta: relink(config.virtual.cta) },
+    collection: {
+      ...config.collection,
+      items: config.collection.items.map((item) => {
+        if (!item.href) return item
+        const href = currentHref(item.href, config.slug, hasRoom)
+        return href === item.href ? item : { ...item, href: href ?? undefined }
+      }),
+    },
+    ...(config.closing && { closing: { ...config.closing, cta: relink(config.closing.cta) } }),
+    ...(config.footer && {
+      footer: {
+        ...config.footer,
+        columns: config.footer.columns?.map((column) => ({ ...column, links: relinkAll(column.links) ?? [] })),
+      },
+    }),
   }
 }
 
-export async function resolveShowroom(slug: string): Promise<ResolvedShowroom | null> {
+/**
+ * The brand page's config with every link current — what the homepage and its
+ * subpages (`/products`, `/products/<key>`) share. `null` for an unknown or
+ * unpublished slug.
+ */
+export async function resolveShowroomConfig(slug: string): Promise<ShowroomConfig | null> {
   const [config, hasRoom] = await Promise.all([
     fetchShowroom<ShowroomConfig>(slug),
     // Only a 404 means "no room". A failing /room must not take the brand's
@@ -318,12 +362,40 @@ export async function resolveShowroom(slug: string): Promise<ResolvedShowroom | 
       () => true
     ),
   ])
+  return config ? withCurrentLinks(config, hasRoom) : null
+}
+
+/**
+ * The header and footer as a subpage renders them: an in-page anchor authored
+ * for the homepage (`#collection`) points back at that section there. `#footer`
+ * stays local — every subpage carries the footer too.
+ */
+export function withHomeAnchors(config: ShowroomConfig): ShowroomConfig {
+  const home = <T extends ShowroomLink>(link: T): T =>
+    link.href.length > 1 && link.href.startsWith('#') && link.href !== '#footer'
+      ? { ...link, href: showroomPath(config.slug) + link.href }
+      : link
+
+  return {
+    ...config,
+    nav: { ...config.nav, links: config.nav.links?.map(home), cta: config.nav.cta && home(config.nav.cta) },
+    ...(config.footer && {
+      footer: {
+        ...config.footer,
+        columns: config.footer.columns?.map((column) => ({ ...column, links: column.links.map(home) })),
+      },
+    }),
+  }
+}
+
+export async function resolveShowroom(slug: string): Promise<ResolvedShowroom | null> {
+  const config = await resolveShowroomConfig(slug)
   if (!config) return null
 
   const key = config.featured.presentationKey
   const presentation = key ? await resolveShowroomPresentation(slug, key) : null
   return {
-    config: withStoreEntry(config, hasRoom),
+    config,
     presentation: withShowroomViewer(presentation, config.featured.viewer),
   }
 }

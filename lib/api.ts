@@ -31,13 +31,29 @@ export function mediaUrl(path: string): string {
   return path.startsWith('/uploads/') ? `${MEDIA_BASE}${path}` : path
 }
 
+/**
+ * Every `/uploads/*` string in a payload, made loadable — applied once, to
+ * every response, so no consumer (page image, product photo, presentation GLB,
+ * HDR, swatch map) can forget to. The backend serves `/uploads` with CORS `*`
+ * and `Cross-Origin-Resource-Policy: cross-origin`, so the API origin works
+ * as-is. Idempotent: `mediaUrl` on an already-absolute URL is a no-op.
+ */
+function withMediaUrls<T>(value: T): T {
+  if (typeof value === 'string') return mediaUrl(value) as T
+  if (Array.isArray(value)) return value.map(withMediaUrls) as T
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, withMediaUrls(v)])) as T
+  }
+  return value
+}
+
 async function getJson<T>(path: string): Promise<T | null> {
   const res = await fetch(`${API_BASE}/api/v1/public${path}`, {
     next: { revalidate: 60 },
   })
   if (res.status === 404) return null
   if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`)
-  return (await res.json()) as T
+  return withMediaUrls((await res.json()) as T)
 }
 
 export interface ShowroomListEntry {
@@ -79,7 +95,7 @@ export function fetchProduct<TProduct = unknown, TPresentation = unknown>(
 }
 
 /** The walkable room — `stores.json`'s per-store shape, plus its numbered
- *  `slots` and the `placements` standing on them. Asset URLs are relative. */
+ *  `slots` and the `placements` standing on them. */
 export function fetchRoom<T = unknown>(slug: string): Promise<T | null> {
   return getJson<T>(`/showrooms/${encodeURIComponent(slug)}/room`)
 }
