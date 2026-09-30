@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useLocale, useTranslations } from 'next-intl'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Sofa } from 'lucide-react'
 import { formatPrice, itemsInSubCategory, type Catalog, type CatalogItem } from '@/lib/store/catalog'
+import type { ProductData } from './ProductInteraction'
 import type { Locale } from '@/i18n/routing'
 
 const SPRING = { type: 'spring' as const, damping: 34, stiffness: 320, mass: 0.8 }
@@ -12,9 +13,26 @@ const EASE = { duration: 0.3, ease: [0.16, 1, 0.3, 1] as const }
 
 interface CategoryBarProps {
   catalog: Catalog | null
+  /** The room's products, by `sceneObject` — where each row's picture comes from. */
+  products: Record<string, ProductData>
   onSelect: (item: CatalogItem) => void
   /** Collapses the drill-down — used while a camera flight is in progress */
   collapsed?: boolean
+}
+
+/** A row's picture — the product's own, uploaded in the showroom panel — or a
+ *  glyph holding its place until there is one. */
+function ProductThumb({ src }: { src?: string }) {
+  return (
+    <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-lg bg-white/[0.06]">
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" loading="lazy" className="h-full w-full object-cover" />
+      ) : (
+        <Sofa className="h-4 w-4 text-[var(--text-muted)]" />
+      )}
+    </span>
+  )
 }
 
 /**
@@ -22,7 +40,7 @@ interface CategoryBarProps {
  * over the 3D scene. Each level expands the next below it; picking a product
  * collapses the whole thing back to the four main pills.
  */
-export default function CategoryBar({ catalog, onSelect, collapsed }: CategoryBarProps) {
+export default function CategoryBar({ catalog, products, onSelect, collapsed }: CategoryBarProps) {
   const locale = useLocale() as Locale
   const tc = useTranslations('common')
   const [mainId, setMainId] = useState<string | null>(null)
@@ -147,12 +165,15 @@ export default function CategoryBar({ catalog, onSelect, collapsed }: CategoryBa
                                    rounded-xl px-3.5 py-2.5 text-start transition-colors duration-200
                                    hover:border-[var(--color-gold-line-hi)] active:scale-[0.99]"
                       >
-                        <span className="flex min-w-0 flex-col">
-                          <span className="truncate text-[12px] text-[var(--text-primary)]">
-                            {item.name}
-                          </span>
-                          <span className="persian-number text-[11px] text-[var(--gold-primary)]">
-                            {formatPrice(item.price, locale)}
+                        <span className="flex min-w-0 items-center gap-3">
+                          <ProductThumb src={products[item.sceneObject]?.thumbnail} />
+                          <span className="flex min-w-0 flex-col">
+                            <span className="truncate text-[12px] text-[var(--text-primary)]">
+                              {item.name}
+                            </span>
+                            <span className="persian-number text-[11px] text-[var(--gold-primary)]">
+                              {formatPrice(item.price, locale)}
+                            </span>
                           </span>
                         </span>
                         <ChevronLeft

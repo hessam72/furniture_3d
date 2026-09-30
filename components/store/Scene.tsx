@@ -863,6 +863,7 @@ export default function Scene({ slug, recovery }: { slug: string; recovery: Cont
             <div className="md:max-w-[420px]">
               <CategoryBar
                 catalog={catalog}
+                products={products}
                 onSelect={handleCatalogSelect}
                 collapsed={!!focusTarget}
               />
