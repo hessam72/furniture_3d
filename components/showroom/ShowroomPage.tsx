@@ -10,6 +10,7 @@ import ShowroomVirtual from './ShowroomVirtual'
 import ShowroomCollection from './ShowroomCollection'
 import ShowroomClosing from './ShowroomClosing'
 import ShowroomFooter from './ShowroomFooter'
+import { productsPath } from '@/lib/showroom/paths'
 
 /**
  * A brand's homepage, assembled from its JSON entry.
@@ -31,7 +32,7 @@ export default function ShowroomPage({ showroom }: { showroom: ResolvedShowroom 
         <ShowroomStats stats={config.stats} />
         <ShowroomFeatured featured={config.featured} presentation={presentation} />
         <ShowroomVirtual virtual={config.virtual} />
-        <ShowroomCollection collection={config.collection} />
+        <ShowroomCollection collection={config.collection} allHref={productsPath(config.slug)} />
         {config.closing && <ShowroomClosing closing={config.closing} />}
       </main>
 

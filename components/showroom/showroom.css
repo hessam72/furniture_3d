@@ -922,6 +922,7 @@
 .sr-slider-btn:hover { background: var(--sr-ink); color: #fff; }
 .sr-slider-btn:disabled { opacity: 0.35; cursor: default; }
 .sr-slider-btn:disabled:hover { background: var(--sr-card); color: var(--sr-ink); }
+.sr-all-link { padding: 0.62rem 1.15rem; font-size: 0.82rem; margin-inline-end: 0.35rem; }
 
 .sr-rail {
   display: flex;

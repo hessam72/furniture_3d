@@ -17,8 +17,11 @@ import { ArrowIcon, PlusIcon, SofaGhostIcon } from './icons'
  */
 export default function ShowroomCollection({
   collection,
+  allHref,
 }: {
   collection: ShowroomConfig['collection']
+  /** The full, searchable product list — the rail shows a curated few. */
+  allHref?: string
 }) {
   const rail = useRef<HTMLDivElement>(null)
   const [edge, setEdge] = useState({ start: true, end: false })
@@ -68,6 +71,12 @@ export default function ShowroomCollection({
           </Reveal>
 
           <div className="sr-slider-nav">
+            {allHref && (
+              <Link className="sr-btn sr-btn-outline sr-all-link" href={allHref}>
+                همه محصولات
+                <ArrowIcon className="sr-arrow" size={16} />
+              </Link>
+            )}
             <button
               type="button"
               className="sr-slider-btn"

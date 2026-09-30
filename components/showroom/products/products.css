@@ -1,0 +1,274 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Showroom subpages — the product list and a product's own page.
+
+   Same contract as ../showroom.css, which is always loaded beside this file:
+   every rule scoped under `.sr-root`, every value from its custom properties,
+   logical properties throughout so RTL needs no mirrored overrides. Cards,
+   buttons, the stage and the section rhythm are that file's; only what the
+   homepage never needed lives here.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* English chrome: Vazirmatn draws every digit Persian — «۳D», a Toman price
+   in «۴۸,۵۰۰,۰۰۰» — so Latin leads and Persian content falls back to it. */
+.sr-root[lang="en"] { font-family: var(--sr-font-latin), var(--sr-font); }
+
+/* ── Breadcrumb ─────────────────────────────────────────────────────── */
+.sr-crumbs { padding-block: 1.4rem 0; }
+.sr-crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.78rem;
+  color: var(--sr-faint);
+}
+.sr-crumbs li { display: inline-flex; align-items: center; gap: 0.45rem; }
+.sr-crumbs li + li::before { content: "/"; color: var(--sr-line-2); }
+.sr-crumbs a { color: var(--sr-dim); transition: color 0.25s var(--sr-ease); }
+.sr-crumbs a:hover { color: var(--sr-ink); }
+.sr-crumbs [aria-current="page"] { color: var(--sr-ink); font-weight: 600; }
+
+/* Keyboard focus on every control these pages add. */
+.sr-root :is(.sr-tile, .sr-pl-search input, .sr-pl-sort select, .sr-pd-actions a, .sr-crumbs a):focus-visible {
+  outline: 2px solid var(--sr-glow);
+  outline-offset: 3px;
+}
+
+/* ── Product list ───────────────────────────────────────────────────── */
+.sr-pl { padding-block-start: clamp(1.4rem, 3vw, 2.2rem); }
+.sr-pl-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.4rem 2rem;
+  margin-block-end: clamp(1.4rem, 3vw, 2.2rem);
+}
+.sr-pl-count { margin-block-start: 0.5rem; font-size: 0.85rem; color: var(--sr-dim); }
+
+.sr-pl-tools { display: flex; align-items: center; gap: 0.7rem; }
+.sr-pl-search,
+.sr-pl-sort {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  block-size: 3rem;
+  padding-inline: 1.05rem;
+  border-radius: 999px;
+  border: 1px solid var(--sr-line-2);
+  background: var(--sr-card);
+  color: var(--sr-dim);
+  transition: border-color 0.25s var(--sr-ease), box-shadow 0.25s var(--sr-ease);
+}
+.sr-pl-search:focus-within,
+.sr-pl-sort:focus-within { border-color: var(--sr-ink); box-shadow: var(--sr-shadow-sm); }
+.sr-pl-search { inline-size: 20rem; }
+.sr-pl-search svg { flex: none; }
+.sr-pl-search input {
+  flex: 1;
+  min-inline-size: 0;
+  block-size: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--sr-ink);
+  outline: none;
+}
+/* The field has its own clear button; the engine's would be a second one. */
+.sr-pl-search input::-webkit-search-cancel-button { display: none; }
+.sr-pl-search input::placeholder { color: var(--sr-faint); }
+.sr-pl-clear {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: 1.8rem;
+  block-size: 1.8rem;
+  border-radius: 50%;
+  color: var(--sr-dim);
+}
+.sr-pl-clear:hover { background: var(--sr-bg); color: var(--sr-ink); }
+
+.sr-pl-sort span { font-size: 0.78rem; white-space: nowrap; }
+.sr-pl-sort select {
+  appearance: none;
+  block-size: 100%;
+  padding-inline-end: 1.4rem;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--sr-ink);
+  cursor: pointer;
+  outline: none;
+}
+.sr-pl-sort svg { position: absolute; inset-inline-end: 0.9rem; pointer-events: none; }
+
+.sr-pl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15.5rem), 1fr));
+  gap: clamp(0.9rem, 1.8vw, 1.4rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sr-pl-grid > li { display: grid; }
+
+/* A homepage card, made one link and sized by its grid track instead of the
+   rail's flex basis. */
+.sr-tile { align-content: start; }
+.sr-tile .sr-card-media { background: radial-gradient(70% 60% at 50% 38%, #ffffff, var(--sr-card-2) 75%); }
+.sr-tile .sr-card-foot { align-items: flex-end; }
+.sr-tile-meta { display: grid; gap: 0.5rem; justify-items: end; }
+.sr-tile-price { font-size: 0.82rem; font-weight: 800; color: var(--sr-ink); white-space: nowrap; }
+.sr-tile-price[data-on-request="true"] { font-weight: 600; color: var(--sr-dim); }
+.sr-tile .sr-card-name { font-size: 0.95rem; }
+
+.sr-pl-empty {
+  display: grid;
+  justify-items: center;
+  gap: 0.7rem;
+  padding: clamp(2.5rem, 7vw, 4.5rem) 1.5rem;
+  border-radius: var(--sr-r-lg);
+  background: var(--sr-card);
+  box-shadow: var(--sr-shadow-sm);
+  text-align: center;
+}
+.sr-pl-empty svg { color: var(--sr-line-2); }
+.sr-pl-empty h2 { font-size: 1.05rem; }
+.sr-pl-empty p { font-size: 0.86rem; color: var(--sr-dim); }
+.sr-pl-empty .sr-btn { margin-block-start: 0.8rem; }
+
+/* ── Product page ───────────────────────────────────────────────────── */
+.sr-pd { padding-block-start: clamp(1.2rem, 2.5vw, 2rem); }
+.sr-pd-grid {
+  display: grid;
+  gap: clamp(1.6rem, 4vw, 3.5rem);
+  align-items: start;
+}
+
+.sr-pd-media {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--sr-r-xl);
+  background: radial-gradient(70% 60% at 50% 38%, #ffffff, var(--sr-card-2) 78%);
+  box-shadow: var(--sr-shadow-sm);
+  overflow: hidden;
+}
+.sr-pd-media img {
+  position: relative;
+  z-index: 1;
+  inline-size: 86%;
+  block-size: 86%;
+  object-fit: contain;
+}
+.sr-pd-media .sr-podium { inset-inline: 14%; inset-block-end: 9%; block-size: 8%; }
+.sr-pd-media .sr-card-ghost { position: relative; z-index: 1; }
+/* The turntable standing in for a photo the product does not have. */
+.sr-pd-media .sr-stage { position: absolute; inset: 0; aspect-ratio: auto; border-radius: 0; }
+
+/* After the base rule, whose `position: relative` would otherwise win and turn
+   the inset below into a plain offset. */
+@media (min-width: 1000px) {
+  .sr-pd-grid { grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr); }
+  /* The picture stays in view while the specs scroll past it. */
+  .sr-pd-media { position: sticky; inset-block-start: calc(var(--sr-header-h) + 1.25rem); }
+}
+
+.sr-pd-eyebrow { font-size: 0.8rem; color: var(--sr-dim); }
+.sr-pd-title {
+  margin-block-start: 0.45rem;
+  font-size: clamp(1.6rem, 3.4vw, 2.4rem);
+  font-weight: 900;
+  line-height: 1.35;
+}
+.sr-pd-price {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-block-start: 1.1rem;
+}
+.sr-pd-price span { font-size: 0.78rem; color: var(--sr-faint); }
+.sr-pd-price strong { font-size: 1.3rem; font-weight: 900; color: var(--sr-ink); }
+.sr-pd-price[data-on-request="true"] strong { font-size: 1rem; font-weight: 700; color: var(--sr-dim); }
+.sr-pd-lead {
+  margin-block-start: 1.1rem;
+  font-size: 0.92rem;
+  line-height: 2.1;
+  color: var(--sr-dim);
+  white-space: pre-line;
+}
+
+.sr-pd-colors { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-block-start: 1.3rem; }
+.sr-pd-color {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.75rem 0.35rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--sr-line);
+  background: var(--sr-card);
+  font-size: 0.76rem;
+  color: var(--sr-text);
+}
+.sr-root[dir="rtl"] .sr-pd-color { padding: 0.35rem 0.4rem 0.35rem 0.75rem; }
+.sr-pd-color i {
+  inline-size: 1.05rem;
+  block-size: 1.05rem;
+  border-radius: 50%;
+  border: 1px solid rgb(14 22 38 / 12%);
+}
+
+.sr-pd-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-block-start: 1.7rem; }
+
+.sr-pd-block { margin-block-start: 2rem; padding-block-start: 1.4rem; border-block-start: 1px solid var(--sr-line); }
+.sr-pd-block h2 { font-size: 1rem; margin-block-end: 0.9rem; }
+.sr-pd-specs { display: grid; gap: 0; margin: 0; }
+.sr-pd-specs div {
+  display: grid;
+  grid-template-columns: minmax(7rem, 0.8fr) 1.2fr;
+  gap: 1rem;
+  padding-block: 0.7rem;
+  border-block-end: 1px dashed var(--sr-line);
+  font-size: 0.85rem;
+}
+.sr-pd-specs div:last-child { border-block-end: 0; }
+.sr-pd-specs dt { color: var(--sr-faint); }
+.sr-pd-specs dd { margin: 0; color: var(--sr-ink); font-weight: 600; }
+.sr-pd-fabrics { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+.sr-pd-fabrics li {
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  background: var(--sr-card);
+  border: 1px solid var(--sr-line);
+  font-size: 0.76rem;
+}
+
+/* Tight on top: «نمای سه‌بعدی» jumps here, and heading plus stage should land
+   inside one screen. */
+.sr-pd-viewer { padding-block-start: 1rem; }
+.sr-pd-viewer-head { display: grid; gap: 0.5rem; margin-block-end: clamp(1.2rem, 2.5vw, 1.8rem); }
+.sr-pd-viewer-head p { font-size: 0.86rem; color: var(--sr-dim); }
+/* Full width and about 16:9, but never taller than the screen it is turned on
+   — a height, not a max on an aspect-ratio box, which would narrow it instead. */
+@media (min-width: 900px) {
+  .sr-pd-viewer .sr-stage { aspect-ratio: auto; block-size: clamp(20rem, 52vw, min(100vh - 20rem, 44rem)); }
+}
+
+@media (max-width: 899px) {
+  .sr-pl-head { align-items: stretch; }
+  .sr-pl-tools { flex-wrap: wrap; inline-size: 100%; }
+  .sr-pl-search { inline-size: 100%; }
+  .sr-pl-sort { flex: 1; }
+  .sr-pl-sort select { flex: 1; }
+  .sr-pd-actions { flex-direction: column; align-items: stretch; }
+  .sr-pd-actions .sr-btn { justify-content: center; }
+  .sr-pd-media { border-radius: var(--sr-r-lg); }
+}

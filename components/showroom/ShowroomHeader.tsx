@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import SmoothLink from './SmoothLink'
 import type { ShowroomConfig } from '@/lib/showroom/config'
+import { productsPath } from '@/lib/showroom/paths'
 import { ArrowIcon, CloseIcon, MenuIcon, SearchIcon } from './icons'
 
 /** Brand lockup: the supplied logo when there is one, else the monogram +
@@ -50,9 +51,9 @@ export default function ShowroomHeader({ config }: { config: ShowroomConfig }) {
 
         <div className="sr-header-actions">
           {nav.search !== false && (
-            <button type="button" className="sr-icon-btn" aria-label="جستجو">
+            <Link className="sr-icon-btn" href={productsPath(config.slug)} aria-label="جستجو در محصولات">
               <SearchIcon />
-            </button>
+            </Link>
           )}
 
           {nav.cta && (

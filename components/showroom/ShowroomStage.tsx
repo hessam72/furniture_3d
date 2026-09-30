@@ -40,6 +40,7 @@ export default function ShowroomStage({
   onContextLost,
   onDemote,
   downgrades,
+  paintable = true,
 }: {
   config: PresentationConfig
   /** Which GLB to show — a cover variant, or the bare frame. */
@@ -59,6 +60,9 @@ export default function ShowroomStage({
   onDemote?: () => void
   /** Rungs a lost context has cost this tab. @see useContextRecovery */
   downgrades?: number
+  /** False shows the GLB as authored, ignoring the shared paint store — for a
+   *  surface with no swatches of its own. @see SimpleViewer's `paintable` */
+  paintable?: boolean
 }) {
   const device = useDeviceClass()
 
@@ -91,6 +95,7 @@ export default function ShowroomStage({
         onError={onError}
         sourceRef={sourceRef}
         plinth={plinth}
+        paintable={paintable}
         /* A showroom turntable: drag spins the piece, it never tips. */
         lockPolar
         embedded

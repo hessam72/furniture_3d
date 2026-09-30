@@ -33,6 +33,15 @@ export interface ProductData {
   fabricMaterials?: string[]
   glbPath?: string
   usdzPath?: string
+  /**
+   * The product's photo, a one-liner for its card, and the showroom's own extra
+   * spec rows (`Product.thumbnail`, `shortDescription`, `product_specs` in the
+   * backend). Read by /showroom/[slug]/products; the public API does not emit
+   * them yet — each is optional and the pages fall back without them.
+   */
+  thumbnail?: string
+  shortDescription?: string
+  specs?: { label: string; value: string }[]
   billboardPosition: [number, number, number]
   /**
    * English overrides for the flat string fields above, plus a positional
