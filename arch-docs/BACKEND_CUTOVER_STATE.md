@@ -52,14 +52,30 @@ instead of the static JSON under `public/config/`.
 - **Store entry** — `/showroom/[slug]/store` 404s when the showroom has no
   room, and the showroom page drops CTAs into it; a legacy `/store` href is
   re-pointed to `/showroom/<slug>/store`.
+- **Product list + product page** — `/showroom/[slug]/products` (search and
+  sort in the browser over `/products`, state in `?q=`/`?sort=`) and
+  `/showroom/[slug]/products/[key]` (photo, specs, and the homepage's
+  `ShowroomStage` turntable, lazy-mounted, GLB shown as authored). Exists for
+  every published product and links on to `/product/[key]` when there is a
+  presentation. Photo: `ProductData.thumbnail` once the API sends it, else the
+  homepage collection card linking to the product. Entry points: the header's
+  search icon and «همه محصولات» on the collection rail. Code:
+  `lib/showroom/{paths,products,productQuery}.ts`, `components/showroom/products/`.
+- **Media URLs** — `lib/api.ts` runs every payload through `mediaUrl()`, so
+  `/uploads/*` loads from `NEXT_PUBLIC_MEDIA_URL` (default: the API origin,
+  which serves it with CORS `*`) everywhere, not only in `/room`.
+- **Legacy links** — authored `/store`, `/product/<key>` and
+  `/product/<key>/simple` hrefs anywhere on the page (nav, CTAs, collection
+  cards, footer) are re-pointed under `/showroom/<slug>/`
+  (`resolveShowroomConfig`). The demo seed's collection cards use
+  `/product/<key>`, which 404'd.
 
-Verified against the backend's `shahr-omid` seed (`atlas-sofa`,
-`vira-armchair`, `noor-coffee-table`): real DB content renders on
-`/showroom/shahr-omid` and `/showroom/shahr-omid/store`, an unknown slug
-404s, and `/showroom/shahr-omid/product/atlas-sofa` correctly 404s — that
-seed's products have no `frame`-role layer yet, so the backend serializes
-`presentation: null` for them by design (a product with no 3D layers has
-nothing for this route to draw). Typecheck (`npx tsc --noEmit`) is clean.
+Verified against backend branch `claude/confident-johnson-e6taef`'s demo seed
+(Postgres 16, `db:seed:demo`): `/showroom/shahr-omid`, `/products`,
+`/products/<key>` (fa and en) and `/store` render real DB content, unknown slugs
+and keys 404, and `next build` prerenders every showroom × product × locale.
+That seed gives every product a `frame` layer, so `/product/<key>` renders too
+(a product without one gets `presentation: null` and that route 404s by design).
 
 ## What's not done
 
@@ -94,13 +110,15 @@ AR through it today. Confirmed by reading
 `/ar` demo page, and the `POST /inquiries` lead form (a natural fast-follow,
 not attempted this round).
 
-**Media URLs outside `/room`** — showroom page images, product and
-presentation paths are still used as sent (relative `/uploads/...`); only
-the room path goes through `mediaUrl()` so far. Backend note: `/uploads/*`
-answers CORS for the single `CORS_ORIGIN` and sends
-`Cross-Origin-Resource-Policy: same-origin`, so either the store's origin is
-that `CORS_ORIGIN` or a proxy serves `/uploads` on the store's own origin
-(`NEXT_PUBLIC_MEDIA_URL=`).
+**Fields the product pages read but the API does not send yet** —
+`ProductData.thumbnail` (the `Product.thumbnail` column; the showroom panel has
+no upload for it either), `shortDescription`, and `specs` (`product_specs`
+rows). All optional; until they arrive a photo comes from the product's
+homepage collection card, if it has one.
+
+**Textured swatches** — the API's swatch/cover `texture` object (`cover`,
+`map`, `normalMap`, `repeat`, …) is not mapped onto the viewer's
+`maps`/`thumbnail`, so backend fabrics render as their flat `hex`.
 
 ## Verifying locally
 
@@ -113,6 +131,6 @@ echo "NEXT_PUBLIC_API_URL=http://localhost:3010" > .env.local
 npm run dev
 ```
 
-Then load `/fa/showroom/shahr-omid`, `/fa/showroom/shahr-omid/store`, and
-`/fa/showroom/shahr-omid/product/<slug>` for a product that does have a
-`frame` layer once one exists in the seed.
+Then load `/showroom/shahr-omid`, `/showroom/shahr-omid/products`,
+`/showroom/shahr-omid/products/atlas-sofa`, `/showroom/shahr-omid/product/atlas-sofa`
+and `/showroom/shahr-omid/store` (`/en/...` for English).
