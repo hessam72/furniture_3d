@@ -112,9 +112,10 @@ click/color/AR flow, or converting each to an async fetch-on-mount.
   second — a 404.
 - `SimpleViewerClient.tsx` — the back link is `/showroom/nilper`, which no
   seed creates.
-- `lib/content/home.ts` and `components/sections/HeroSection.tsx` — the
-  homepage CTAs go to `/showroom/shahr-omid/store`, which exists only in
-  `db:seed:demo`, not in production.
+- `lib/content/home.ts` — the homepage's nav link and CTAs go to
+  `/showroom/shahr-omid/store`, which exists only in `db:seed:demo`, not in
+  production. (`components/sections/HeroSection.tsx` has the same link but is
+  not rendered anywhere.)
 
 **iOS AR on `/showroom/[slug]/product/[key]` is broken.** `ProductPageClient`'s
 `openAR` always sets `ios-src` to the local `/api/ar/<key>/model.usdz`, which

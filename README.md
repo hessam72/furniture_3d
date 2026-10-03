@@ -1,3 +1,5 @@
+> **Out of date:** this README describes an earlier jewellery try-on project. For the furniture storefront — setup, how each page works, the 3D room — read [`arch-docs/GUIDE.md`](arch-docs/GUIDE.md).
+
 # Virtual Try-On WebAR
 <!-- pkill -f "next dev" -->
 Next.js app serving WebAR.rocks jewelry try-on demos.
