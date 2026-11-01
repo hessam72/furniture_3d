@@ -19,6 +19,16 @@ let lastMove=0, dragging=false, busy=false, lightAngle=35, currentPreset='studio
 let fittedDistance=6, centerY=.6, modelHeight=1.3, latestSamples=0, needsRebuild=false, transition=null, raf=0, assetURLs=[];
 const fabricMeshes=[], ownedMaterials=[];
 let key, fill, rim, sun, floor, hdr, localURL, snapshotRequested=false;
+// Progressive photo render: the live frame stays on screen (as a 2D overlay) while the path
+// tracer accumulates underneath; each sample stage is denoised and cross-faded in, so the
+// user never sees raw noise. Finished views are cached and restored instantly.
+const MOBILE=matchMedia('(max-width:720px)').matches;
+const STAGES=MOBILE?[8,32,96]:[16,64,256];
+const PT_MAX_PIXELS=MOBILE?1.2e6:3.2e6, BUDGET_MIN=1e5, BUDGET_MAX=MOBILE?6e5:2e6, CACHE_LIMIT=MOBILE?3:6, FADE_MS=650;
+const renderCache=new Map();
+let ptState='idle', stageReachedAt=0, denoiserBroken=false, ptStage=0, ptKey='', revealEnd=0, captureWhenDone=false, overlayOK=null, gpuEma=16, budgetTick=0;
+const overlay=document.createElement('canvas');overlay.id='pt-overlay';overlay.setAttribute('aria-hidden','true');
+const octx=overlay.getContext('2d',{willReadFrequently:false});
 const presets={
  studio:{key:'#fff4e6',fill:'#e8efff',rim:'#fffaf2',power:5,env:.55,ground:'#e4ded5'},
  day:{key:'#f4f7ff',fill:'#e3efff',rim:'#ffffff',power:6,env:.8,ground:'#dddcd7'},
@@ -92,8 +102,10 @@ function resize(){
  fittedDistance=3.5/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov)/2)*camera.aspect)*(w>720?1.65:1.12);
  fittedDistance=Math.max(fittedDistance,4.3);
  controls.minDistance=1.1;controls.maxDistance=fittedDistance*1.8;
- pathTracer?.updateCamera();lastMove=performance.now();
+ applyRenderScale();pathTracer?.updateCamera();lastMove=performance.now();
 }
+// Trace at full backing-buffer resolution unless that exceeds the pixel budget.
+function applyRenderScale(){if(!pathTracer)return;const s=renderer.getDrawingBufferSize(new THREE.Vector2());pathTracer.renderScale=Math.min(1,Math.sqrt(PT_MAX_PIXELS/Math.max(1,s.x*s.y)))}
 async function loadModel(url){
  $('#loader').hidden=false;$('#error').hidden=true;$('#load-title').textContent='در حال آماده‌سازی مدل و بافت‌ها';
  const manager=new THREE.LoadingManager();
@@ -137,7 +149,7 @@ async function loadModel(url){
 function renderFast(){if(pipeline)pipeline.render();else renderer.render(scene,camera)}
 async function quality(next){
  if(busy||!ready)return;
- if(next==='fast'){mode='fast';active('[data-quality]','quality',next);$('#quality-help').textContent='برای چرخش و بررسی محصول.';return}
+ if(next==='fast'){mode='fast';resetProgressive();captureWhenDone=false;active('[data-quality]','quality',next);$('#quality-help').textContent='برای چرخش و بررسی محصول.';return}
  if(!gpu){toast('رندر دقیق به WebGPU نیاز دارد؛ نمایش روان روی این مرورگر فعال است.');return}
  busy=true;$('#load-title').textContent='آماده‌سازی رندر دقیق';$('#load-detail').textContent='محاسبهٔ نور و بازتاب‌ها؛ ممکن است چند لحظه طول بکشد';$('#loader').hidden=false;
  await new Promise(r=>setTimeout(r,60));
@@ -148,24 +160,119 @@ async function quality(next){
    pathTracer=new WebGPUPathTracer(renderer);
    const {initUNetFromURL}=await import('oidn-web');
    denoiser=new OIDNDenoiser({initUNetFromURL,auxWeightsUrl:'./assets/denoise.tza',maxTileSize:256});pathTracer.setDenoiser(denoiser);
-   pathTracer.maxBounces=6;pathTracer.maxSamples=128;pathTracer.frameBudget=250000;
-   pathTracer.renderScale=.85;pathTracer.renderDelay=150;pathTracer.lowResScale=.15;pathTracer.minSamples=1;
+   pathTracer.maxBounces=6;pathTracer.maxSamples=STAGES[0];pathTracer.frameBudget=250000;
+   // Presentation is handled here (overlay + staged denoise), so skip the tracer's own
+   // low-res preview and fade: every sample goes into the full-resolution image.
+   pathTracer.renderDelay=0;pathTracer.dynamicLowRes=false;pathTracer.minSamples=0;pathTracer.fadeDuration=0;
+   applyRenderScale();
   }
-  if(needsRebuild){const intensity=sun.intensity;sun.intensity=0;pathTracer.setScene(scene,camera);sun.intensity=intensity;needsRebuild=false}
-  pathTracer.updateCamera();mode='photo';latestSamples=0;lastMove=performance.now();
-  active('[data-quality]','quality',next);$('#quality-help').textContent='دوربین را ثابت نگه دارید تا نور و سایه به‌تدریج شفاف شود.';
+  if(needsRebuild){const intensity=sun.intensity;sun.intensity=0;pathTracer.setScene(scene,camera);sun.intensity=intensity;needsRebuild=false;renderCache.clear()}
+  resetProgressive();pathTracer.updateCamera();mode='photo';latestSamples=0;lastMove=performance.now();
+  active('[data-quality]','quality',next);$('#quality-help').textContent='پس از توقف حرکت، تصویر فوتورئال به‌تدریج جایگزین می‌شود. نماهای رندرشده ذخیره می‌مانند.';
  }catch(e){console.error(e);pathTracer?.dispose();pathTracer=null;mode='fast';active('[data-quality]','quality','fast');toast('رندر دقیق روی این دستگاه اجرا نشد؛ حالت روان فعال است.')}
  finally{busy=false;$('#loader').hidden=true}
 }
 async function capture(){
+ if(mode==='photo'&&ptState==='cached'){downloadCapture(renderCache.get(ptKey));return}
+ if(mode==='photo'&&ptState!=='done'){captureWhenDone=true;toast('تصویر پس از تکمیل رندر دقیق ذخیره می‌شود…');return}
  snapshotRequested=true;toast('در حال آماده‌سازی تصویر…');
 }
-function downloadCapture(){
+function downloadCapture(source=renderer.domElement){
  snapshotRequested=false;
- renderer.domElement.toBlob(blob=>{
+ source.toBlob(blob=>{
   if(!blob){toast('ذخیرهٔ تصویر روی این مرورگر ممکن نشد.');return}
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='OmidCity-Nilper.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);
  },'image/png');
+}
+// ---- Progressive photo render -------------------------------------------------------------
+function viewKey(){
+ const p=camera.position,t=controls.target,q=v=>Math.round(v*200),c=renderer.domElement;
+ return [q(p.x),q(p.y),q(p.z),q(t.x),q(t.y),q(t.z),currentPreset,lightAngle,$('#structure').checked?1:0,$('#exposure').value,c.width,c.height].join('|');
+}
+// Copies the WebGPU canvas as presented by the render call just made (same task).
+function snapshotInto(target){
+ const c=renderer.domElement;
+ if(target.width!==c.width||target.height!==c.height){target.width=c.width;target.height=c.height}
+ const x=target===overlay?octx:target.getContext('2d');x.clearRect(0,0,target.width,target.height);x.drawImage(c,0,0);
+ return target;
+}
+function showOverlay(source){
+ if(overlayOK===false)return;
+ if(source===renderer.domElement)snapshotInto(overlay);
+ else{if(overlay.width!==source.width||overlay.height!==source.height){overlay.width=source.width;overlay.height=source.height}octx.clearRect(0,0,overlay.width,overlay.height);octx.drawImage(source,0,0)}
+ // Some browsers cannot read back a WebGPU canvas; then fall back to the visible progressive render.
+ if(overlayOK===null){const d=octx.getImageData(overlay.width>>1,overlay.height>>1,1,1).data;overlayOK=d[3]>0;if(!overlayOK){console.warn('Canvas snapshot unavailable; progressive overlay disabled');return}}
+ overlay.style.transition='none';overlay.style.opacity='1';
+}
+function hideOverlay(fade){overlay.style.transition=fade?`opacity ${FADE_MS}ms ease`:'none';overlay.style.opacity='0'}
+function setProgress(v){const bar=$('#pt-progress');bar.hidden=v===null;if(v!==null)bar.firstElementChild.style.width=(Math.min(1,v)*100).toFixed(1)+'%'}
+function resetProgressive(){ptState='idle';hideOverlay(false);setProgress(null);if(mode==='photo')status.textContent='پس از توقف، رندر دقیق ادامه می‌یابد'}
+function stageLabel(){return 'مرحله '+fa(ptStage+1)+' از '+fa(STAGES.length)}
+function beginStage(i){ptStage=i;pathTracer.maxSamples=STAGES[i];ptState='accum';lastSampleCheck=0;stageReachedAt=0}
+function storeCache(){
+ let entry=renderCache.get(ptKey)||document.createElement('canvas');renderCache.delete(ptKey);
+ renderCache.set(ptKey,snapshotInto(entry));
+ while(renderCache.size>CACHE_LIMIT)renderCache.delete(renderCache.keys().next().value);
+ return entry;
+}
+function pollSamples(time){
+ if(time-lastSampleCheck<1000||samplePending)return;
+ lastSampleCheck=time;samplePending=true;
+ pathTracer.getSampleCountsAsync().then(c=>{
+  if(ptState!=='accum')return;
+  latestSamples=c.avg;document.body.dataset.samples=Math.round(c.avg);
+  if(c.min>=STAGES[ptStage]){if(!stageReachedAt)stageReachedAt=time}else stageReachedAt=0;
+  setProgress(c.avg/STAGES[STAGES.length-1]);
+  status.textContent=denoiser?.running?'پاک‌سازی نویز · '+stageLabel():'رندر دقیق · '+stageLabel()+' · '+fa(Math.min(100,c.avg/STAGES[ptStage]*100))+'٪';
+ }).catch(console.error).finally(()=>samplePending=false);
+}
+function photoFrame(time){
+ switch(ptState){
+  case 'idle':{
+   ptKey=viewKey();const hit=renderCache.get(ptKey);
+   if(hit&&overlayOK!==false){
+    renderCache.delete(ptKey);renderCache.set(ptKey,hit);showOverlay(hit);ptState='cached';setProgress(1);status.textContent='رندر دقیق · کامل (ذخیره‌شده)';
+    if(captureWhenDone){captureWhenDone=false;downloadCapture(hit)}
+    return;
+   }
+   // Freeze the sharp live frame on screen, then find how far the tracer already got for this
+   // view (exposure tweaks do not reset it) and resume from the matching stage.
+   renderFast();showOverlay(renderer.domElement);ptState='probe';setProgress(0);status.textContent='آماده‌سازی رندر دقیق';
+   pathTracer.getSampleCountsAsync().then(c=>{if(ptState!=='probe')return;let i=0;while(i<STAGES.length-1&&c.min>=STAGES[i+1])i++;beginStage(i)})
+    .catch(()=>{if(ptState==='probe')beginStage(0)});
+   return;
+  }
+  case 'probe':case 'cached':return;
+  case 'accum':
+   pathTracer.renderSample();pollSamples(time);
+   // The blit above already used the finished denoised image: reveal it.
+   // Denoiser unavailable (e.g. weights failed to load): reveal the converged raw image instead.
+   const stalled=!denoiser?.complete&&stageReachedAt&&!denoiser?.running&&time-stageReachedAt>(denoiserBroken?0:8000);
+   if(stalled)denoiserBroken=true;
+   if(denoiser?.complete||stalled){ptState='reveal';revealEnd=time+FADE_MS;hideOverlay(true);const last=ptStage===STAGES.length-1;if(last)setProgress(1);status.textContent=last?'رندر دقیق · کامل':'رندر دقیق · '+stageLabel()}
+   return;
+  case 'reveal':
+   pathTracer.renderSample();
+   if(time<revealEnd)return;
+   if(ptStage<STAGES.length-1){showOverlay(renderer.domElement);beginStage(ptStage+1)}
+   else{
+    ptState='done';setProgress(1);const shot=storeCache();
+    if(captureWhenDone){captureWhenDone=false;downloadCapture(shot)}
+   }
+   return;
+  case 'done':
+   // Exposure is applied when presenting, so it updates live here; keep the cache in step.
+   pathTracer.renderSample();
+   {const k=viewKey();if(k!==ptKey){const e=renderCache.get(ptKey);renderCache.delete(ptKey);ptKey=k;if(e)renderCache.set(k,e);storeCache()}}
+   return;
+ }
+}
+// Keep each frame's GPU work near ~25 ms so the page stays responsive while converging fast.
+function adaptBudget(ms){
+ gpuEma=gpuEma*.85+ms*.15;if(++budgetTick%12)return;
+ const b=pathTracer.frameBudget;
+ if(gpuEma<12&&b<BUDGET_MAX)pathTracer.frameBudget=Math.min(BUDGET_MAX,Math.round(b*1.3));
+ else if(gpuEma>34&&b>BUDGET_MIN)pathTracer.frameBudget=Math.max(BUDGET_MIN,Math.round(b*.75));
 }
 async function animate(time){
  if(!ready||busy||document.hidden){raf=requestAnimationFrame(animate);return;}
@@ -178,24 +285,25 @@ async function animate(time){
  try{
   const moving=dragging||controls.autoRotate||time-lastMove<350||transition;
   if(mode==='photo'&&pathTracer&&!moving){
-   pathTracer.renderSample();
-   if(time-lastSampleCheck>1500&&!samplePending){
-    lastSampleCheck=time;samplePending=true;
-    pathTracer.getSampleCountsAsync().then(c=>{latestSamples=c.avg;status.textContent=denoiser?.complete?'رندر دقیق · آماده':denoiser?.running?'در حال پاک‌سازی نویز':c.min>=128?'در حال نهایی‌سازی تصویر':'رندر دقیق · '+fa(c.avg)+' / ۱۲۸ نمونه';document.body.dataset.samples=Math.round(c.avg)}).catch(console.error).finally(()=>samplePending=false);
-   }
+   photoFrame(time);
   }else{
+   if(ptState!=='idle')resetProgressive();
    renderFast();
    if(frameCount%30===0)status.textContent=mode==='photo'?'پس از توقف، رندر دقیق ادامه می‌یابد':(gpu?'نمایش زنده · WebGPU':'نمایش زنده · WebGL 2');
   }
   if(snapshotRequested)downloadCapture();
  }catch(e){
   console.error(e);
-  if(mode==='photo'){mode='fast';active('[data-quality]','quality','fast');toast('رندر دقیق متوقف شد؛ نمایش روان ادامه دارد.')}
+  if(mode==='photo'){mode='fast';resetProgressive();active('[data-quality]','quality','fast');toast('رندر دقیق متوقف شد؛ نمایش روان ادامه دارد.')}
   else if(pipeline){pipeline.dispose();pipeline=null;toast('نمایش سازگار با دستگاه فعال شد.')}
   else{cancelAnimationFrame(raf);fail(e);return}
  }
  frameCount++;
- if(gpu&&mode==='photo'&&pathTracer){try{await renderer.backend.device.queue.onSubmittedWorkDone()}catch(e){mode='fast';toast('نمایش روان فعال شد.')}}
+ if(gpu&&mode==='photo'&&pathTracer){
+  const t0=performance.now();
+  try{await renderer.backend.device.queue.onSubmittedWorkDone();if(ptState==='accum')adaptBudget(performance.now()-t0)}
+  catch(e){mode='fast';resetProgressive();active('[data-quality]','quality','fast');toast('نمایش روان فعال شد.')}
+ }
  raf=requestAnimationFrame(animate);
 }
 async function init(){
@@ -207,7 +315,7 @@ async function init(){
   renderer.setPixelRatio(Math.min(devicePixelRatio,matchMedia('(max-width:720px)').matches?1.5:1.75));
   renderer.toneMapping=THREE.AgXToneMapping;renderer.toneMappingExposure=1.3;
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;
-  stage.appendChild(renderer.domElement);
+  stage.append(renderer.domElement,overlay);
   if(gpu)THREE.RectAreaLightNode.setLTC(RectAreaLightTexturesLib.init());else RectAreaLightUniformsLib.init();
   setupScene();resize();
   try{hdr=await new HDRLoader().loadAsync('./assets/studio.hdr');hdr.mapping=THREE.EquirectangularReflectionMapping;scene.environment=hdr;scene.environmentIntensity=.55}
@@ -220,7 +328,9 @@ async function init(){
 document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>{if(ready)preset(b.dataset.preset)});
 document.querySelectorAll('[data-quality]').forEach(b=>b.onclick=()=>quality(b.dataset.quality));
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
-$('#exposure').oninput=e=>{if(!renderer)return;renderer.toneMappingExposure=+e.target.value*1.3;$('#exposure-out').textContent=fa(+e.target.value*100)+'٪'};
+$('#exposure').oninput=e=>{if(!renderer)return;renderer.toneMappingExposure=+e.target.value*1.3;$('#exposure-out').textContent=fa(+e.target.value*100)+'٪';
+ // Live feedback on the raster view while dragging; the traced samples are kept (exposure is display-only).
+ if(mode==='photo'&&ptState!=='done')lastMove=performance.now()};
 $('#angle').oninput=e=>{lightAngle=+e.target.value;$('#angle-out').textContent=fa(lightAngle)+'°';if(ready)lightPositions()};
 $('#rotate').onchange=e=>{if(controls){if(e.target.checked&&mode==='photo')quality('fast');controls.autoRotate=e.target.checked}};
 $('#structure').onchange=async e=>{if(!model)return;fabricMeshes.forEach(m=>m.visible=!e.target.checked);needsRebuild=true;if(mode==='photo')await quality('photo')};
@@ -233,8 +343,8 @@ $('#panel-close').onclick=()=>setPanel(false);
 addEventListener('keydown',e=>{if(e.key==='Escape'&&isPanelOpen())setPanel(false)});
 $('#fullscreen').onclick=async()=>{try{if(!document.fullscreenElement)await $('#studio').requestFullscreen();else await document.exitFullscreen()}catch{toast('تمام‌صفحه روی این مرورگر پشتیبانی نمی‌شود.')}};
 $('#capture').onclick=capture;
-$('#local-file').onchange=async e=>{const f=e.target.files[0];if(!f)return;if(localURL)URL.revokeObjectURL(localURL);localURL=URL.createObjectURL(f);try{mode='fast';await loadModel(localURL);if(!raf)raf=requestAnimationFrame(animate)}catch(err){fail(err)}};
+$('#local-file').onchange=async e=>{const f=e.target.files[0];if(!f)return;if(localURL)URL.revokeObjectURL(localURL);localURL=URL.createObjectURL(f);try{mode='fast';resetProgressive();renderCache.clear();active('[data-quality]','quality','fast');await loadModel(localURL);if(!raf)raf=requestAnimationFrame(animate)}catch(err){fail(err)}};
 addEventListener('resize',()=>{if(renderer&&camera){resize();if(ready)setView('perspective',false)}});
-document.addEventListener('visibilitychange',()=>{lastMove=performance.now();pathTracer?.reset()});
+document.addEventListener('visibilitychange',()=>{lastMove=performance.now();if(ptState!=='done'&&ptState!=='cached'){pathTracer?.reset();resetProgressive()}});
 addEventListener('beforeunload',()=>{cancelAnimationFrame(raf);controls?.dispose();pathTracer?.dispose();denoiser?.dispose();pipeline?.dispose();renderer?.dispose();hdr?.dispose();if(localURL)URL.revokeObjectURL(localURL)});
 init();

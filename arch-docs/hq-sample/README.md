@@ -8,6 +8,13 @@ A self-hosted, Persian single-page 3D viewer using the supplied Nilper GLB.
 - `middleware.ts` excludes `hq-sample` from next-intl locale routing.
 - `vendor/` and `assets/` are cached for 1 day. After replacing any file there, rename it or expect up to 1 day of stale copies.
 - WebGPU, and so the path-traced "رندر دقیق" mode, needs HTTPS. Over plain HTTP the page falls back to WebGL2 live mode.
+- Photo mode (`app.js`, "Progressive photo render"):
+  - The sharp live frame stays on screen (2D overlay) while the tracer accumulates underneath.
+  - Staged denoise: 16 → 64 → 256 spp on desktop, 8 → 32 → 96 on mobile. Each stage cross-fades in, so raw noise is never shown.
+  - Finished views are kept in an LRU cache keyed by camera, lights, structure, exposure and size, so returning to a view is instant.
+  - Exposure changes never restart tracing. `frameBudget` adapts to roughly 25 ms of GPU time per frame.
+  - Saving an image waits for the final stage.
+  - If the canvas cannot be snapshotted or the denoiser fails, it falls back to the visible progressive/raw render.
 - The standalone `server.mjs`, `START-WINDOWS.cmd` and `vercel.json` were removed. They remain in git history (commit cc4b68e).
 
 ## Rendering
