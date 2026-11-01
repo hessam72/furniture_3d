@@ -8,13 +8,19 @@ A self-hosted, Persian single-page 3D viewer using the supplied Nilper GLB.
 - `middleware.ts` excludes `hq-sample` from next-intl locale routing.
 - `vendor/` and `assets/` are cached for 1 day. After replacing any file there, rename it or expect up to 1 day of stale copies.
 - WebGPU, and so the path-traced "رندر دقیق" mode, needs HTTPS. Over plain HTTP the page falls back to WebGL2 live mode.
-- Photo mode (`app.js`, "Progressive photo render"):
-  - The sharp live frame stays on screen (2D overlay) while the tracer accumulates underneath.
-  - Staged denoise: 16 → 64 → 256 spp on desktop, 8 → 32 → 96 on mobile. Each stage cross-fades in, so raw noise is never shown.
-  - Finished views are kept in an LRU cache keyed by camera, lights, structure, exposure and size, so returning to a view is instant.
-  - Exposure changes never restart tracing. `frameBudget` adapts to roughly 25 ms of GPU time per frame.
-  - Saving an image waits for the final stage.
-  - If the canvas cannot be snapshotted or the denoiser fails, it falls back to the visible progressive/raw render.
+- Photo mode (`app.js`), interactive:
+  - When the camera stops, the path-traced image forms visibly on screen.
+  - Denoising happens in stages: 16 → 64 → 256 spp on desktop, 8 → 32 → 96 on mobile. Later stages cross-fade in.
+  - Finished views are kept in an LRU cache keyed by camera, lights, structure, exposure and size.
+  - Exposure changes never restart tracing.
+- Final render: «رندر نهایی با کیفیت بالا».
+  - Desktop: long edge ≥ 2560 px, 512 spp, 10 bounces. Mobile: long edge ≥ 1600 px, 192 spp, 8 bounces.
+  - Shows progress and ETA and can be cancelled.
+  - The result opens in a before/after compare viewer with PNG download.
+- `frameBudget` stays fixed, because changing it rebuilds every compute kernel. Throughput instead adapts through several tracer passes per frame (target ≈ 25–30 ms of GPU work).
+- Fallbacks: no canvas snapshot means the render is shown as it forms; a denoiser failure shows the raw converged image; no progress for 20–30 s gives a clear message.
+- `?debug` adds a HUD (renderer, adapter, state, spp, spp/s, passes, denoiser) for remote diagnosis.
+- The page redirects http → https, since WebGPU only exists in secure contexts.
 - The standalone `server.mjs`, `START-WINDOWS.cmd` and `vercel.json` were removed. They remain in git history (commit cc4b68e).
 
 ## Rendering
