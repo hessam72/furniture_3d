@@ -1,0 +1,8 @@
+node_modules
+.git
+.openai
+.sites-runtime
+*.tar.gz
+server.mjs
+QA.md
+README.md
