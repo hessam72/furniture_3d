@@ -225,7 +225,12 @@ $('#angle').oninput=e=>{lightAngle=+e.target.value;$('#angle-out').textContent=f
 $('#rotate').onchange=e=>{if(controls){if(e.target.checked&&mode==='photo')quality('fast');controls.autoRotate=e.target.checked}};
 $('#structure').onchange=async e=>{if(!model)return;fabricMeshes.forEach(m=>m.visible=!e.target.checked);needsRebuild=true;if(mode==='photo')await quality('photo')};
 $('#reset').onclick=()=>{if(!ready)return;$('#exposure').value=1;$('#exposure-out').textContent='۱۰۰٪';renderer.toneMappingExposure=1.3;$('#angle').value=35;$('#angle-out').textContent='۳۵°';lightAngle=35;lightPositions();preset('studio');$('#rotate').checked=false;controls.autoRotate=false;if($('#structure').checked){$('#structure').checked=false;fabricMeshes.forEach(m=>m.visible=true);needsRebuild=true;if(mode==='photo')quality('photo')}setView('perspective')};
-$('#settings').onclick=()=>{const open=$('#panel').classList.toggle('open');$('#settings').setAttribute('aria-expanded',String(open))};
+// Mobile: the open panel covers #settings, so it carries its own close button.
+const isPanelOpen=()=>$('#panel').classList.contains('open');
+const setPanel=open=>{$('#panel').classList.toggle('open',open);$('#settings').setAttribute('aria-expanded',String(open));(open?$('#panel-close'):$('#settings')).focus({preventScroll:true})};
+$('#settings').onclick=()=>setPanel(!isPanelOpen());
+$('#panel-close').onclick=()=>setPanel(false);
+addEventListener('keydown',e=>{if(e.key==='Escape'&&isPanelOpen())setPanel(false)});
 $('#fullscreen').onclick=async()=>{try{if(!document.fullscreenElement)await $('#studio').requestFullscreen();else await document.exitFullscreen()}catch{toast('تمام‌صفحه روی این مرورگر پشتیبانی نمی‌شود.')}};
 $('#capture').onclick=capture;
 $('#local-file').onchange=async e=>{const f=e.target.files[0];if(!f)return;if(localURL)URL.revokeObjectURL(localURL);localURL=URL.createObjectURL(f);try{mode='fast';await loadModel(localURL);if(!raf)raf=requestAnimationFrame(animate)}catch(err){fail(err)}};

@@ -2,3 +2,5 @@
 .field-title,.toggle-row,.slider-label{font-size:12px}.presets button,.quality button,.reset span,.camera-nav button{font-size:11px}.hint{font-size:10px}.stage-footer{color:#807464}.panel{top:4%;}.panel-heading{margin-bottom:20px}.panel{padding-top:20px;padding-bottom:18px}.toggle-row{margin:14px 0}
 
 @media(max-width:720px){.panel{top:auto;bottom:137px;max-height:calc(100% - 155px);overflow-y:auto}}
+.panel-close{display:none}
+@media(max-width:720px){.panel-heading{position:sticky;top:-20px;z-index:1;gap:10px;margin:-20px -20px 8px;padding-block:14px 10px;padding-inline:20px 14px;background:#fcfaf6;border-radius:4px 4px 0 0}.panel-heading .tiny{margin-inline-start:auto}.panel-close{display:grid;place-items:center;flex:none;width:36px;height:36px;padding:0;border:1px solid #d9d2c7;border-radius:50%;background:#fcfaf6;color:#81725e}.panel-close svg{width:14px;height:14px;stroke:currentColor;stroke-width:1.5;fill:none}.panel-close:active{background:#f0eae2}}
