@@ -52,7 +52,19 @@ const nextConfig = {
           { key: 'Service-Worker-Allowed', value: '/' },
         ],
       },
+      {
+        // /hq-sample: ~180 unbundled ES modules + GLB/HDR. Not filename-hashed,
+        // so cache for a day (not immutable) to avoid per-module revalidation.
+        source: '/hq-sample/:dir(vendor|assets)/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
+        ],
+      },
     ];
+  },
+  async rewrites() {
+    // Static studio app in public/hq-sample; its <base href> resolves assets.
+    return [{ source: '/hq-sample', destination: '/hq-sample/index.html' }];
   },
 };
 

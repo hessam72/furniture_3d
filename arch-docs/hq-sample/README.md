@@ -2,9 +2,13 @@
 
 A self-hosted, Persian single-page 3D viewer using the supplied Nilper GLB.
 
-## Run
-With Node.js installed, run `node server.mjs` in this folder, then open http://127.0.0.1:4178.
-For hosting, upload the contents of `dist/` to an HTTPS static host. No runtime CDN or npm installation is required; model, decoders, font, lighting and renderer are all included. Opening index.html using file:// is not supported.
+## Integration in this repo (served at `/hq-sample`)
+- The former `dist/` lives in `public/hq-sample/` and is served as-is by `next start`; no extra build step. (Paths below that say `dist/` now mean `public/hq-sample/`.)
+- `next.config.mjs` rewrites `/hq-sample` → `/hq-sample/index.html`; `<base href="/hq-sample/">` in index.html resolves the relative asset/import-map URLs.
+- `middleware.ts` excludes `hq-sample` from next-intl locale routing.
+- `vendor/` and `assets/` are cached for 1 day. After replacing any file there, rename it or expect up to 1 day of stale copies.
+- WebGPU, and so the path-traced "رندر دقیق" mode, needs HTTPS. Over plain HTTP the page falls back to WebGL2 live mode.
+- The standalone `server.mjs`, `START-WINDOWS.cmd` and `vercel.json` were removed. They remain in git history (commit cc4b68e).
 
 ## Rendering
 - Three.js 0.185.1, WebGPU with WebGL2 fallback.

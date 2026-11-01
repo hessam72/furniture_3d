@@ -14,5 +14,6 @@ export const config = {
    * enumerating asset directories would silently go stale the next time one
    * is added.
    */
-  matcher: ['/((?!api|_next|_vercel|.*\\..*).*)'],
+  // hq-sample: static app in public/hq-sample (rewrite in next.config.mjs).
+  matcher: ['/((?!api|_next|_vercel|hq-sample|.*\\..*).*)'],
 }

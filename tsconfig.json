@@ -38,6 +38,7 @@
   ],
   "exclude": [
     "node_modules",
-    "integration-parts"
+    "integration-parts",
+    "public/hq-sample"
   ]
 }
